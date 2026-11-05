@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:analysis": "tsc -p tsconfig.analysis-tests.json && node --test tests/analysis/fundamentalMetrics.test.mjs"
   },
   "dependencies": {
     "react": "^19.1.0",
