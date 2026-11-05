@@ -52,7 +52,7 @@ The single root `wrangler.toml` sets `name = "schcatweb"` and `assets.directory 
 | 5 | Exploratory R2 data integration/importer | Superseded; no production data import performed |
 | 6 | Convert project to static-only Cloudflare deployment; remove backend/R2; update docs and CI | Complete — user confirmed the live Cloudflare site works; GitHub CI passes |
 | 7 | Port core provider-independent fundamental calculation kernels to browser TypeScript with parity tests | Complete — six pure calculation functions and deterministic tests; PEG field mapping deferred until provider field semantics are verified |
-| 8 | Audit and implement direct browser provider API access (MarketSmith, ChartInk, NSE); record CORS/auth limitations | Not started |
+| 8 | Audit and implement direct browser provider API access (MarketSmith, ChartInk, NSE); record CORS/auth limitations | In progress — browser diagnostic page and request-shape tests implemented; live-origin provider results pending |
 | 9 | Port chart data workflows and existing CRIP4 Node chart behaviour to browser-compatible TypeScript | Not started |
 | 10 | Port technical indicators with numerical parity tests | Not started |
 | 11 | Convert/import non-sensitive reference workbooks and JSON to static browser-readable data | Not started |
@@ -116,6 +116,21 @@ Parity tests are in `frontend/tests/analysis/fundamentalMetrics.test.mjs`. They 
 
 Not included in this pass: provider requests, UI wiring, chart indicators, delivery rolling windows and the PEG row assembly. The legacy PEG code has a type-inconsistent missing-field default (a string is later used as a divisor); do not silently change it. Verify actual MarketSmith field types and preserve the legacy error/fallback behaviour when addressing it during the provider/screener integration steps.
 
-## Next step (after Step 7 acceptance)
+## Step 8 — Direct browser provider access audit (in progress)
 
-Step 8: audit direct browser access to the existing MarketSmith, ChartInk and NSE providers. Reproduce the original request shapes without copying session credentials into public JavaScript, test from the live Cloudflare origin, and document CORS/authentication outcomes. Do not add a proxy or backend unless a specific provider is proven to require it and the user approves that exception.
+Implemented on `main`:
+- `frontend/src/data/providers/providerDiagnostics.ts` builds and probes the two MarketSmith endpoints used by the desktop app, ChartInk's CSRF + scan POST flow, and NSE's historical delivery endpoint.
+- `frontend/src/features/diagnostics/ProviderDiagnostics.tsx` provides an isolated diagnostic route at `/?diagnostics=providers`; the normal home page is unchanged.
+- Requests run only after the user clicks the diagnostic button, directly from the browser. The page reports readable responses, HTTP/auth-policy errors, timeouts, and browser/network failures without displaying provider data or session material.
+- MarketSmith's legacy hard-coded `ms-auth` query values are deliberately not copied into the public frontend bundle. Cross-origin credentials are requested through Fetch's normal `credentials: "include"` option only; the application does not read, write, or manually set cookies.
+- JavaScript does not set a custom `User-Agent` or `Cookie` header. Browser restrictions and provider CORS rules determine whether the calls can work. A failed Fetch cannot reliably distinguish CORS from another network/privacy-policy failure; inspect DevTools Console.
+- Provider request URL, parameter, and CSRF parser tests are in `frontend/tests/providers/providerDiagnostics.test.mjs`, run with `npm run test:providers`.
+
+Verification:
+- GitHub Actions passed on commit `a2f16a3ae211520b39d4b3d264b7d83a1b31d142`: calculation tests, provider request-shape tests, TypeScript/Vite production build and static output checks.
+- The actual live-origin HTTP/CORS/authentication outcomes have not yet been collected. After Cloudflare deploys the latest `main` commit, open `https://schcatweb.prudhvi123143.workers.dev/?diagnostics=providers`, click **Run browser diagnostics**, and share the results plus any relevant Console errors.
+- Do not add a proxy/backend by default. If a particular provider proves to require server-side access, document the specific reason and obtain user approval first.
+
+## Next step (after Step 8 acceptance)
+
+Step 9: port the existing chart-data workflow and CRIP4 Node chart-service transforms into browser-compatible TypeScript, after confirming the current browser-provider limitations. Preserve the original timeframe mapping, OHLCV shape and aggregation behaviour.
