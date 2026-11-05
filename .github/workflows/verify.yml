@@ -5,10 +5,12 @@ on:
     branches: [main]
     paths:
       - "frontend/**"
+      - "wrangler.toml"
       - ".github/workflows/verify.yml"
   pull_request:
     paths:
       - "frontend/**"
+      - "wrangler.toml"
       - ".github/workflows/verify.yml"
 
 jobs:
@@ -25,5 +27,5 @@ jobs:
       - name: Build static website
         working-directory: frontend
         run: npm run build
-      - name: Verify static build output
-        run: test -s frontend/dist/index.html
+      - name: Verify static build output and deployment config
+        run: test -s frontend/dist/index.html && test -s wrangler.toml
