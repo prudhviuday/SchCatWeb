@@ -56,9 +56,19 @@ npm run test:analysis
 
 The test command compiles the pure TypeScript calculation module to the ignored `.test-dist/` directory and runs deterministic expected-value tests against the legacy SchCat formulas. The GitHub Actions workflow runs these tests before the production build.
 
-## Provider diagnostics (Step 8)
+## Chart data tests (Step 9)
 
-After the latest frontend commit is deployed, open `https://schcatweb.prudhvi123143.workers.dev/?diagnostics=providers` and select **Run browser diagnostics**. This executes requests in the actual website origin for both MarketSmith hosts, ChartInk's CSRF + scan flow, and NSE historical delivery data. Use the MarketSmith ID/symbol fields for a known valid pair. The normal home page is unchanged.
+Run deterministic tests for Yahoo chart-response parsing, timeframe URL mapping, 15-minute/4-hour aggregation, weekly close×volume history and stock/gold transformations:
+
+```powershell
+npm run test:charts
+```
+
+The chart data client is `src/data/providers/chartData.ts`. It calls Yahoo Finance directly from the browser with credentials omitted. The old local Node service at `127.0.0.1:3000` is not used by the static site. Live Yahoo CORS availability must still be checked in the browser.
+
+## Provider diagnostics (Steps 8–9)
+
+After the latest frontend commit is deployed, open `https://schcatweb.prudhvi123143.workers.dev/?diagnostics=providers` and select **Run browser diagnostics**. This executes requests in the actual website origin for both MarketSmith hosts, ChartInk's CSRF + scan flow, NSE historical delivery data, and a small Yahoo Finance chart sample. Use the MarketSmith ID/symbol fields for a known valid pair. The normal home page is unchanged.
 
 The page never embeds the legacy `ms-auth` query values or reads/stores cookies. Credentialed cross-origin requests are subject to provider CORS headers and browser third-party-cookie policy. A browser `fetch` failure is reported as a possible CORS/network/privacy-policy block; inspect DevTools Console for the specific browser message.
 
