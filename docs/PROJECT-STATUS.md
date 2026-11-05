@@ -154,7 +154,7 @@ Implemented in `frontend/src/domain/analysis/technicalIndicators.ts`:
 - `calculateEma`: initial SMA seed, then `alpha = 2 / (period + 1)`.
 - `calculateRsi`: Wilder-smoothed gains/losses, first output after `period` changes, and the package's exact two-decimal rounding and zero-average-loss rule.
 - `smaInc`, `emaInc`, `rsiInc`: legacy wrapper semantics, including leading empty-string padding and RSI's fixed period of 21.
-- `ultmInc` and `atpInc`: ported CRIP4 formulas and output attachment behaviour. The old code combines raw EMA arrays without timestamp alignment; that behaviour is intentionally retained and covered by tests rather than silently corrected.
+- `ultmInc` and `atpInc`: ported CRIP4 formulas and output attachment behaviour. The old code combines raw EMA arrays without timestamp alignment and computes each result as `(1 / reverseValue) * 123`; that exact operation order and behaviour are intentionally retained and covered by tests rather than silently corrected.
 - Replaced the legacy dynamic `eval` property assignment with a safe computed property.
 
 Known legacy defects retained for review:
@@ -163,7 +163,7 @@ Known legacy defects retained for review:
 - The old `touch_inc` refers to an undefined `d1` and is not exported; it has not been ported as a working feature.
 - Any future correction of these semantics should be a consciously reviewed formula change with comparison against the existing desktop output.
 
-Tests: `frontend/tests/analysis/technicalIndicators.test.mjs`, command `npm run test:indicators`. GitHub Actions passed on commit `032e375a7ef30ebb6c1a670944260935b730df3c`: calculation tests, provider tests, chart tests, indicator tests, TypeScript/Vite production build and static-deployment checks. Run: https://github.com/prudhviuday/SchCatWeb/actions/runs/42075480413.
+Tests: `frontend/tests/analysis/technicalIndicators.test.mjs`, command `npm run test:indicators`. GitHub Actions passed on final code commit `28807e6e55db209e959f0fcefd74e9c25be6a7a8`: calculation tests, provider tests, chart tests, indicator tests, TypeScript/Vite production build and static-deployment checks. Run: https://github.com/prudhviuday/SchCatWeb/actions/runs/42076058333.
 
 ## Next step
 
