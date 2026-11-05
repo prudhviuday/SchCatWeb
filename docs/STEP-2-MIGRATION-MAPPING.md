@@ -109,6 +109,22 @@ Implement these as browser-side feature modules. Do not create HTTP endpoints fo
 
 Do not alter formulas or fallback semantics without explicit compatibility tests and review.
 
+### Provider-independent formula kernels ported in Step 7
+
+The pure TypeScript implementations are in `frontend/src/domain/analysis/fundamentalMetrics.ts`:
+
+| TypeScript function | Legacy source | Compatibility details |
+|---|---|---|
+| `normalizeSeries` | `util.normalize` | Min/max to 0–100; Python `int` truncation; empty/constant input remains an error |
+| `calculateEarningsSalesScore` | `util.getepssalesrating` | First three quarterly rows only; strict >70 thresholds; 5/3/2 weights; 3+2 trend points; max 30 |
+| `clampQuarterlyGrowth` | `fetch_EPS_acc_from_MS`, `fetch_Sales_acc_from_MS` | Truncate, then clamp to -200..200; null/missing becomes zero |
+| `calculateExpansionPercentage` | `getExpansionFromMs` | Truncate (c25 / c32 × 100) |
+| `calculateInstitutionalCostBillions` | `getInstitutionCostFromMs` | Truncate (fund shares × current price / 1 billion); null shares become zero |
+| `calculateMarketCapWeightedRelativeStrength` | `fetch_RS_graph_from_MS` | Mean of non-null values truncated to integer; null and zero are replaced by that mean; optional market-cap weighting; reverse the result |
+
+Tests: `frontend/tests/analysis/fundamentalMetrics.test.mjs`, run by `npm run test:analysis` using Node's built-in test runner. No test framework dependency is added to the deployed application. PEG row assembly is deliberately deferred because the legacy missing-value default is a string that is subsequently divided into a number; verify response types and fallback semantics before porting it.
+
+
 ## 6. Chart and indicator mapping
 
 Legacy timeframe mapping:
