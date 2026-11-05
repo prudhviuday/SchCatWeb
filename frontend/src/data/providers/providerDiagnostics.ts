@@ -1,3 +1,5 @@
+import { buildYahooChartUrl } from "./chartData";
+
 export type ProviderProbeStatus =
   | "success"
   | "http-error"
@@ -8,7 +10,7 @@ export type ProviderProbeStatus =
 
 export interface ProviderProbeResult {
   id: string;
-  provider: "MarketSmith" | "ChartInk" | "NSE";
+  provider: "MarketSmith" | "ChartInk" | "NSE" | "Yahoo Finance";
   title: string;
   status: ProviderProbeStatus;
   message: string;
@@ -55,7 +57,7 @@ async function requestText(
     const response = await fetch(url, {
       ...init,
       mode: "cors",
-      credentials: "include",
+      credentials: init.credentials ?? "include",
       redirect: "follow",
       signal: controller.signal
     });
@@ -441,15 +443,51 @@ async function probeNse(): Promise<ProviderProbeResult> {
   });
 }
 
+
+async function probeYahooFinance(): Promise<ProviderProbeResult> {
+  const title = "Yahoo Finance chart endpoint (RELIANCE, 5-day daily sample)";
+  const url = buildYahooChartUrl("RELIANCE", "1D", { range: "5d" });
+  const attempt = await requestText(
+    "yahoo-chart",
+    "Yahoo Finance",
+    title,
+    url,
+    {
+      credentials: "omit",
+      headers: { Accept: "application/json" }
+    }
+  );
+
+  return jsonResult(
+    "yahoo-chart",
+    "Yahoo Finance",
+    title,
+    attempt,
+    (data) => {
+      const chart = asRecord(asRecord(data)?.chart);
+      const results = chart?.result;
+      if (!Array.isArray(results) || results.length === 0) {
+        return "JSON response readable, but the chart result array is empty.";
+      }
+      const first = asRecord(results[0]);
+      const timestamps = first?.timestamp;
+      return Array.isArray(timestamps)
+        ? `Browser read Yahoo chart JSON (${timestamps.length} timestamp slots).`
+        : "JSON response readable, but timestamp data is missing.";
+    }
+  );
+}
+
 export async function runProviderDiagnostics(
   options: ProviderAuditOptions
 ): Promise<ProviderProbeResult[]> {
-  const [finance, symbol, chartInk, nse] = await Promise.all([
+  const [finance, symbol, chartInk, nse, yahoo] = await Promise.all([
     probeMarketSmith(options.marketSmithStockId, options.marketSmithSymbol, "finance"),
     probeMarketSmith(options.marketSmithStockId, options.marketSmithSymbol, "symbol"),
     probeChartInk(),
-    probeNse()
+    probeNse(),
+    probeYahooFinance()
   ]);
 
-  return [finance, symbol, ...chartInk, nse];
+  return [finance, symbol, ...chartInk, nse, yahoo];
 }
