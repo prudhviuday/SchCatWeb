@@ -1,19 +1,18 @@
 import { mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
-import process from "node:process";
+import { argv } from "node:process";
 import * as XLSX from "xlsx";
 
 type Cell = string | number | boolean | Date | null | undefined;
 type Row = Cell[];
 
-const sourceRootArg = process.argv[2];
+const sourceRootArg = argv[2];
 if (!sourceRootArg) {
   throw new Error('Usage: npm run data:import -- "C:\\path\\to\\SchCat"');
 }
 
 const sourceRoot = path.resolve(sourceRootArg);
 const outputRoot = path.resolve("data-export");
-const writtenKeys: string[] = [];
 
 async function firstExisting(candidates: string[]): Promise<string> {
   for (const candidate of candidates) {
@@ -54,7 +53,7 @@ function rowsAsObjects(rows: Row[]): { columns: string[]; rows: Record<string, C
   const records = rows.slice(1).filter((row) => row.some((value) => value !== null && value !== undefined && value !== ""));
   return {
     columns: uniqueColumns,
-    rows: records.map((row) => Object.fromEntries(uniqueColumns.map((column, index) => [column, row[index] ?? null])))
+    rows: records.map((row) => Object.fromEntries(uniqueColumns.map((column, index) => [column, row[index] ?? null] as const)))
   };
 }
 
@@ -63,7 +62,6 @@ async function writeJson(key: string, value: unknown): Promise<{ key: string; by
   await mkdir(path.dirname(fullPath), { recursive: true });
   const content = JSON.stringify(value, null, 2) + "\n";
   await writeFile(fullPath, content, "utf8");
-  writtenKeys.push(key);
   return { key, bytes: Buffer.byteLength(content, "utf8") };
 }
 
@@ -202,7 +200,7 @@ async function main() {
     },
     files: [
       marketIdsResult, stockMetadataResult, queriesResult, watchlistsResult,
-      portfolioResult, industriesResult, indexResult,
+      portfolioResult, industriesResult, indexResult, indexResult,
       ...industryIndex.map((item) => ({ key: item.key.replace(/^data\//, ""), bytes: item.bytes }))
     ]
   };
