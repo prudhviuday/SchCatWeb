@@ -126,7 +126,8 @@ Key source areas include:
   3. Run `npm run data:import -- "C:\\path\\to\\SchCat"`.
   4. Run `.\data-export\upload-to-r2.ps1` for the local R2 emulator.
   5. Start Wrangler and verify all documented `/api/data/*` endpoints return the expected JSON.
-- Status: implementation committed; actual workbook import and runtime verification have not yet been performed in the user's environment.
+- CI verification (5 November 2026): GitHub Actions passed backend TypeScript type-checking (including the importer), all 9 Vitest tests, dependency audit (0 vulnerabilities), and frontend production build. Run: https://github.com/prudhviuday/SchCatWeb/actions/runs/42056479215
+- Status: implementation committed and CI-verified; actual workbook import and local R2 runtime verification have not yet been performed in the user's environment.
 
 ## Step 4 verification
 
