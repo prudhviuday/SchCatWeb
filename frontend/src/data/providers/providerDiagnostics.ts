@@ -1,4 +1,4 @@
-import { buildYahooChartUrl } from "./chartData";
+import { buildYahooChartUrl } from "./chartData.js";
 
 export type ProviderProbeStatus =
   | "success"
@@ -443,6 +443,12 @@ async function probeNse(): Promise<ProviderProbeResult> {
   });
 }
 
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value !== null && typeof value === "object"
+    ? value as Record<string, unknown>
+    : null;
+}
 
 async function probeYahooFinance(): Promise<ProviderProbeResult> {
   const title = "Yahoo Finance chart endpoint (RELIANCE, 5-day daily sample)";
