@@ -200,7 +200,7 @@ async function main() {
     },
     files: [
       marketIdsResult, stockMetadataResult, queriesResult, watchlistsResult,
-      portfolioResult, industriesResult, indexResult, indexResult,
+      portfolioResult, industriesResult, indexResult,
       ...industryIndex.map((item) => ({ key: item.key.replace(/^data\//, ""), bytes: item.bytes }))
     ]
   };
