@@ -1,5 +1,6 @@
 # Node / TypeScript
 node_modules/
+.test-dist/
 dist/
 .vite/
 .wrangler/
