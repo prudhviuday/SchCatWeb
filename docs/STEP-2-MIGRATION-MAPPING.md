@@ -33,7 +33,7 @@ The prior Hono/R2 implementation and backend endpoint proposals are historical e
 ## 1A. Step 8 browser provider diagnostics
 
 The browser diagnostics implementation is in:
-- `src/data/providers/providerDiagnostics.ts`: MarketSmith, ChartInk and NSE URL builders, CSRF extraction, timeout handling and browser fetch probes.
+- `src/data/providers/providerDiagnostics.ts`: MarketSmith, ChartInk and NSE URL builders, CSRF extraction, timeout handling and browser fetch probes; the Step 9 Yahoo chart-origin probe was added here.
 - `src/features/diagnostics/ProviderDiagnostics.tsx`: opt-in diagnostic page available at `/?diagnostics=providers`.
 - `tests/providers/providerDiagnostics.test.mjs`: deterministic request-shape and CSRF parser tests.
 
@@ -160,6 +160,18 @@ Existing Node routes:
 
 Existing indicator exports include `sma_inc`, `ema_inc`, `rsi_inc`, `ATP_inc`, `ultm_inc`. Verify candle timestamps, OHLCV, missing-value handling, aggregation and every indicator against desktop/Node outputs.
 
+### Step 9 browser chart-data port
+
+Implemented in `frontend/src/data/providers/chartData.ts`:
+- Direct Yahoo chart JSON URL builder with explicit intervals and ranges for 1W, 1D, 1H and 5m. 15m is formed from consecutive groups of three 5m candles; 4H preserves the original 09:15 and 13:15 IST session aggregation.
+- Response parsing into ascending Unix-second OHLCV candle records; zero-volume and malformed candles are omitted.
+- Weekly close×volume history, the CRIP4 stock/gold timestamp join + forward fill, and the fixed-₹50-notional synthetic stock-vs-gold OHLC series.
+- No local Node server or credentials are used. Fetch uses `credentials: "omit"`.
+
+The previous Node `stockUrlmaker` contains `else if (key = 1000)` (assignment instead of comparison), which sends most requested intervals through the daily branch. The browser port uses the explicit timeframe labels rather than reproducing that unintended daily-only output. The hard-coded MarketSmith weekly-chart auth parameter has not been ported. Gold network retrieval is also pending a browser-origin test. Indicators are Step 10; chart UI is Step 13.
+
+Run `npm run test:charts` for deterministic URL, parsing, aggregation and synthetic-series tests. The existing `/?diagnostics=providers` route now includes Yahoo Finance; direct browser CORS access is not considered proven until that result is checked from the live Cloudflare origin.
+
 ## 7. Industry Analysis
 
 Legacy workflow:
@@ -192,7 +204,7 @@ Holdings contain stock, quantity and buy price. Legacy chart calculates each hol
 
 1. MarketSmith `ms-auth` query values may be session credentials; do not copy into public frontend code.
 2. `fixer.js` references a Windows absolute path for `marketsmithids.json`.
-3. Legacy timeframe keys and Node special cases may not align.
+3. Legacy timeframe keys and Node special cases may not align; the assignment in `stockUrlmaker` caused daily output for most labels. Step 9 uses explicit Yahoo intervals and documents this compatibility correction.
 4. `touch_inc` references `d1` without defining it.
 5. Indicator code uses `eval`; replace with safe property access after parity tests.
 6. `stockUrlmaker` contains a possible assignment/comparison defect.
@@ -205,4 +217,4 @@ Holdings contain stock, quantity and buy price. Legacy chart calculates each hol
 
 ## 12. Migration sequence
 
-See `docs/PROJECT-STATUS.md` for the binding 20-step plan. The next active implementation step after the static architecture conversion is core calculation parity in browser TypeScript. The previous backend endpoint proposals are superseded; app-internal workflows should be TypeScript functions, not HTTP routes.
+See `docs/PROJECT-STATUS.md` for the binding 20-step plan. Steps 7–9 now cover core calculations, provider diagnostics and browser chart-data transformations. Next is Step 10 (technical-indicator parity), while live browser CORS checks for the required external providers remain open. The previous backend endpoint proposals are superseded; app-internal workflows should be TypeScript functions, not HTTP routes.
