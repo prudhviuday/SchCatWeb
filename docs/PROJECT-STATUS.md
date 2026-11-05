@@ -48,7 +48,7 @@ The user can start a new ChatGPT conversation and say **"Continue SchCatWeb — 
 | 2 | Detailed migration mapping | Complete; architecture superseded by TypeScript decision below |
 | 3 | Web project foundation | Scaffold committed; local run/build verification not confirmed |
 | 4 | TypeScript backend foundation | Implemented in repository; local typecheck/tests pending user |
-| 5 | Existing data integration | Not started |
+| 5 | Existing data integration | TypeScript importer + R2 API committed; local import/upload/API verification pending |
 | 6 | Core analysis logic port to TypeScript | Not started |
 | 7 | Stock data integration | Not started |
 | 8 | Chart service integration | Not started |
@@ -97,6 +97,36 @@ Key source areas include:
 - Implemented: route organization, runtime configuration validation, CORS allow-list, request IDs, structured request/error logging, consistent 404/error JSON, health endpoint, Wrangler local-development configuration, frontend proxy and automated API tests.
 - Production deployment is not part of this step.
 - Status: code committed; local typecheck and automated tests still require user execution.
+
+
+## Step 5 — Existing data integration
+
+- Scope: move the existing Excel/JSON datasets into a web-compatible, persistent data source without relying on a Worker local filesystem.
+- Source data audited in `prudhviuday/SchCat`:
+  - `data/marketsmithidsall4.xlsx`: legacy positional fields are symbol (0), MarketSmith ID (1), market cap (2), industry (4), PB (5), ROCE (6), NikScore (7).
+  - `data/ChartInkQs.xlsx`: `QUERIES`, `Watchlist`, and `Portfolio` sheets. The legacy query mapping uses column index 1 as key and index 2 as value.
+  - `data/Industrydata.xlsx`: `Industry` column used for industry autocomplete.
+  - `data/IndustryAnalysis/*.json`: saved industry-analysis output files.
+- Implemented in SchCatWeb:
+  - TypeScript/Node import script: `backend/scripts/import-data.ts`; reads the source workbooks and saved JSON, validates required sheets/fields, and exports normalized JSON.
+  - Generated files are written to `backend/data-export/`, which is gitignored so personal workbooks and generated datasets are not committed.
+  - Cloudflare R2 binding `DATA_BUCKET` configured as `schcat-data` with local preview bucket `schcat-data-dev`.
+  - Read-only endpoints: `/api/data/manifest`, `market-ids`, `stock-metadata`, `queries`, `watchlists`, `portfolio`, `industries`, and `industry-analysis` plus individual saved analysis files.
+  - Data API includes explicit missing-bucket/missing-file errors, JSON validation, ETag passthrough and short cache headers.
+  - Vitest coverage added for successful reads, missing R2 binding, missing datasets and unsafe analysis filenames.
+  - README documents local import, local R2 testing and the later production upload procedure.
+- Important boundaries:
+  - No formulas or analysis calculations were ported in Step 5.
+  - No provider API calls or credentials are included.
+  - Step 5 endpoints are read-only. Safe write-back for watchlists/portfolio will be designed separately.
+  - Production R2 upload and deployment remain part of the final release process; do not claim the site is live.
+- Verification still required on the user's computer:
+  1. Run `npm install` and `npm run typecheck` in `backend/`.
+  2. Run `npm test`.
+  3. Run `npm run data:import -- "C:\\path\\to\\SchCat"`.
+  4. Run `.\data-export\upload-to-r2.ps1` for the local R2 emulator.
+  5. Start Wrangler and verify all documented `/api/data/*` endpoints return the expected JSON.
+- Status: implementation committed; actual workbook import and runtime verification have not yet been performed in the user's environment.
 
 ## Step 4 verification
 
