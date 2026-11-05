@@ -53,7 +53,7 @@ Do not port the hard-coded legacy MarketSmith `ms-auth` query values into the we
 | `chartink.py` | ChartInk query, history, dashboard and multi-query execution | `src/data/providers/chartink` | Screener, Research, Market Pulse |
 | `chartengine.py` | Chart-data and close×volume requests to local Node service | `src/features/charts` and browser chart-data adapters | Charts, Workspace |
 | `CRIP4/app.js` | Express routes for OHLCV, AI/ULTM, weekly ULTM, gold and intro data | Port compatible request/data logic to browser TypeScript | Charts |
-| `CRIP4/indicators.js` | SMA, EMA, RSI, ULTM and ATP | `src/features/indicators` | Charts and technical panels |
+| `CRIP4/indicators.js` | SMA, EMA, RSI, ULTM and ATP | `src/domain/analysis/technicalIndicators.ts` (pure calculations); UI adapters will live under `src/features` | Charts and technical panels |
 | `CRIP4/public/Tools/fixer.js` | Price-source URLs, OHLCV conversion, timeframe aggregation and MarketSmith weekly candles | Browser-compatible provider adapters and transforms | Charts |
 | `Tabs/AnalysisTab.py` | Industry selection, stock lookup and charts | `src/features/industry` | Industry Analysis |
 | `Tabs/ChartTab.py`, `Tabs/chartpanel.py` | Multi-chart fetch, timeframe preparation and industry navigation | `src/features/charts` | Charts, Workspace |
