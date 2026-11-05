@@ -16,7 +16,7 @@ SchCatWeb is a **static React + TypeScript + Vite website** hosted using Cloudfl
 | Non-sensitive reference data | Static JSON assets generated during development/build |
 | Personal preferences, watchlists and portfolio | localStorage/IndexedDB with import/export |
 | Charts and indicators | Browser TypeScript and browser chart library |
-| Deployment | `frontend/wrangler.toml` publishing `frontend/dist` as static assets |
+| Deployment | Root `wrangler.toml` publishing `frontend/dist` as static assets |
 | Node/npm | Build and optional development-time conversion only; never a runtime server |
 
 ### Provider API boundary
