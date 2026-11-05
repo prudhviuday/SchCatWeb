@@ -1,10 +1,10 @@
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 import type { AppBindings } from "../middleware/request-context";
 
 const data = new Hono<AppBindings>();
 
-async function readJsonDataset(c: Parameters<Parameters<typeof data.get>[1]>[0], key: string) {
+async function readJsonDataset(c: Context<AppBindings>, key: string) {
   const bucket = c.env.DATA_BUCKET;
   if (!bucket) {
     throw new HTTPException(503, { message: "The persistent data bucket is not configured." });
