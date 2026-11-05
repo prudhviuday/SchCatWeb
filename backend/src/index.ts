@@ -5,6 +5,7 @@ import { getRuntimeConfig } from "./config";
 import { createLogger } from "./logger";
 import { requestContext, type AppBindings } from "./middleware/request-context";
 import health from "./routes/health";
+import data from "./routes/data";
 
 const app = new Hono<AppBindings>();
 
@@ -23,6 +24,7 @@ app.use("/api/*", async (c, next) => {
 });
 
 app.route("/api/health", health);
+app.route("/api/data", data);
 
 app.notFound((c) => {
   const requestId = c.get("requestId");
