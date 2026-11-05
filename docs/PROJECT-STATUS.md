@@ -30,6 +30,15 @@ The user can start a new ChatGPT conversation and say **"Continue SchCatWeb — 
 - Provider credentials must remain server-side and must not be exposed to the browser.
 - Broad scope: migrate the major desktop features over the planned steps.
 
+## Deployment and API integration requirements (confirmed by user)
+
+- The intended final deliverable must be reachable through a live Cloudflare URL, not only a local development server. Cloudflare deployment belongs to Step 20; do not claim the site is live before a successful deployment and smoke test.
+- Preserve and integrate the existing Node/Express chart service in `SchCat/CRIP4`; it is responsible for existing chart-related routes/data transformations and must be audited before changing or replacing it.
+- Preserve the existing Python data-fetching and analysis pathways for MarketSmith, ChartInk and NSE where applicable. FastAPI should provide the central web-facing application API and orchestrate backend services; it must not duplicate or silently replace existing provider logic.
+- Reuse the existing Excel/JSON data initially. Do not expose provider credentials or auth tokens to frontend/browser code.
+- The exact deployment topology (Cloudflare frontend plus an appropriate backend/Node hosting arrangement) must be selected after checking runtime compatibility, provider network access, secrets, CORS, and persistent file requirements. Do not assume FastAPI or the Node process can run unchanged inside a basic static Pages deployment.
+- The user's requirement is functional parity: the deployed webpage must fetch real data through the existing services, not merely display a static UI.
+
 ## Migration plan and progress
 
 | Step | Scope | Status |
