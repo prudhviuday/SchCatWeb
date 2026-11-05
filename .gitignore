@@ -4,6 +4,7 @@ dist/
 .vite/
 .wrangler/
 coverage/
+backend/data-export/
 
 # Local environment and secrets
 .env
