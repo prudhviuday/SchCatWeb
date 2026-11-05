@@ -7,7 +7,7 @@ A static React + TypeScript web migration of the existing SchCat desktop stock-a
 SchCatWeb is a **static website**. It has no runtime backend, database, Cloudflare Worker script, R2 bucket, Python service or server process.
 
 - `frontend/`: React + TypeScript + Vite. All UI, calculations and browser-compatible data workflows run here.
-- `frontend/wrangler.toml`: deploys only the Vite build output to Cloudflare Workers Static Assets.
+- Root `wrangler.toml`: deploys only `frontend/dist` to Cloudflare Workers Static Assets.
 - Browser APIs: provider requests are made directly from TypeScript when the provider permits browser access (including CORS) and does not require a protected secret.
 - Local data: static JSON assets and browser storage (localStorage/IndexedDB) are used where appropriate.
 - Build tools: Node.js/npm are used only to install dependencies, build the website and run optional development-time data conversion scripts. Node is not needed to serve the deployed website.
@@ -60,14 +60,14 @@ cd frontend && npm install && npm run build
 - Deploy command:
 
 ```bash
-cd frontend && npx wrangler deploy --config ./wrangler.toml
+npx wrangler deploy --config ./wrangler.toml
 ```
 
-- Build watch paths: `frontend/**`.
+- Build watch paths: `frontend/**` and `wrangler.toml`.
 
-The Wrangler config is deliberately inside `frontend/` so the build and deploy commands use the same project directory without relying on a root-level config lookup. It publishes `./dist` (the generated `frontend/dist/`) as static assets. It has no `main` entry point, Worker script, API route, R2 binding or database. Keep the Worker name as `schcatweb` to match the existing Cloudflare deployment.
+The root Wrangler config publishes `./frontend/dist` as static assets. It intentionally has no `main` entry point, Worker script, API route, R2 binding or database. Keep the Worker name as `schcatweb` to match the existing Cloudflare deployment.
 
-Cloudflare runs the build and deploy commands in separate shell sessions; therefore, the deploy command explicitly enters `frontend/` again.
+Cloudflare executes the build and deploy commands in separate shell sessions. The deploy command therefore runs from the repository root and reads the root `wrangler.toml`; it does not depend on the build command's working directory.
 
 ## Data and privacy
 
