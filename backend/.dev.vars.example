@@ -1,4 +1,0 @@
-# Local-only Worker variables. Do not put provider secrets in this file.
-APP_ENV=development
-LOG_LEVEL=debug
-ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
