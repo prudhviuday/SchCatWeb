@@ -1,36 +1,38 @@
 # SchCat to SchCatWeb — Step 2 Migration Mapping
 
-**Status:** Planning document only  
+**Status:** Planning document and source-behaviour reference  
 **Source repository:** `prudhviuday/SchCat`  
 **Target repository:** `prudhviuday/SchCatWeb`  
 **Scope:** Personal-first, existing data architecture, all major desktop features, dark financial-terminal UI.
 
-This document maps inspected source modules and functions to the proposed web backend, API and frontend. It is a migration contract, not permission to change formulas. Existing behaviour must be captured and compared before refactoring.
+> **Architecture amendment — 5 November 2026:** This mapping was initially drafted with a Python/FastAPI backend. The user has since explicitly chosen a Python-free, TypeScript-only SchCatWeb. Treat all Python module names and functions below as descriptions of legacy behaviour to be ported, not as permission to add Python to SchCatWeb. The target backend is TypeScript + Hono on Cloudflare Workers. Port calculations and transformations without changing their semantics, and validate numerical parity against the untouched desktop application. The source Python files remain in the separate SchCat repository.
 
-## 1. Architecture boundary
+This is a migration contract, not permission to change formulas. Existing behaviour must be captured and compared before refactoring.
+
+## 1. Updated architecture boundary
 
 | Existing responsibility | Target location | Rule |
 |---|---|---|
-| Python calculations and data transformations | `backend/app/analysis/` | Reuse Python logic; keep formulas unchanged initially |
-| MarketSmith / NSE / ChartInk access | `backend/app/data_sources/` | Server-side only; credentials/configuration must not reach browser |
-| Excel and JSON reads/writes | `backend/app/storage/` | Preserve existing files and sheet formats initially; centralise access |
-| Orchestration and business workflows | `backend/app/services/` | Coordinate analysis, data and storage |
-| HTTP endpoints | `backend/app/api/` | Return typed JSON and explicit source/freshness/error metadata |
-| PyQt screens and widgets | `frontend/src/pages/` and `components/` | Replace UI only; do not reimplement core calculations in TypeScript |
-| Existing Node chart server | `chart-service/` (retained from CRIP4) | Preserve until parity and provider dependencies are verified |
+| Legacy Python calculations and data transformations | `backend/src/analysis/` | Port to TypeScript; preserve formulas and validate numeric parity |
+| MarketSmith / NSE / ChartInk access | `backend/src/data-sources/` | TypeScript server-side clients; credentials must never reach browser |
+| Excel and JSON reads/writes | `backend/src/storage/` | Use compatible storage/adapters; verify persistence constraints before choosing runtime |
+| Orchestration and business workflows | `backend/src/services/` | TypeScript services coordinate analysis, data and storage |
+| HTTP endpoints | `backend/src/routes/` | Hono routes; typed JSON and explicit source/freshness/error metadata |
+| PyQt screens and widgets | `frontend/src/pages/` and `components/` | Replace UI only; frontend must not own provider credentials |
+| Existing Node chart server | `backend/src/chart-service/` or a separately deployed TypeScript/Node service | Audit CRIP4 and preserve route/data semantics; use only a runtime compatible with its actual dependencies |
 
 ## 2. Module-by-module mapping
 
 | Existing source | Existing responsibility / key functions | Target backend | Target web screen |
 |---|---|---|---|
-| `Guimain2.py` | App shell; `start_fetch`, `_on_fetch_finished`, `download_filtered_list`, `filter_table`, `apply_filters`, row selection, sorting, query/watchlist toggles, advanced filters, Node process controls | API orchestration; stock/query/watchlist services; export endpoint; health check | Terminal shell, Dashboard, Stocks, Charts, Industry, Research, Market Pulse, Portfolio |
+| `Guimain2.py` | App shell; `start_fetch`, `_on_fetch_finished`, `download_filtered_list`, `filter_table`, `apply_filters`, row selection, sorting, query/watchlist toggles, advanced filters, Node process controls | API orchestration; stock/query/watchlist services; export endpoint | Terminal shell, Dashboard, Stocks, Charts, Industry, Research, Market Pulse, Portfolio |
 | `helper.py` | Concurrent universe fetch; table filtering; query intersection; watchlist filtering; row/industry drill-down; sorting; keyboard watchlist action; advanced-filter dialog support | `stock_universe_service`, `screener_service`, `query_service`, `watchlist_service` | Screener filters/table, saved queries, watchlists, stock actions |
 | `util.py` | `normalize`; MarketSmith metrics; stock summary; market-ID loading; Excel-backed industry/ROCE/NikScore/market-cap lookups; query/watchlist/portfolio reads and watchlist writes | `market_data_service`, `fundamentals_service`, `symbol_service`, `excel_storage_service` | Screener, Stock Workspace, Research, Industry, Watchlists, Portfolio |
 | `chartink.py` | `chartinkold`, `chartink`, `chartinkHistory`, `chartinkDashboard`, `run_multiple_queries` | `chartink_client`, `query_service`, `market_pulse_service` | Screener query filters, Research, Market Pulse |
 | `chartengine.py` | `fetch_chart_data`; `fetch_closexvol_for_stock`; calls local Node endpoint | `chart_service_client`, chart-data and close-volume services | Charts, Stock Workspace, Industry |
-| `CRIP4/app.js` | Express routes for OHLCV, AI/ULTM, weekly ULTM, gold and intro data | Retained Node chart service; called by backend | Charts and Stock Workspace |
-| `CRIP4/indicators.js` | SMA, EMA, RSI, RSI increment, ULTM and ATP calculations | Retain in Node initially or port only after numeric parity tests | Chart overlays and technical panels |
-| `CRIP4/public/Tools/fixer.js` | Price-source URLs, OHLCV conversion, 5m-to-15m conversion, 1h aggregation, stock/gold series, weekly MarketSmith candles | Existing Node chart data-source/transform layer | Charts |
+| `CRIP4/app.js` | Express routes for OHLCV, AI/ULTM, weekly ULTM, gold and intro data | Retained/reworked TypeScript chart service; called by API | Charts and Stock Workspace |
+| `CRIP4/indicators.js` | SMA, EMA, RSI, RSI increment, ULTM and ATP calculations | Retain/port to TypeScript only after numeric parity tests | Chart overlays and technical panels |
+| `CRIP4/public/Tools/fixer.js` | Price-source URLs, OHLCV conversion, 5m-to-15m conversion, 1h aggregation, stock/gold series, weekly MarketSmith candles | Existing chart data-source/transform layer, ported or adapted for chosen runtime | Charts |
 | `Tabs/AnalysisTab.py` | Industry selection, stock list loading, per-stock background chart preparation and plots | Industry stock lookup and chart preparation services | Industry Analysis and Stock Workspace |
 | `Tabs/ChartTab.py` | Multi-chart fetch and plot for a selected stock | Chart orchestration | Charts |
 | `chartwidget.py` | PyQtGraph rendering of prepared chart data | No direct backend equivalent; retain data preparation only | Reusable web chart components |
@@ -45,7 +47,7 @@ This document maps inspected source modules and functions to the proposed web ba
 
 | Existing file / location | Current use identified | Web migration treatment |
 |---|---|---|
-| `data/marketsmithidsall4.xlsx` | MarketSmith stock ID mapping; industry, PB, ROCE and NikScore lookups are read from this workbook | Keep as initial source; create one backend reader/cache; verify exact headers and row positions |
+| `data/marketsmithidsall4.xlsx` | MarketSmith stock ID mapping; industry, PB, ROCE and NikScore lookups are read from this workbook | Keep as initial source where runtime permits; create one TypeScript reader/cache; verify exact headers and row positions |
 | `data/ChartInkQs.xlsx` — `QUERIES` sheet | Saved query names and query definitions | Keep workbook; expose read API and query execution service |
 | `data/ChartInkQs.xlsx` — `Watchlist` sheet | Watchlist names and stock membership; writes replace this sheet | Keep workbook; centralise writes, lock file during updates and back up before mutation |
 | `data/ChartInkQs.xlsx` — `Portfolio` sheet | Portfolio rows, expected as stock, quantity and buy price | Keep workbook; validate column names/order before use |
@@ -54,7 +56,7 @@ This document maps inspected source modules and functions to the proposed web ba
 | Generated Excel/CSV files | Filtered stock exports and research input/output files | Provide browser downloads and explicit import flows; do not store transient exports as source data |
 | `CRIP4/public/Tools/marketsmithids.json` | Node weekly chart helper attempts to read a symbol-to-ID map | Replace absolute machine-specific path with configured, repository-independent data path or backend-provided mapping |
 
-**Important:** Workbook contents, sheet headers, formulas and exact column positions must be verified from the actual files before implementing data readers. This source-code inspection does not establish every workbook schema.
+**Important:** Workbook contents, sheet headers, formulas and exact column positions must be verified from the actual files before implementing data readers. Cloudflare Workers do not provide a persistent local filesystem; select an explicit storage solution only after inspecting actual read/write needs. Do not introduce a database without a reason and an agreed migration plan.
 
 ## 4. Screener data contract
 
@@ -98,8 +100,6 @@ The screener's advanced numeric filters currently include:
 | `PUT /api/watchlists/{name}` | Update stock membership |
 | `GET /api/stocks/export` or `POST /api/stocks/export` | Download filtered results as CSV/XLSX |
 
-These are proposed web endpoints, not existing endpoints.
-
 ## 5. Stock Workspace and fundamental/technical data mapping
 
 | Existing function | Data/meaning | Destination |
@@ -136,14 +136,14 @@ The Stock Workspace should combine these responses into Overview, Chart, Financi
 
 ### 6.1 Existing chartengine timeframe mapping
 
-| Python timeframe | Current Node URL key |
+| Legacy timeframe | Current Node URL key |
 |---|---|
 | `1W` | `700` |
 | `1D` | `100` |
 | `1H` | `60` |
 | `5m` | `5` |
 
-The Python chart client calls `http://127.0.0.1:3000/{symbol}/{key}` and expects OHLCV plus any returned `ema50`, `ema200`, `rsi`, `ultm` fields.
+The legacy Python chart client calls `http://127.0.0.1:3000/{symbol}/{key}` and expects OHLCV plus any returned `ema50`, `ema200`, `rsi`, `ultm` fields. This is a legacy contract to verify and reimplement in TypeScript.
 
 ### 6.2 Existing Node routes
 
@@ -210,7 +210,7 @@ Current input files:
 
 Current calculation:
 - Convert performance symbols to uppercase and form a set.
-- For each query, obtain historical ChartInk matches through `util.getHistoryfromQuery`.
+- For each query, obtain historical ChartInk matches through legacy `getHistoryfromQuery`.
 - Intersect query matches with performance symbols.
 - Record query name, match count, total performance-set size and match percentage.
 - Display results table and chart with progress.
@@ -246,7 +246,7 @@ The dashboard query uses ChartInk's widget endpoint and returns the history in r
 
 ## 10. Portfolio mapping
 
-Current holdings are read through `util.getPortfolio()`, expected as rows containing stock, quantity and buy price. The portfolio chart worker:
+Current holdings are read through the legacy `getPortfolio()`, expected as rows containing stock, quantity and buy price. The portfolio chart worker:
 
 - Normalises stock chart data to datetime/open/high/low/close/volume.
 - Supports 1W, 1D, 1H and 5m.
@@ -287,17 +287,18 @@ All API responses should use consistent schemas and errors. Example:
 - Do not silently replace failed provider values with apparently valid financial values.
 - Centralise Excel writes and take backups before updating a workbook.
 - Keep all data paths and service URLs configurable.
+- Any storage design must work with the selected hosting runtime; Cloudflare Worker local disk is not persistent storage.
 
 ## 12. Issues and questions to resolve during implementation
 
 These are identified source risks; this step does not change them.
 
 1. **MarketSmith auth-like values:** hard-coded `ms-auth` query values appear in several MarketSmith URLs. Confirm whether they are valid session credentials/tokens; rotate/revoke if exposed and use authorised backend configuration only. Confirm provider terms and permitted use before hosting.
-2. **Machine-specific Node path:** `fixer.js` attempts to read `C:\\MAIN\\Programming\\Node\\CRIP3\\public\\Tools\\marketsmithids.json`. This cannot be relied on in a clean deployment.
-3. **Chart URL mismatch risk:** Python sends timeframe keys `700`, `100`, `60`, `5`, while Node's source contains special handling for other values such as `240`, `15`, `1000` and `5m`. Verify actual outputs and define a canonical timeframe mapping.
+2. **Machine-specific Node path:** `fixer.js` attempts to read a Windows absolute path for `marketsmithids.json`. This cannot be relied on in a clean deployment.
+3. **Chart URL mismatch risk:** legacy timeframe keys `700`, `100`, `60`, `5` differ from special cases in Node source. Verify actual outputs and define a canonical timeframe mapping.
 4. **Potential indicator defect:** `touch_inc` references `d1` without defining it in that function.
 5. **Dynamic evaluation:** indicator code uses `eval` to construct object properties. Replace with safe computed-property syntax only after parity tests.
-6. **Potential URL mapping defect:** `stockUrlmaker` contains `else if(key = 1000)`, which assigns rather than compares. Test the intended branches before modifying.
+6. **Potential URL mapping defect:** `stockUrlmaker` contains an assignment in a conditional where comparison may have been intended. Test intended branches before modifying.
 7. **Normalisation edge case:** `normalize` divides by max-minus-min and may fail or produce invalid results for empty or constant series.
 8. **Fallback values:** stock-fetch exception handling returns synthetic defaults (for example ROCE=1, PB=1000 and PEG=5). The web version should distinguish missing/error data from genuine values; whether to preserve the visible legacy fallback requires an explicit compatibility decision.
 9. **Research percentage denominator:** confirm whether percentage is intended to be matched performance stocks / historical query matches or another denominator.
@@ -309,17 +310,17 @@ These are identified source risks; this step does not change them.
 
 | Later migration step | Depends on this mapping |
 |---|---|
-| Step 3 — Web project foundation | Target repository structure and service boundaries |
-| Step 4 — Backend foundation | API conventions, configuration and error handling |
-| Step 5 — Existing data integration | Excel/JSON file and sheet mapping |
-| Step 6 — Core Python logic | Functions and calculation parity inventory |
+| Step 3 — Web project foundation | React/TypeScript project shell |
+| Step 4 — TypeScript backend foundation | API conventions, configuration, routing and error handling |
+| Step 5 — Existing data integration | Excel/JSON file and sheet mapping; storage compatibility |
+| Step 6 — Core analysis logic port | Legacy functions and calculation parity inventory |
 | Step 7 — Stock data integrations | MarketSmith, NSE and ChartInk source mapping |
-| Step 8 — Chart service | Node routes, Python URL mapping and symbol IDs |
+| Step 8 — Chart service | Node routes, timeframe mapping and symbol IDs |
 | Step 9 — Indicators | Indicator exports and parity requirements |
 | Step 10 — Screener API | Screener fields, filters, query and watchlist logic |
 | Steps 11–13 — UI, screener and charts | Screen and component mapping |
 | Steps 14–16 — Industry, Research and Market Pulse | Existing workflows and output schemas |
-| Steps 17–18 — Portfolio and watchlists | Excel persistence and synthetic portfolio semantics |
+| Steps 17–18 — Portfolio and watchlists | Data persistence and synthetic portfolio semantics |
 | Steps 19–20 — Integration and release | All parity, reliability and access checks |
 
 ## 14. Step 2 acceptance checklist
@@ -335,4 +336,4 @@ These are identified source risks; this step does not change them.
 - [ ] Actual workbook schemas verified from the workbook contents.
 - [ ] Live provider responses and chart timeframe parity verified (these require implementation/test steps).
 
-**No calculation, data file or application code has been modified as part of this mapping.**
+**No calculation, data file or desktop application code has been modified as part of this mapping.**
