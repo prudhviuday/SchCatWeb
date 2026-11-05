@@ -20,6 +20,6 @@
     "typescript": "^5.8.3",
     "vitest": "^3.2.4",
     "wrangler": "^4.20.5",
-    "xlsx": "^0.18.5"
+    "exceljs": "^4.4.0"
   }
 }
