@@ -1,1 +1,0 @@
-"""SchCatWeb backend application package."""
