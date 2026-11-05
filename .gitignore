@@ -4,15 +4,12 @@ dist/
 .vite/
 .wrangler/
 coverage/
-backend/data-export/
+data-generated/
 
 # Local environment and secrets
 .env
 .env.*
 !.env.example
-.dev.vars
-.dev.vars.*
-!.dev.vars.example
 
 # Editors / OS
 .vscode/
