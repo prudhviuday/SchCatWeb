@@ -1,5 +1,5 @@
 import type { MiddlewareHandler } from "hono";
-import type { EnvBindings } from "../config";
+import { getRuntimeConfig, type EnvBindings } from "../config";
 import { createLogger } from "../logger";
 
 export type AppBindings = {
@@ -15,8 +15,8 @@ export const requestContext: MiddlewareHandler<AppBindings> = async (c, next) =>
   await next();
 
   c.header("x-request-id", requestId);
-  const configLogLevel = c.env.LOG_LEVEL === "debug" ? "debug" : "info";
-  const logger = createLogger(configLogLevel);
+  const config = getRuntimeConfig(c.env);
+  const logger = createLogger(config.logLevel);
   logger.info("http_request", {
     requestId,
     method: c.req.method,
