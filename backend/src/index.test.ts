@@ -3,17 +3,14 @@ import { app } from "./index";
 import type { EnvBindings } from "./config";
 
 const env: EnvBindings = {
-  APP_ENV: "test" as EnvBindings["APP_ENV"],
+  APP_ENV: "development",
   LOG_LEVEL: "error",
   ALLOWED_ORIGINS: "http://localhost:5173,http://127.0.0.1:5173"
 };
 
 describe("SchCatWeb API foundation", () => {
   it("returns a successful health response", async () => {
-    const response = await app.request("/api/health", {}, {
-      ...env,
-      APP_ENV: "development"
-    });
+    const response = await app.request("/api/health", {}, env);
 
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({
@@ -28,16 +25,13 @@ describe("SchCatWeb API foundation", () => {
   it("preserves a caller-provided request id", async () => {
     const response = await app.request("/api/health", {
       headers: { "x-request-id": "schcat-test-123" }
-    }, { ...env, APP_ENV: "development" });
+    }, env);
 
     expect(response.headers.get("x-request-id")).toBe("schcat-test-123");
   });
 
   it("returns a consistent 404 response for unknown routes", async () => {
-    const response = await app.request("/api/not-a-route", {}, {
-      ...env,
-      APP_ENV: "development"
-    });
+    const response = await app.request("/api/not-a-route", {}, env);
 
     expect(response.status).toBe(404);
     expect(await response.json()).toMatchObject({
@@ -48,7 +42,7 @@ describe("SchCatWeb API foundation", () => {
   it("allows configured frontend origins", async () => {
     const response = await app.request("/api/health", {
       headers: { Origin: "http://localhost:5173" }
-    }, { ...env, APP_ENV: "development" });
+    }, env);
 
     expect(response.headers.get("access-control-allow-origin")).toBe("http://localhost:5173");
   });
