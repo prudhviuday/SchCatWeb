@@ -9,7 +9,6 @@ on:
   pull_request:
     paths:
       - "frontend/**"
-      - "wrangler.toml"
       - ".github/workflows/verify.yml"
 
 jobs:
