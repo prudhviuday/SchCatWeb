@@ -56,6 +56,12 @@ npm run test:analysis
 
 The test command compiles the pure TypeScript calculation module to the ignored `.test-dist/` directory and runs deterministic expected-value tests against the legacy SchCat formulas. The GitHub Actions workflow runs these tests before the production build.
 
+## Provider diagnostics (Step 8)
+
+After the latest frontend commit is deployed, open `https://schcatweb.prudhvi123143.workers.dev/?diagnostics=providers` and select **Run browser diagnostics**. This executes requests in the actual website origin for both MarketSmith hosts, ChartInk's CSRF + scan flow, and NSE historical delivery data. Use the MarketSmith ID/symbol fields for a known valid pair. The normal home page is unchanged.
+
+The page never embeds the legacy `ms-auth` query values or reads/stores cookies. Credentialed cross-origin requests are subject to provider CORS headers and browser third-party-cookie policy. A browser `fetch` failure is reported as a possible CORS/network/privacy-policy block; inspect DevTools Console for the specific browser message.
+
 ## Cloudflare Workers Builds
 
 Configure the existing Cloudflare Worker `schcatweb` as follows:
