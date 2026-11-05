@@ -66,6 +66,16 @@ npm run test:charts
 
 The chart data client is `src/data/providers/chartData.ts`. It calls Yahoo Finance directly from the browser with credentials omitted. The old local Node service at `127.0.0.1:3000` is not used by the static site. Live Yahoo CORS availability must still be checked in the browser.
 
+## Technical indicator tests (Step 10)
+
+Run the browser TypeScript parity tests for SMA, EMA, RSI, ULTM and ATP:
+
+```powershell
+npm run test:indicators
+```
+
+The implementation is in `src/domain/analysis/technicalIndicators.ts`. It follows the exact `fast-technical-indicators@1.1.4` dependency pinned in the original desktop app's CRIP4 lockfile, including the RSI rounding rule, wrapper padding, and legacy ULTM/ATP indexing. The known ULTM/ATP alignment defects are documented and covered by tests rather than silently changed.
+
 ## Provider diagnostics (Steps 8–9)
 
 After the latest frontend commit is deployed, open `https://schcatweb.prudhvi123143.workers.dev/?diagnostics=providers` and select **Run browser diagnostics**. This executes requests in the actual website origin for both MarketSmith hosts, ChartInk's CSRF + scan flow, NSE historical delivery data, and a small Yahoo Finance chart sample. Use the MarketSmith ID/symbol fields for a known valid pair. The normal home page is unchanged.
