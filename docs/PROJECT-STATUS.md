@@ -17,7 +17,7 @@ This is the durable source of truth for continuing the SchCat migration. In a ne
 **SchCatWeb is static-first and has no runtime backend or database.**
 
 - UI: React + TypeScript + Vite in `frontend/`.
-- Hosting: Cloudflare Workers Static Assets, deployed from the root `wrangler.toml`.
+- Hosting: Cloudflare Workers Static Assets, deployed using `frontend/wrangler.toml`.
 - The Wrangler config has no `main`, no Worker script, no API routes and no bindings. It serves only `frontend/dist`.
 - All analysis logic runs in browser TypeScript.
 - Provider APIs are called directly from browser TypeScript only where the provider permits browser access (CORS) and does not require protected credentials.
@@ -36,10 +36,10 @@ Existing Cloudflare Worker name and URL:
 Cloudflare Workers Builds settings:
 - Root directory: blank/repository root.
 - Build command: `cd frontend && npm install && npm run build`
-- Deploy command: `npx wrangler deploy`
-- Watch paths: `frontend/**`, `wrangler.toml`
+- Deploy command: `cd frontend && npx wrangler deploy --config ./wrangler.toml`
+- Watch paths: `frontend/**`
 
-Root `wrangler.toml` sets `name = "schcatweb"` and `assets.directory = "./frontend/dist"`, with SPA fallback. There is no R2 bucket requirement. Cloudflare's Wrangler docs confirm that `main` is optional for assets-only Workers and static assets can be deployed without a Worker script: https://developers.cloudflare.com/workers/wrangler/configuration/ .
+The config is inside `frontend/` to keep Wrangler's config and asset directory together. It sets `name = "schcatweb"` and `assets.directory = "./dist"`, with SPA fallback. No R2 bucket is required. Cloudflare documents `assets.directory` as the static asset folder for Workers: https://developers.cloudflare.com/workers/wrangler/configuration/ .
 
 ## Revised migration plan
 
@@ -92,13 +92,13 @@ Goal: make SchCatWeb deploy only the Vite frontend as static assets.
 Acceptance criteria:
 - [x] Remove the backend/Hono/R2 implementation.
 - [x] Remove the frontend's local `/api` proxy.
-- [x] Add root Wrangler static-assets config with Worker name `schcatweb`, no `main` and no bindings.
+- [x] Add the static-assets Wrangler config beside the frontend, with Worker name `schcatweb`, no `main` and no bindings.
 - [x] Simplify CI to install/build/test only the static frontend.
 - [x] Update README and migration docs to match static-first architecture.
 - [ ] Cloudflare build/deploy succeeds without any R2 bucket.
 - [ ] Live root URL serves the website with correct JavaScript/CSS MIME types.
 
-Implementation committed on `main`: `e477c62679c7de91acce65c0f1986192b7c456e2` (static conversion), followed by CI workflow correction `26c4e3531c8ca2134b74adc36c68152e2c3053ce`. The user must still confirm Cloudflare deployment and browser smoke test. The successful Vite build in the earlier log was before this static-only deployment configuration; a new CI run/deploy must verify the current commit.
+Implementation committed on `main`: `e477c62679c7de91acce65c0f1986192b7c456e2` (static conversion), followed by CI workflow correction `26c4e3531c8ca2134b74adc36c68152e2c3053ce`. The frontend-local Wrangler config and matching Cloudflare deploy command are the deployment-path correction. The user must still confirm Cloudflare deployment and browser smoke test.
 
 ## Next step (after Step 6 acceptance)
 
