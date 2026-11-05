@@ -1,10 +1,21 @@
 export type AppEnvironment = "development" | "staging" | "production";
 export type LogLevel = "debug" | "info" | "warn" | "error";
 
+export interface R2ObjectBodyLike {
+  text(): Promise<string>;
+  httpEtag?: string;
+  uploaded?: Date;
+}
+
+export interface R2BucketLike {
+  get(key: string): Promise<R2ObjectBodyLike | null>;
+}
+
 export interface EnvBindings {
   APP_ENV?: string;
   LOG_LEVEL?: string;
   ALLOWED_ORIGINS?: string;
+  DATA_BUCKET?: R2BucketLike;
 }
 
 export interface RuntimeConfig {
