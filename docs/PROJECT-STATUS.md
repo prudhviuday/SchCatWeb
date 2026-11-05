@@ -53,7 +53,7 @@ The single root `wrangler.toml` sets `name = "schcatweb"` and `assets.directory 
 | 6 | Convert project to static-only Cloudflare deployment; remove backend/R2; update docs and CI | Complete — user confirmed the live Cloudflare site works; GitHub CI passes |
 | 7 | Port core provider-independent fundamental calculation kernels to browser TypeScript with parity tests | Complete — six pure calculation functions and deterministic tests; PEG field mapping deferred until provider field semantics are verified |
 | 8 | Audit and implement direct browser provider API access (MarketSmith, ChartInk, NSE); record CORS/auth limitations | In progress — browser diagnostic page and request-shape tests implemented; live-origin provider results pending |
-| 9 | Port chart data workflows and existing CRIP4 Node chart behaviour to browser-compatible TypeScript | In progress — browser module and parity tests added; live Yahoo CORS test pending |
+| 9 | Port chart data workflows and existing CRIP4 Node chart behaviour to browser-compatible TypeScript | In progress — implementation and CI pass; live Yahoo CORS test pending |
 | 10 | Port technical indicators with numerical parity tests | Not started |
 | 11 | Convert/import non-sensitive reference workbooks and JSON to static browser-readable data | Not started |
 | 12 | Stock screener: universe, filters, queries and sorting | Not started |
