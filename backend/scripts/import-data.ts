@@ -209,18 +209,20 @@ async function main() {
   await writeJson("manifest.json", manifest);
 
   const uploadScript = [
+    'param([switch]$Remote)',
     '$ErrorActionPreference = "Stop"',
-    '$bucket = "schcat-data"',
+    '$bucket = if ($Remote) { "schcat-data" } else { "schcat-data-dev" }',
     '$root = Split-Path -Parent $MyInvocation.MyCommand.Path',
+    '$remoteArgs = if ($Remote) { @("--remote") } else { @() }',
     'Get-ChildItem -Path $root -Recurse -File | Where-Object { $_.Name -ne "upload-to-r2.ps1" } | ForEach-Object {',
     '  $relative = $_.FullName.Substring($root.Length + 1).Replace("\\", "/")',
     '  $key = "data/" + $relative',
     '  Write-Host "Uploading $key"',
-    '  & npx wrangler r2 object put "$bucket/$key" --file "$($_.FullName)" --remote',
+    '  & npx wrangler r2 object put "$bucket/$key" --file "$($_.FullName)" @remoteArgs',
     '  if ($LASTEXITCODE -ne 0) { throw "R2 upload failed for $key" }',
     '}',
     'Write-Host "All SchCat datasets uploaded to R2."'
-  ].join("\r\n") + "\r\n";
+  ].join("\\r\\n") + "\\r\\n";
   await writeFile(path.join(outputRoot, "upload-to-r2.ps1"), uploadScript, "utf8");
 
   console.log("SchCat data import completed.");
