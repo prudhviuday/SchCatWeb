@@ -69,3 +69,165 @@ h2 { font-size: 17px; letter-spacing: -.3px; font-weight: 600; margin: 7px 0 0; 
   .module-grid { grid-template-columns: 1fr; }
   .step-tag, .muted-label { display: none; }
 }
+
+/* Step 08: isolated provider diagnostics route */
+.diagnostics-shell {
+  min-height: 100vh;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 42px 34px 30px;
+  color: var(--text);
+}
+.diagnostics-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+  margin-bottom: 28px;
+}
+.diagnostics-header h1 {
+  font-size: clamp(25px, 3vw, 36px);
+  letter-spacing: -1px;
+}
+.diagnostics-intro {
+  color: #93a0b2;
+  font-size: 13px;
+  line-height: 1.6;
+  max-width: 700px;
+}
+.diagnostics-back {
+  color: #e9ad68;
+  font-size: 12px;
+  text-decoration: none;
+  white-space: nowrap;
+  border: 1px solid #493723;
+  background: #171a20;
+  padding: 10px 13px;
+  border-radius: 7px;
+}
+.diagnostics-back:hover { border-color: #b87935; }
+.diagnostics-explainer, .diagnostics-controls, .diagnostic-result, .diagnostics-empty {
+  border: 1px solid var(--border);
+  background: linear-gradient(130deg, #111a26, #0e141e);
+  border-radius: 9px;
+}
+.diagnostics-explainer { padding: 19px 21px; margin-bottom: 14px; }
+.diagnostics-explainer h2, .diagnostics-empty h2 { font-size: 14px; margin: 0 0 9px; }
+.diagnostics-explainer p {
+  color: #a1adbd;
+  font-size: 11px;
+  line-height: 1.65;
+  margin: 7px 0;
+}
+.diagnostics-explainer code {
+  color: #efbd80;
+  background: #25201a;
+  border-radius: 4px;
+  padding: 2px 4px;
+}
+.diagnostics-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 14px;
+  padding: 17px 19px;
+}
+.diagnostics-input { display: grid; gap: 7px; min-width: 155px; }
+.diagnostics-input label {
+  color: #94a2b4;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: .4px;
+}
+.diagnostics-input input {
+  height: 37px;
+  width: 100%;
+  min-width: 150px;
+  border: 1px solid #303d4e;
+  border-radius: 6px;
+  background: #0a1018;
+  color: #e8edf5;
+  padding: 0 10px;
+  outline: none;
+}
+.diagnostics-input input:focus { border-color: #c68a4b; }
+.diagnostics-controls button {
+  min-height: 37px;
+  border: 1px solid #b87935;
+  border-radius: 6px;
+  padding: 0 15px;
+  background: #3a2919;
+  color: #f2c18c;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.diagnostics-controls button:disabled { opacity: .6; cursor: wait; }
+.diagnostics-run-meta {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 13px 2px;
+  color: #7f8da1;
+  font-size: 10px;
+}
+.diagnostics-run-meta span { color: #9fb5a7; }
+.diagnostics-results { display: grid; gap: 10px; }
+.diagnostic-result { padding: 17px 19px; }
+.diagnostic-result-top { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; }
+.diagnostic-provider {
+  color: #d49a58;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+.diagnostic-result h3 { font-size: 12px; font-weight: 650; margin: 0; }
+.diagnostic-status {
+  flex: 0 0 auto;
+  border: 1px solid #344256;
+  color: #9caabd;
+  background: #182333;
+  border-radius: 5px;
+  padding: 5px 8px;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .6px;
+}
+.status-success { color: #8fd6ae; border-color: #315f4a; background: #15251f; }
+.status-auth-or-policy { color: #efc181; border-color: #6b502c; background: #292116; }
+.status-browser-blocked, .status-timeout, .status-http-error { color: #f0a0a0; border-color: #704040; background: #2a1a1d; }
+.status-invalid-response { color: #c5b5eb; border-color: #50426d; background: #211d2b; }
+.diagnostic-result p {
+  color: #a1adbd;
+  font-size: 11px;
+  line-height: 1.6;
+  margin: 11px 0 8px;
+}
+.diagnostic-meta { display: flex; gap: 13px; color: #69798e; font-size: 9px; }
+.diagnostics-empty {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 23px;
+}
+.diagnostics-empty p { color: #8695a8; font-size: 11px; margin: 0; }
+.diagnostics-footer {
+  margin-top: 24px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  color: #66768b;
+  font-size: 9px;
+  letter-spacing: .3px;
+}
+@media (max-width: 680px) {
+  .diagnostics-shell { padding: 27px 17px 25px; }
+  .diagnostics-header { flex-direction: column; gap: 8px; }
+  .diagnostics-controls { align-items: stretch; flex-direction: column; }
+  .diagnostics-input, .diagnostics-input input { width: 100%; }
+  .diagnostics-controls button { width: 100%; }
+  .diagnostic-result-top { flex-direction: column; gap: 10px; }
+}
