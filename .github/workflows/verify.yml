@@ -30,6 +30,9 @@ jobs:
       - name: Run provider request-shape tests
         working-directory: frontend
         run: npm run test:providers
+      - name: Run chart data parity tests
+        working-directory: frontend
+        run: npm run test:charts
       - name: Build static website
         working-directory: frontend
         run: npm run build
