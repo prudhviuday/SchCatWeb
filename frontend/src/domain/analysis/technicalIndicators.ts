@@ -29,14 +29,14 @@ export interface UlTmInput extends CloseInput {
   ultm?: number;
 }
 
-export interface AtpOutput<T> extends T {
+export type AtpOutput<T> = T & {
   ultmS: number | undefined;
   ultmG: number | undefined;
-}
+};
 
-export interface UltmOutput<T> extends T {
+export type UltmOutput<T> = T & {
   ultm: number | undefined;
-}
+};
 
 function validatePeriod(period: number): void {
   if (!Number.isInteger(period)) {
