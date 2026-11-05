@@ -3,6 +3,11 @@ main = "src/index.ts"
 compatibility_date = "2026-11-05"
 workers_dev = true
 
+[[r2_buckets]]
+binding = "DATA_BUCKET"
+bucket_name = "schcat-data"
+preview_bucket_name = "schcat-data-dev"
+
 [vars]
 APP_ENV = "development"
 LOG_LEVEL = "info"
