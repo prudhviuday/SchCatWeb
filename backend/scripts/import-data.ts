@@ -222,7 +222,7 @@ async function main() {
     '  if ($LASTEXITCODE -ne 0) { throw "R2 upload failed for $key" }',
     '}',
     'Write-Host "All SchCat datasets uploaded to R2."'
-  ].join("\\r\\n") + "\\r\\n";
+  ].join("\r\n") + "\r\n";
   await writeFile(path.join(outputRoot, "upload-to-r2.ps1"), uploadScript, "utf8");
 
   console.log("SchCat data import completed.");
