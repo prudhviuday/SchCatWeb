@@ -11,7 +11,8 @@
   },
   "files": [
     "src/domain/analysis/fundamentalMetrics.ts",
-    "src/data/providers/providerDiagnostics.ts"
+    "src/data/providers/providerDiagnostics.ts",
+    "src/data/providers/chartData.ts"
   ],
   "include": []
 }
