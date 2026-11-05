@@ -66,7 +66,7 @@ describe("SchCatWeb data API", () => {
   });
 
   it("rejects unsafe industry-analysis filenames", async () => {
-    const response = await app.request("/api/data/industry-analysis/../../secrets.json", {}, makeEnv());
+    const response = await app.request("/api/data/industry-analysis/%2E%2E%2Fsecrets.json", {}, makeEnv());
     expect(response.status).toBe(400);
   });
 });
