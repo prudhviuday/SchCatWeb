@@ -76,6 +76,81 @@ npm run build
 
 The Worker is configured for Cloudflare through `backend/wrangler.toml`. Production deployment is deliberately reserved for Step 20, after provider access, secrets, persistent-data requirements and end-to-end behaviour have been verified.
 
+## Step 5 — Import existing SchCat data
+
+The Worker reads datasets from Cloudflare R2. It does not read files from your Windows computer or rely on a persistent Worker filesystem.
+
+### 1. Install the importer dependencies
+
+From the repository root:
+
+```powershell
+cd backend
+npm install
+```
+
+### 2. Convert the existing desktop workbooks and JSON files
+
+Pass the local path to your existing SchCat desktop repository:
+
+```powershell
+npm run data:import -- "D:\\Projects\\SchCat"
+```
+
+Replace the example path with the actual folder containing the desktop repository's `data` directory.
+
+The TypeScript importer reads:
+- `data/marketsmithidsall4.xlsx` — MarketSmith IDs, market cap, industry, PB, ROCE and NikScore using the same positional columns as the desktop application.
+- `data/ChartInkQs.xlsx` — `QUERIES`, `Watchlist` and `Portfolio` sheets.
+- `data/Industrydata.xlsx` — industry autocomplete list and source rows.
+- `data/IndustryAnalysis/*.json` — saved industry-analysis results.
+
+It creates normalized JSON files in `backend/data-export/`. This generated folder is gitignored; your personal datasets are not committed to GitHub.
+
+### 3. Test locally with the local R2 emulator
+
+From `backend/`, upload the generated files to the configured local preview bucket:
+
+```powershell
+.\\data-export\\upload-to-r2.ps1
+npm run dev
+```
+
+In another terminal, test:
+
+- http://127.0.0.1:8787/api/data/manifest
+- http://127.0.0.1:8787/api/data/market-ids
+- http://127.0.0.1:8787/api/data/stock-metadata
+- http://127.0.0.1:8787/api/data/queries
+- http://127.0.0.1:8787/api/data/watchlists
+- http://127.0.0.1:8787/api/data/portfolio
+- http://127.0.0.1:8787/api/data/industries
+- http://127.0.0.1:8787/api/data/industry-analysis
+
+### 4. Prepare the production R2 bucket (deployment is still Step 20)
+
+After logging in to Cloudflare Wrangler, create the buckets:
+
+```powershell
+npx wrangler login
+npx wrangler r2 bucket create schcat-data
+npx wrangler r2 bucket create schcat-data-dev
+```
+
+When production data upload is approved, run:
+
+```powershell
+.\\data-export\\upload-to-r2.ps1 -Remote
+```
+
+This uploads to the production `schcat-data` bucket. Do not run the remote upload until you are ready to put the imported personal data in your Cloudflare account.
+
+### Data API contract
+
+All data endpoints return `{ data, meta }`. `meta` identifies the R2 object key and upload time. Responses use a short cache policy and ETag when available. Endpoints are read-only in Step 5; workbook write-back and user-specific edits will be designed separately so concurrent edits cannot overwrite one another.
+
+If a dataset has not been uploaded, the API returns a clear 404. If the R2 binding is absent, it returns 503. No local filesystem fallback is used in production.
+
 ## Development rules
 
 - Implement one migration step at a time; do not start the next step until the current step is reviewed and accepted.
