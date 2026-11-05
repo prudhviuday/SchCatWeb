@@ -94,7 +94,7 @@ npm install
 Pass the local path to your existing SchCat desktop repository:
 
 ```powershell
-npm run data:import -- "D:\\Projects\\SchCat"
+npm run data:import -- "D:\Projects\SchCat"
 ```
 
 Replace the example path with the actual folder containing the desktop repository's `data` directory.
@@ -112,7 +112,7 @@ It creates normalized JSON files in `backend/data-export/`. This generated folde
 From `backend/`, upload the generated files to the configured local preview bucket:
 
 ```powershell
-.\\data-export\\upload-to-r2.ps1
+.\data-export\upload-to-r2.ps1
 npm run dev
 ```
 
