@@ -140,7 +140,7 @@ npx wrangler r2 bucket create schcat-data-dev
 When production data upload is approved, run:
 
 ```powershell
-.\\data-export\\upload-to-r2.ps1 -Remote
+.\data-export\upload-to-r2.ps1 -Remote
 ```
 
 This uploads to the production `schcat-data` bucket. Do not run the remote upload until you are ready to put the imported personal data in your Cloudflare account.
