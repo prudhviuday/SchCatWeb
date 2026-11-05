@@ -54,7 +54,7 @@ The single root `wrangler.toml` sets `name = "schcatweb"` and `assets.directory 
 | 7 | Port core provider-independent fundamental calculation kernels to browser TypeScript with parity tests | Complete — six pure calculation functions and deterministic tests; PEG field mapping deferred until provider field semantics are verified |
 | 8 | Audit and implement direct browser provider API access (MarketSmith, ChartInk, NSE); record CORS/auth limitations | In progress — browser diagnostic page and request-shape tests implemented; live-origin provider results pending |
 | 9 | Port chart data workflows and existing CRIP4 Node chart behaviour to browser-compatible TypeScript | In progress — implementation and CI pass; live Yahoo CORS test pending |
-| 10 | Port technical indicators with numerical parity tests | Not started |
+| 10 | Port technical indicators with numerical parity tests | Complete — exact fast-technical-indicators 1.1.4 SMA/EMA/RSI kernels, CRIP4 wrappers, ULTM/ATP ports and CI parity tests |
 | 11 | Convert/import non-sensitive reference workbooks and JSON to static browser-readable data | Not started |
 | 12 | Stock screener: universe, filters, queries and sorting | Not started |
 | 13 | Charts and Stock Workspace | Not started |
@@ -131,6 +131,40 @@ Verification:
 - The actual live-origin HTTP/CORS/authentication outcomes have not yet been collected. After Cloudflare deploys the latest `main` commit, open `https://schcatweb.prudhvi123143.workers.dev/?diagnostics=providers`, click **Run browser diagnostics**, and share the results plus any relevant Console errors.
 - Do not add a proxy/backend by default. If a particular provider proves to require server-side access, document the specific reason and obtain user approval first.
 
-## Next step (after Step 8 acceptance)
+## Step 9 — Chart data workflow and CRIP4 chart transforms (in progress)
 
-Step 9: port the existing chart-data workflow and CRIP4 Node chart-service transforms into browser-compatible TypeScript, after confirming the current browser-provider limitations. Preserve the original timeframe mapping, OHLCV shape and aggregation behaviour.
+Implemented in `frontend/src/data/providers/chartData.ts`:
+- Direct browser Yahoo chart JSON request builder and parser for explicit 1W, 1D, 1H and 5m intervals.
+- 15m grouping from three consecutive 5m candles and 4H aggregation at the legacy 09:15 and 13:15 IST session starts.
+- Chronological OHLCV candles, weekly close×volume history, stock/gold timestamp merge + forward-fill, and fixed-₹50-notional synthetic stock-vs-gold series.
+- No local Node chart server or session credentials are required.
+
+The original `CRIP4/public/Tools/fixer.js` contains `else if (key = 1000)`, an assignment rather than a comparison. The browser port uses the explicit timeframe labels from `chartengine.py` rather than perpetuating the unintended daily-only branch. The hard-coded MarketSmith weekly-chart `ms-auth` value and gold network fetch have not been ported. Yahoo browser-origin CORS is still unverified.
+
+Tests: `frontend/tests/providers/chartData.test.mjs`, run by `npm run test:charts`. GitHub Actions passed on commit `a88368fb8b65ed985a11eacd3d9659cc15463d01`: https://github.com/prudhviuday/SchCatWeb/actions/runs/42073743174. Step 9 remains open only for provider-origin validation / any resulting access decision; do not create a proxy without user approval.
+
+## Step 10 — Technical indicators (complete)
+
+Source verification:
+- The desktop `CRIP4/package-lock.json` pins `fast-technical-indicators` at **1.1.4** (not merely a floating latest version).
+- Its SMA, EMA and RSI implementations were checked against the upstream `v1.1.4` source. SchCatWeb ports those numeric algorithms without adding a runtime dependency.
+
+Implemented in `frontend/src/domain/analysis/technicalIndicators.ts`:
+- `calculateSma`: rolling simple average, first output at index `period - 1`.
+- `calculateEma`: initial SMA seed, then `alpha = 2 / (period + 1)`.
+- `calculateRsi`: Wilder-smoothed gains/losses, first output after `period` changes, and the package's exact two-decimal rounding and zero-average-loss rule.
+- `smaInc`, `emaInc`, `rsiInc`: legacy wrapper semantics, including leading empty-string padding and RSI's fixed period of 21.
+- `ultmInc` and `atpInc`: ported CRIP4 formulas and output attachment behaviour. The old code combines raw EMA arrays without timestamp alignment; that behaviour is intentionally retained and covered by tests rather than silently corrected.
+- Replaced the legacy dynamic `eval` property assignment with a safe computed property.
+
+Known legacy defects retained for review:
+- ULTM's raw fast/slow EMA indexing means the values are not aligned to the candle period, and a long-period EMA can be shorter than the fast-period EMA; the resulting undefined/NaN tail is preserved because it is what the old implementation produces.
+- ATP similarly attaches raw EMA-ratio arrays at row zero without leading alignment.
+- The old `touch_inc` refers to an undefined `d1` and is not exported; it has not been ported as a working feature.
+- Any future correction of these semantics should be a consciously reviewed formula change with comparison against the existing desktop output.
+
+Tests: `frontend/tests/analysis/technicalIndicators.test.mjs`, command `npm run test:indicators`. GitHub Actions passed on commit `032e375a7ef30ebb6c1a670944260935b730df3c`: calculation tests, provider tests, chart tests, indicator tests, TypeScript/Vite production build and static-deployment checks. Run: https://github.com/prudhviuday/SchCatWeb/actions/runs/42075480413.
+
+## Next step
+
+Step 11: inspect and convert/import only non-sensitive reference workbooks and JSON datasets into static browser-readable assets. Keep personal watchlists, portfolio data and personal files out of public static assets. Live provider CORS checks from Steps 8–9 remain open and should be revisited before provider-dependent screens are completed.
