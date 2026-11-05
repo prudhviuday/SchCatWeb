@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "allowImportingTsExtensions": false,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "outDir": ".test-dist",
+    "rootDir": "src",
+    "types": []
+  },
+  "files": ["src/domain/analysis/fundamentalMetrics.ts"],
+  "include": []
+}
