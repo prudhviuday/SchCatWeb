@@ -1,153 +1,105 @@
 # SchCatWeb — Project Status and Chat Handover
 
-This file is the durable source of truth for continuing the SchCat desktop-to-web migration across ChatGPT conversations.
+This is the durable source of truth for continuing the SchCat migration. In a new chat, the user can say **"Continue SchCatWeb — Step N"** or simply **"Step N"**. Read this file and `docs/STEP-2-MIGRATION-MAPPING.md` before continuing.
 
-## How to resume
+## User requirements
 
-The user can start a new ChatGPT conversation and say **"Continue SchCatWeb — Step N"** (or simply "Step N"). First read this file and `docs/STEP-2-MIGRATION-MAPPING.md`, then continue only the explicitly requested step. Do not ask the user to restate decisions already recorded here.
+- Work sequentially, one step at a time. The user explicitly starts each step.
+- Do not start later steps without approval.
+- Work directly on `main`; do not create branches without explicit permission.
+- Preserve the original `prudhviuday/SchCat` desktop repository and its files.
+- Preserve formulas, calculations, provider choices, request parameters and data meanings. Port to TypeScript and test parity.
+- The target is a simple static website, similar in deployment simplicity to Honeycomb's frontend.
+- The user wants a live Cloudflare URL. Do not claim a deployment is live until a successful deploy and smoke test are confirmed.
 
-## User's workflow requirements
+## Binding architecture decision (updated 2026-11-05)
 
-- Work sequentially, one step at a time.
-- The user explicitly starts each step (for example, "do Step 4").
-- Implement and test only the current step; provide exact user-side test instructions and wait for acceptance before moving on.
-- Do not silently skip steps or begin the next step.
-- Do not create branches without the user's explicit permission. Use the existing `main` branch unless the user directs otherwise.
-- Preserve the existing SchCat desktop app and its repository. Do not delete or overwrite its code or data.
-- Preserve all existing formulas and business logic semantically when porting them to TypeScript; numerical parity must be checked.
-- Be transparent about tests actually executed versus checks the user must run locally.
+**SchCatWeb is static-first and has no runtime backend or database.**
 
-## Project objective and binding architecture decisions
+- UI: React + TypeScript + Vite in `frontend/`.
+- Hosting: Cloudflare Workers Static Assets, deployed from the root `wrangler.toml`.
+- The Wrangler config has no `main`, no Worker script, no API routes and no bindings. It serves only `frontend/dist`.
+- All analysis logic runs in browser TypeScript.
+- Provider APIs are called directly from browser TypeScript only where the provider permits browser access (CORS) and does not require protected credentials.
+- Static JSON assets may hold non-sensitive reference datasets. Personal settings/watchlists/portfolio can use localStorage or IndexedDB; this is device/browser-local, not cloud sync.
+- Node/npm are development/build tools only. No Node server runs after deployment. SchCatWeb must not require Python.
+- No database, R2, Hono, FastAPI, server-side API or proxy is to be introduced by default.
+- If a specific provider is proven to require server-side access due to CORS/auth/security, document that exact exception and obtain user approval before introducing any proxy. Never expose private API keys, cookies or session tokens in browser code.
+- The previous Hono/R2 implementation was exploratory and is superseded. It must not be treated as a required feature.
 
-- Source desktop repository: https://github.com/prudhviuday/SchCat
-- Target web repository: https://github.com/prudhviuday/SchCatWeb
-- Initial audience: personal use.
-- Frontend: React + TypeScript + Vite.
-- **Backend: TypeScript + Hono on Cloudflare Workers. The SchCatWeb project must be Python-free. Do not add FastAPI, Python runtime dependencies, Python scripts or Python deployment requirements.**
-- Existing Python source in the separate SchCat desktop repository is a behaviour/formula reference only. Port the required logic to TypeScript in later steps and validate output parity; do not run Python in SchCatWeb.
-- Existing Node chart service in `SchCat/CRIP4` must be audited and integrated/reworked for the Cloudflare-compatible architecture in its dedicated later step.
-- Existing Excel/JSON data remains the initial source where feasible; no database is required for the foundation.
-- UI direction: dark financial terminal, desktop-first and responsive.
-- Provider credentials must remain server-side and must not be exposed to the browser.
-- Runtime and libraries must be compatible with Cloudflare Workers or another explicitly approved TypeScript/Node hosting target.
+## Deployment configuration
 
-## Deployment and API integration requirements (confirmed by user)
+Existing Cloudflare Worker name and URL:
+- Worker: `schcatweb`
+- URL: `https://schcatweb.prudhvi123143.workers.dev/`
 
-- The final deliverable must be reachable through a live Cloudflare URL, not only a local development server. Production deployment belongs to Step 20; do not claim the site is live before a successful deployment and smoke test.
-- Preserve and integrate the existing Node chart service in `SchCat/CRIP4`; audit its routes, provider dependencies, filesystem assumptions and runtime compatibility before changing or replacing it.
-- Preserve the existing MarketSmith, ChartInk and NSE data-fetching behaviour where applicable by porting/integrating it in TypeScript. Do not silently substitute providers or formulas.
-- Reuse existing Excel/JSON data initially where compatible with the target runtime. Verify whether file-based persistence is viable on Cloudflare; do not assume a Worker has a persistent local filesystem.
-- Keep provider credentials and auth tokens in Worker secrets or another server-side secret store, never frontend/browser code.
-- Step 20 must verify the complete deployed flow: frontend, API, real stock data, charts, provider secrets, CORS, data persistence and error handling.
+Cloudflare Workers Builds settings:
+- Root directory: blank/repository root.
+- Build command: `cd frontend && npm install && npm run build`
+- Deploy command: `npx wrangler deploy`
+- Watch paths: `frontend/**`, `wrangler.toml`
 
-## Migration plan and progress
+Root `wrangler.toml` sets `name = "schcatweb"` and `assets.directory = "./frontend/dist"`, with SPA fallback. There is no R2 bucket requirement. Cloudflare's Wrangler docs confirm that `main` is optional for assets-only Workers and static assets can be deployed without a Worker script: https://developers.cloudflare.com/workers/wrangler/configuration/ .
+
+## Revised migration plan
 
 | Step | Scope | Status |
 |---|---|---|
 | 1 | Repository audit | Complete |
-| 2 | Detailed migration mapping | Complete; architecture superseded by TypeScript decision below |
-| 3 | Web project foundation | Scaffold committed; local run/build verification not confirmed |
-| 4 | TypeScript backend foundation | Implemented in repository; local typecheck/tests pending user |
-| 5 | Existing data integration | TypeScript importer + R2 API committed; local import/upload/API verification pending |
-| 6 | Core analysis logic port to TypeScript | Not started |
-| 7 | Stock data integration | Not started |
-| 8 | Chart service integration | Not started |
-| 9 | Technical indicators | Not started |
-| 10 | Screener API | Not started |
-| 11 | Terminal UI foundation | Not started |
-| 12 | Stock Screener | Not started |
+| 2 | Detailed migration mapping | Complete; static architecture amendment recorded |
+| 3 | React + TypeScript + Vite frontend foundation | Scaffold exists; production build succeeded in Cloudflare build log |
+| 4 | Temporary Hono/Worker backend foundation | Superseded; being removed in Step 6 |
+| 5 | Exploratory R2 data integration/importer | Superseded; no production data import performed |
+| 6 | Convert project to static-only Cloudflare deployment; remove backend/R2; update docs and CI | In progress |
+| 7 | Port core SchCat analysis calculations to browser TypeScript with parity tests | Not started |
+| 8 | Audit and implement direct browser provider API access (MarketSmith, ChartInk, NSE); record CORS/auth limitations | Not started |
+| 9 | Port chart data workflows and existing CRIP4 Node chart behaviour to browser-compatible TypeScript | Not started |
+| 10 | Port technical indicators with numerical parity tests | Not started |
+| 11 | Convert/import non-sensitive reference workbooks and JSON to static browser-readable data | Not started |
+| 12 | Stock screener: universe, filters, queries and sorting | Not started |
 | 13 | Charts and Stock Workspace | Not started |
 | 14 | Industry Analysis | Not started |
-| 15 | Research Module | Not started |
+| 15 | Research module | Not started |
 | 16 | Market Pulse | Not started |
-| 17 | Portfolio | Not started |
-| 18 | Watchlists and Query Management | Not started |
-| 19 | Integration and full testing | Not started |
-| 20 | Production deployment and final release | Not started |
+| 17 | Portfolio using browser-local storage/import/export | Not started |
+| 18 | Watchlists and query management using browser-local storage/import/export | Not started |
+| 19 | Integration, parity, browser compatibility and end-to-end testing | Not started |
+| 20 | Cloudflare production deployment and final release verification | Not started |
 
-## Step 1 — Repository audit
+Steps 7–11 are ordered to establish calculations, provider access, chart behaviour and static data before completing the feature screens. The original desktop app remains the behavioural reference throughout.
 
-Read-only audit of both repositories completed. SchCatWeb initially contained only `test.txt`. SchCat desktop contains the PyQt application, analysis modules, a Node chart service in `CRIP4`, and Excel/JSON data. Major feature inventory and risks are recorded in the Step 2 mapping document.
+## Historical progress
 
-Key source areas include:
-- `Guimain2.py`, `helper.py`, `util.py`, `Listupdater.py`
-- `Tabs/AnalysisTab.py`, `ChartTab.py`, `IndustryAnalysisTab.py`, `MarketPulseTab.py`, `ResearchTab.py`, `portfolioTab.py`
-- `chartengine.py`, `chartink.py`, `chartwidget.py`
-- `CRIP4/app.js`, `CRIP4/indicators.js`, `CRIP4/public/Tools/fixer.js`
-- Existing Excel and JSON data files.
+### Step 1 — Repository audit
+Completed. The source repository contains the PyQt desktop app, analysis modules, a Node chart service under `CRIP4`, and Excel/JSON data. Key files include `Guimain2.py`, `helper.py`, `util.py`, `chartink.py`, `chartengine.py`, `CRIP4/app.js`, `CRIP4/indicators.js`, and the `Tabs/` modules.
 
-## Step 2 — Detailed migration mapping
+### Step 2 — Detailed migration mapping
+Completed. See `docs/STEP-2-MIGRATION-MAPPING.md`. The mapping records modules, calculations, provider workflows, file schemas, UI behaviours and known issues. Python code is a behaviour reference only; it is not part of the web runtime.
 
-- Status: complete.
-- Document: [docs/STEP-2-MIGRATION-MAPPING.md](STEP-2-MIGRATION-MAPPING.md)
-- Commit: `253ef4647e2db359403ab94479b9be48c68d6435`
-- The mapping records module/function responsibilities, feature behaviours, proposed API boundaries, data semantics, known defects/risks and later-step dependencies.
-- **Architecture amendment (2026-11-05):** the original mapping's Python backend destinations are historical only. SchCatWeb is now TypeScript-only. Port the documented formulas, data transformations and provider workflows into TypeScript while preserving their observable behaviour and testing parity against the desktop application. The original Python application remains untouched.
+### Step 3 — Frontend foundation
+React + TypeScript + Vite shell created. It has a dark financial-terminal visual direction. The initial Cloudflare build log confirmed the Vite production build generated `frontend/dist/index.html` and JS/CSS assets.
 
-## Step 3 — Web project foundation
+### Step 4 — Temporary backend foundation (superseded)
+A TypeScript + Hono Worker API was created, including health/data routes, CORS, request IDs, logging and tests. This is no longer the target architecture and is removed in Step 6.
 
-- Scope: create the React + TypeScript + Vite project shell and starter UI.
-- The original Step 3 scaffold also introduced a temporary FastAPI health-check scaffold. That scaffold was removed/replaced in Step 4; it is not part of the target architecture.
-- No SchCat business logic or provider integration is included yet.
-- Local frontend run/build verification has not been confirmed by the user.
+### Step 5 — Exploratory data integration (superseded)
+A TypeScript ExcelJS importer and R2 read-only data API were created. CI passed TypeScript checks, tests, dependency audit and frontend build. However, no production data was imported or uploaded. The deployment log showed that the `schcat-data` R2 bucket did not exist. The user then clarified that no R2/backend/database is wanted. This entire R2 approach is superseded; do not create the bucket.
 
-## Step 4 — TypeScript backend foundation
+## Step 6 — Static architecture conversion
 
-- Scope: Cloudflare Worker API foundation using TypeScript and Hono.
-- Implemented: route organization, runtime configuration validation, CORS allow-list, request IDs, structured request/error logging, consistent 404/error JSON, health endpoint, Wrangler local-development configuration, frontend proxy and automated API tests.
-- Production deployment is not part of this step.
-- Status: code committed; local typecheck and automated tests still require user execution.
+Goal: make SchCatWeb deploy only the Vite frontend as static assets.
 
+Acceptance criteria:
+- [ ] Remove the backend/Hono/R2 implementation.
+- [ ] Remove the frontend's local `/api` proxy.
+- [ ] Add root Wrangler static-assets config with Worker name `schcatweb`, no `main` and no bindings.
+- [ ] Simplify CI to install/build/test only the static frontend.
+- [ ] Update README and migration docs to match static-first architecture.
+- [ ] Cloudflare build/deploy succeeds without any R2 bucket.
+- [ ] Live root URL serves the website with correct JavaScript/CSS MIME types.
 
-## Step 5 — Existing data integration
+Current Step 6 code changes are committed only when a commit SHA is recorded in the chat/project status. The user must still confirm the Cloudflare deployment and browser smoke test.
 
-- Scope: move the existing Excel/JSON datasets into a web-compatible, persistent data source without relying on a Worker local filesystem.
-- Source data audited in `prudhviuday/SchCat`:
-  - `data/marketsmithidsall4.xlsx`: legacy positional fields are symbol (0), MarketSmith ID (1), market cap (2), industry (4), PB (5), ROCE (6), NikScore (7).
-  - `data/ChartInkQs.xlsx`: `QUERIES`, `Watchlist`, and `Portfolio` sheets. The legacy query mapping uses column index 1 as key and index 2 as value.
-  - `data/Industrydata.xlsx`: `Industry` column used for industry autocomplete.
-  - `data/IndustryAnalysis/*.json`: saved industry-analysis output files.
-- Implemented in SchCatWeb:
-  - TypeScript/Node import script: `backend/scripts/import-data.ts`; reads the source workbooks and saved JSON, validates required sheets/fields, and exports normalized JSON.
-  - Generated files are written to `backend/data-export/`, which is gitignored so personal workbooks and generated datasets are not committed.
-  - Cloudflare R2 binding `DATA_BUCKET` configured as `schcat-data` with local preview bucket `schcat-data-dev`.
-  - Read-only endpoints: `/api/data/manifest`, `market-ids`, `stock-metadata`, `queries`, `watchlists`, `portfolio`, `industries`, and `industry-analysis` plus individual saved analysis files.
-  - Data API includes explicit missing-bucket/missing-file errors, JSON validation, ETag passthrough and short cache headers.
-  - Vitest coverage added for successful reads, missing R2 binding, missing datasets and unsafe analysis filenames.
-  - README documents local import, local R2 testing and the later production upload procedure.
-- Important boundaries:
-  - No formulas or analysis calculations were ported in Step 5.
-  - No provider API calls or credentials are included.
-  - Step 5 endpoints are read-only. Safe write-back for watchlists/portfolio will be designed separately.
-  - Production R2 upload and deployment remain part of the final release process; do not claim the site is live.
-- Verification still required on the user's computer:
-  1. Run `npm install` and `npm run typecheck` in `backend/`.
-  2. Run `npm test`.
-  3. Run `npm run data:import -- "C:\\path\\to\\SchCat"`.
-  4. Run `.\data-export\upload-to-r2.ps1` for the local R2 emulator.
-  5. Start Wrangler and verify all documented `/api/data/*` endpoints return the expected JSON.
-- CI verification (5 November 2026): GitHub Actions passed backend TypeScript type-checking (including the importer), all 9 Vitest tests, dependency audit (0 vulnerabilities), and frontend production build. Run: https://github.com/prudhviuday/SchCatWeb/actions/runs/42056479215
-- Status: implementation committed and CI-verified; actual workbook import and local R2 runtime verification have not yet been performed in the user's environment.
+## Next step (after Step 6 acceptance)
 
-## Step 4 verification
-
-From the repository root, open two PowerShell terminals.
-
-Terminal 1:
-```powershell
-cd backend
-npm install
-Copy-Item .dev.vars.example .dev.vars
-npm run dev
-```
-
-Terminal 2:
-```powershell
-cd backend
-npm run typecheck
-npm test
-```
-
-Then open http://127.0.0.1:8787/api/health and verify the JSON response. Also run the frontend in a third terminal using the README instructions and verify its `/api` proxy reaches port 8787.
-
-Do not mark Step 4 fully verified until the user reports these checks pass.
+Step 7: identify the first core analysis calculations and port them to TypeScript. Begin by reading the exact legacy source functions and their dependencies; add deterministic fixtures and parity tests before integrating them into the UI. Do not guess formulas or replace provider sources.
