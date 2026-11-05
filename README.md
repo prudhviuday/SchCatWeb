@@ -46,6 +46,16 @@ npm run build
 
 The production website is generated in `frontend/dist/`.
 
+## Calculation tests
+
+Run the provider-independent calculation parity tests with Node's built-in test runner (no additional test framework dependency):
+
+```powershell
+npm run test:analysis
+```
+
+The test command compiles the pure TypeScript calculation module to the ignored `.test-dist/` directory and runs deterministic expected-value tests against the legacy SchCat formulas. The GitHub Actions workflow runs these tests before the production build.
+
 ## Cloudflare Workers Builds
 
 Configure the existing Cloudflare Worker `schcatweb` as follows:
