@@ -232,7 +232,7 @@ export function ultmInc<T extends CloseInput>(
   );
   const reverse = atp.map((value) => value - 100);
   const ultimator = stockData.map(
-    (_row, index) => 123 / (reverse[index] as number)
+    (_row, index) => (1 / (reverse[index] as number)) * 123
   );
 
   // Legacy CRIP4 code copies the second value over the first.
