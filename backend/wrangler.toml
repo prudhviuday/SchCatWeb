@@ -1,0 +1,9 @@
+name = "schcatweb-api"
+main = "src/index.ts"
+compatibility_date = "2026-11-05"
+workers_dev = true
+
+[vars]
+APP_ENV = "development"
+LOG_LEVEL = "info"
+ALLOWED_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173"
