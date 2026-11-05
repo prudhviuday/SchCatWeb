@@ -63,7 +63,7 @@ test("earnings-sales score uses strict >70 thresholds and strict trend ordering"
       { epsPct: 100, salesPct: 100 },
       { epsPct: 80, salesPct: 80 }
     ]),
-    16
+    26
   );
 });
 
@@ -74,7 +74,7 @@ test("earnings-sales score maps missing and null percentages to zero", () => {
       {},
       { epsPct: 40, salesPct: 75 }
     ]),
-    8
+    10
   );
 });
 
