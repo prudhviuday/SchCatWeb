@@ -1,7 +1,7 @@
 import { mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { argv } from "node:process";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 
 type Cell = string | number | boolean | Date | null | undefined;
 type Row = Cell[];
@@ -27,16 +27,47 @@ async function firstExisting(candidates: string[]): Promise<string> {
   throw new Error(`Required source file not found. Tried: ${candidates.join(", ")}`);
 }
 
+function normalizeCell(value: unknown): Cell {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean" || value instanceof Date) {
+    return value;
+  }
+  if (typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    if ("result" in record) return normalizeCell(record.result);
+    if (typeof record.text === "string") return record.text;
+    if (Array.isArray(record.richText)) {
+      return record.richText.map((part) => {
+        if (part && typeof part === "object" && "text" in part) {
+          return String((part as { text: unknown }).text ?? "");
+        }
+        return "";
+      }).join("");
+    }
+    return JSON.stringify(record);
+  }
+  return String(value);
+}
+
 async function readWorkbookRows(filePath: string, sheetName?: string): Promise<Row[]> {
-  const workbook = XLSX.readFile(filePath, { cellDates: true });
-  const selectedName = sheetName
-    ? workbook.SheetNames.find((name) => name.toLowerCase() === sheetName.toLowerCase())
-    : workbook.SheetNames[0];
-  if (!selectedName) {
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.readFile(filePath);
+  const sheet = sheetName
+    ? workbook.worksheets.find((item) => item.name.toLowerCase() === sheetName.toLowerCase())
+    : workbook.worksheets[0];
+  if (!sheet) {
     throw new Error(`Workbook ${path.basename(filePath)} does not contain sheet ${sheetName ?? "(first sheet)"}.`);
   }
-  const sheet = workbook.Sheets[selectedName];
-  return XLSX.utils.sheet_to_json<Row>(sheet, { header: 1, defval: null, raw: true });
+
+  const rows: Row[] = [];
+  sheet.eachRow({ includeEmpty: true }, (row) => {
+    const values: Row = [];
+    for (let column = 1; column <= sheet.columnCount; column += 1) {
+      values.push(normalizeCell(row.getCell(column).value));
+    }
+    rows.push(values);
+  });
+  return rows;
 }
 
 function cleanHeader(value: Cell, index: number): string {
@@ -83,7 +114,7 @@ async function main() {
   const marketRows = nonEmptyRows(await readWorkbookRows(marketFile));
   const marketDataRows = marketRows.slice(1);
   const symbolToId: Record<string, number> = {};
-  const stockMetadata: Record<string, Record<string, Cell>> = {};
+  const stockMetadata: Record<string, Record<string, unknown>> = {};
 
   for (const row of marketDataRows) {
     const symbol = String(row[0] ?? "").trim();
