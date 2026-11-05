@@ -172,6 +172,29 @@ The previous Node `stockUrlmaker` contains `else if (key = 1000)` (assignment in
 
 Run `npm run test:charts` for deterministic URL, parsing, aggregation and synthetic-series tests. The existing `/?diagnostics=providers` route now includes Yahoo Finance; direct browser CORS access is not considered proven until that result is checked from the live Cloudflare origin.
 
+### Step 10 technical-indicator port
+
+The original `CRIP4/package-lock.json` pins `fast-technical-indicators` at version `1.1.4`. SchCatWeb's implementation in `frontend/src/domain/analysis/technicalIndicators.ts` was checked against that version's SMA, EMA and RSI source.
+
+| TypeScript export | CRIP4 source | Preserved behaviour |
+|---|---|---|
+| `calculateSma` | `sma_async` / `sma_inc` | Rolling arithmetic mean; first output at index period−1 |
+| `calculateEma` | `ema_async` / `ema_inc` | Initial SMA seed followed by alpha = 2/(period+1); output starts at period−1 |
+| `calculateRsi` | `rsi_async` / `rsi_inc` | Wilder-smoothed gain/loss; first result after period changes; exact package rounding to two decimals and zero-average-loss branch |
+| `smaInc` | `sma_inc` | Leading empty-string padding and caller-selected property name |
+| `emaInc` | `ema_inc` | Leading empty-string padding and legacy `stcokgold` selector |
+| `rsiInc` | `rsi_inc` | Fixed period 21 and leading empty-string padding |
+| `ultmInc` | `ultm_inc` | Legacy 123/(shortEMA/longEMA−100) formula and first-value replacement |
+| `atpInc` | `ATP_inc` | Stock and gold EMA ratios attached at raw index zero, without padding |
+
+Legacy compatibility warnings:
+- `ultm_inc` and `ATP_inc` combine raw EMA arrays whose starting positions differ, rather than aligning each value to its candle index. They can therefore generate misaligned series and undefined/NaN tails. That exact behaviour is tested and retained pending review; do not silently replace it with a corrected formula.
+- The old unexported `touch_inc` references undefined `d1`; it is not ported as a functioning feature.
+- The old `eval` property assignment has been replaced with TypeScript computed-property assignment.
+
+Tests: `frontend/tests/analysis/technicalIndicators.test.mjs`, command `npm run test:indicators`. They cover numeric SMA/EMA/RSI outputs, alignment/padding, the fixed RSI period, and the preserved ULTM/ATP quirks.
+
+
 ## 7. Industry Analysis
 
 Legacy workflow:
@@ -206,7 +229,7 @@ Holdings contain stock, quantity and buy price. Legacy chart calculates each hol
 2. `fixer.js` references a Windows absolute path for `marketsmithids.json`.
 3. Legacy timeframe keys and Node special cases may not align; the assignment in `stockUrlmaker` caused daily output for most labels. Step 9 uses explicit Yahoo intervals and documents this compatibility correction.
 4. `touch_inc` references `d1` without defining it.
-5. Indicator code uses `eval`; replace with safe property access after parity tests.
+5. Legacy indicator wrappers used `eval`; Step 10 replaced this with safe computed-property assignment.
 6. `stockUrlmaker` contains a possible assignment/comparison defect.
 7. `normalize` may fail for empty or constant series.
 8. Legacy fetch exceptions may return synthetic defaults (ROCE=1, PB=1000, PEG=5); distinguish missing/error data from genuine values.
@@ -217,4 +240,4 @@ Holdings contain stock, quantity and buy price. Legacy chart calculates each hol
 
 ## 12. Migration sequence
 
-See `docs/PROJECT-STATUS.md` for the binding 20-step plan. Steps 7–9 now cover core calculations, provider diagnostics and browser chart-data transformations. Next is Step 10 (technical-indicator parity), while live browser CORS checks for the required external providers remain open. The previous backend endpoint proposals are superseded; app-internal workflows should be TypeScript functions, not HTTP routes.
+See `docs/PROJECT-STATUS.md` for the binding 20-step plan. Steps 7–10 cover core calculations, provider diagnostics, browser chart-data transformations and technical-indicator parity. Next is Step 11 (static non-sensitive reference-data conversion), while live browser CORS checks for the required external providers remain open. The previous backend endpoint proposals are superseded; app-internal workflows should be TypeScript functions, not HTTP routes.
