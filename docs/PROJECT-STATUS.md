@@ -50,7 +50,7 @@ Root `wrangler.toml` sets `name = "schcatweb"` and `assets.directory = "./fronte
 | 3 | React + TypeScript + Vite frontend foundation | Scaffold exists; production build succeeded in Cloudflare build log |
 | 4 | Temporary Hono/Worker backend foundation | Superseded; being removed in Step 6 |
 | 5 | Exploratory R2 data integration/importer | Superseded; no production data import performed |
-| 6 | Convert project to static-only Cloudflare deployment; remove backend/R2; update docs and CI | In progress |
+| 6 | Convert project to static-only Cloudflare deployment; remove backend/R2; update docs and CI | Code complete; Cloudflare deployment pending |
 | 7 | Port core SchCat analysis calculations to browser TypeScript with parity tests | Not started |
 | 8 | Audit and implement direct browser provider API access (MarketSmith, ChartInk, NSE); record CORS/auth limitations | Not started |
 | 9 | Port chart data workflows and existing CRIP4 Node chart behaviour to browser-compatible TypeScript | Not started |
@@ -90,15 +90,15 @@ A TypeScript ExcelJS importer and R2 read-only data API were created. CI passed 
 Goal: make SchCatWeb deploy only the Vite frontend as static assets.
 
 Acceptance criteria:
-- [ ] Remove the backend/Hono/R2 implementation.
-- [ ] Remove the frontend's local `/api` proxy.
-- [ ] Add root Wrangler static-assets config with Worker name `schcatweb`, no `main` and no bindings.
-- [ ] Simplify CI to install/build/test only the static frontend.
-- [ ] Update README and migration docs to match static-first architecture.
+- [x] Remove the backend/Hono/R2 implementation.
+- [x] Remove the frontend's local `/api` proxy.
+- [x] Add root Wrangler static-assets config with Worker name `schcatweb`, no `main` and no bindings.
+- [x] Simplify CI to install/build/test only the static frontend.
+- [x] Update README and migration docs to match static-first architecture.
 - [ ] Cloudflare build/deploy succeeds without any R2 bucket.
 - [ ] Live root URL serves the website with correct JavaScript/CSS MIME types.
 
-Current Step 6 code changes are committed only when a commit SHA is recorded in the chat/project status. The user must still confirm the Cloudflare deployment and browser smoke test.
+Implementation committed on `main`: `e477c62679c7de91acce65c0f1986192b7c456e2` (static conversion), followed by CI workflow correction `26c4e3531c8ca2134b74adc36c68152e2c3053ce`. The user must still confirm Cloudflare deployment and browser smoke test. The successful Vite build in the earlier log was before this static-only deployment configuration; a new CI run/deploy must verify the current commit.
 
 ## Next step (after Step 6 acceptance)
 
