@@ -50,8 +50,8 @@ The single root `wrangler.toml` sets `name = "schcatweb"` and `assets.directory 
 | 3 | React + TypeScript + Vite frontend foundation | Scaffold exists; production build succeeded in Cloudflare build log |
 | 4 | Temporary Hono/Worker backend foundation | Superseded; being removed in Step 6 |
 | 5 | Exploratory R2 data integration/importer | Superseded; no production data import performed |
-| 6 | Convert project to static-only Cloudflare deployment; remove backend/R2; update docs and CI | Code complete; Cloudflare deployment pending |
-| 7 | Port core SchCat analysis calculations to browser TypeScript with parity tests | Not started |
+| 6 | Convert project to static-only Cloudflare deployment; remove backend/R2; update docs and CI | Complete — user confirmed the live Cloudflare site works; GitHub CI passes |
+| 7 | Port core provider-independent fundamental calculation kernels to browser TypeScript with parity tests | Complete — six pure calculation functions and deterministic tests; PEG field mapping deferred until provider field semantics are verified |
 | 8 | Audit and implement direct browser provider API access (MarketSmith, ChartInk, NSE); record CORS/auth limitations | Not started |
 | 9 | Port chart data workflows and existing CRIP4 Node chart behaviour to browser-compatible TypeScript | Not started |
 | 10 | Port technical indicators with numerical parity tests | Not started |
@@ -95,11 +95,27 @@ Acceptance criteria:
 - [x] Add root Wrangler static-assets config with Worker name `schcatweb`, no `main` and no bindings.
 - [x] Simplify CI to install/build/test only the static frontend.
 - [x] Update README and migration docs to match static-first architecture.
-- [ ] Cloudflare build/deploy succeeds without any R2 bucket.
-- [ ] Live root URL serves the website with correct JavaScript/CSS MIME types.
+- [x] Cloudflare build/deploy succeeds without any R2 bucket.
+- [x] Live root URL serves the website with correct JavaScript/CSS MIME types (user confirmed working).
 
-Implementation committed on `main`: `e477c62679c7de91acce65c0f1986192b7c456e2` (static conversion), followed by CI workflow correction `26c4e3531c8ca2134b74adc36c68152e2c3053ce`. The root Wrangler config is deliberately aligned with Cloudflare's existing deploy command, which runs from the repository root. The user must still confirm Cloudflare deployment and browser smoke test.
+Implementation committed on `main`: `e477c62679c7de91acce65c0f1986192b7c456e2` (static conversion), followed by CI workflow correction `26c4e3531c8ca2134b74adc36c68152e2c3053ce`. The root Wrangler config is deliberately aligned with Cloudflare's existing deploy command, which runs from the repository root. The user confirmed the live site works; Step 6 is complete.
 
-## Next step (after Step 6 acceptance)
+## Step 7 — Core fundamental calculation kernels
 
-Step 7: identify the first core analysis calculations and port them to TypeScript. Begin by reading the exact legacy source functions and their dependencies; add deterministic fixtures and parity tests before integrating them into the UI. Do not guess formulas or replace provider sources.
+Completed on `main`. The legacy calculations were read directly from `prudhviuday/SchCat/util.py` and ported into `frontend/src/domain/analysis/fundamentalMetrics.ts`.
+
+Ported functions:
+- `normalizeSeries` — legacy min/max normalization to 0–100, preserving Python integer truncation and rejecting empty/constant inputs rather than inventing values.
+- `calculateEarningsSalesScore` — exact first-three-quarter EPS/sales scoring weights and trend points used as the screener's `FScore`; strict threshold is greater than 70 and maximum score is 30.
+- `clampQuarterlyGrowth` — truncation and clamp to -200..200.
+- `calculateExpansionPercentage` — c25/c32 × 100 with truncation.
+- `calculateInstitutionalCostBillions` — fund shares × current price / 1 billion with truncation.
+- `calculateMarketCapWeightedRelativeStrength` — non-null mean imputation, zero/null replacement, optional market-cap weighting and reverse ordering.
+
+Parity tests are in `frontend/tests/analysis/fundamentalMetrics.test.mjs`. They run using Node's built-in test runner through `npm run test:analysis`; no extra test framework or runtime package was added. The GitHub Actions run for commit `c112249d66c0c1ce3f2459b411730cd83294d765` passed, including calculation tests, TypeScript/Vite build and static deployment-config checks.
+
+Not included in this pass: provider requests, UI wiring, chart indicators, delivery rolling windows and the PEG row assembly. The legacy PEG code has a type-inconsistent missing-field default (a string is later used as a divisor); do not silently change it. Verify actual MarketSmith field types and preserve the legacy error/fallback behaviour when addressing it during the provider/screener integration steps.
+
+## Next step (after Step 7 acceptance)
+
+Step 8: audit direct browser access to the existing MarketSmith, ChartInk and NSE providers. Reproduce the original request shapes without copying session credentials into public JavaScript, test from the live Cloudflare origin, and document CORS/authentication outcomes. Do not add a proxy or backend unless a specific provider is proven to require it and the user approves that exception.
