@@ -1,50 +1,34 @@
 # SchCatWeb
 
-Web migration of the existing SchCat desktop stock-analysis application.
+A static React + TypeScript web migration of the existing SchCat desktop stock-analysis application.
 
-## Current stage
+## Architecture decision
 
-The repository contains the React web shell and a TypeScript API foundation. Business logic and provider integrations will be migrated in later, separately approved steps. The original desktop application remains in the separate `SchCat` repository and is not modified by this project.
+SchCatWeb is a **static website**. It has no runtime backend, database, Cloudflare Worker script, R2 bucket, Python service or server process.
 
-See:
-- [Step 2 migration mapping](docs/STEP-2-MIGRATION-MAPPING.md)
-- [Project status and handover](docs/PROJECT-STATUS.md)
+- `frontend/`: React + TypeScript + Vite. All UI, calculations and browser-compatible data workflows run here.
+- `wrangler.toml`: deploys only the Vite build output to Cloudflare Workers Static Assets.
+- Browser APIs: provider requests are made directly from TypeScript when the provider permits browser access (including CORS) and does not require a protected secret.
+- Local data: static JSON assets and browser storage (localStorage/IndexedDB) are used where appropriate.
+- Build tools: Node.js/npm are used only to install dependencies, build the website and run optional development-time data conversion scripts. Node is not needed to serve the deployed website.
 
-## Architecture
+The old Hono API, R2 integration and backend importer were an exploratory implementation and have been superseded by this static-first decision. Do not recreate them by default.
 
-- `frontend/`: React + TypeScript + Vite user interface.
-- `backend/`: TypeScript + Hono API running on Cloudflare Workers (Wrangler locally).
-- API configuration, routing, CORS, request IDs, structured logging and error responses live in the backend.
-- Existing SchCat calculations and provider workflows are the behaviour reference. They will be ported to TypeScript with numerical/behavioural parity checks; Python is not a runtime or deployment dependency.
-- Existing Excel/JSON data and the CRIP4 Node chart service will be audited and integrated in their later migration steps. No database is introduced in this foundation stage.
-- Provider credentials must remain in server-side Worker secrets and must never be exposed to browser code.
+## Provider API rule
+
+For every existing provider integration, first reproduce the original URL, query parameters, headers and response parsing in browser TypeScript and test it from the deployed origin.
+
+A browser may block an API that worked in Node because of CORS, browser security rules, authentication or provider restrictions. Do not assume direct browser access will work. Do not put private API keys, session cookies or credentials in frontend code. If a particular provider genuinely requires a protected server-side request, document that exact exception and ask before introducing any proxy or backend.
 
 ## Requirements
 
-- Node.js 20 or newer (Node 22 LTS recommended).
+- Node.js 22 LTS recommended for development/build.
 - npm.
 - Git.
 
 ## Run locally (Windows PowerShell)
 
-### 1. Start the API Worker
-
 From the repository root:
-
-```powershell
-cd backend
-npm install
-Copy-Item .dev.vars.example .dev.vars
-npm run dev
-```
-
-The local API runs at http://127.0.0.1:8787.
-
-Health check: http://127.0.0.1:8787/api/health
-
-### 2. Start the frontend
-
-Open a second PowerShell window at the repository root:
 
 ```powershell
 cd frontend
@@ -52,109 +36,49 @@ npm install
 npm run dev
 ```
 
-Open http://127.0.0.1:5173. Vite proxies `/api` requests to the local TypeScript Worker on port 8787.
+Open the Vite URL shown in the terminal (normally http://127.0.0.1:5173).
 
-### 3. Type-check and test the API
-
-Open another terminal:
-
-```powershell
-cd backend
-npm run typecheck
-npm test
-```
-
-### 4. Build the frontend
-
-From `frontend/`:
+Build and verify:
 
 ```powershell
 npm run build
 ```
 
-### 5. Deployment
+The production website is generated in `frontend/dist/`.
 
-The Worker is configured for Cloudflare through `backend/wrangler.toml`. Production deployment is deliberately reserved for Step 20, after provider access, secrets, persistent-data requirements and end-to-end behaviour have been verified.
+## Cloudflare Workers Builds
 
-## Step 5 — Import existing SchCat data
+Configure the existing Cloudflare Worker `schcatweb` as follows:
 
-The Worker reads datasets from Cloudflare R2. It does not read files from your Windows computer or rely on a persistent Worker filesystem.
+- Root directory: repository root (blank).
+- Build command:
 
-### 1. Install the importer dependencies
-
-From the repository root:
-
-```powershell
-cd backend
-npm install
+```bash
+cd frontend && npm install && npm run build
 ```
 
-### 2. Convert the existing desktop workbooks and JSON files
+- Deploy command:
 
-Pass the local path to your existing SchCat desktop repository:
-
-```powershell
-npm run data:import -- "D:\Projects\SchCat"
+```bash
+npx wrangler deploy
 ```
 
-Replace the example path with the actual folder containing the desktop repository's `data` directory.
+- Build watch paths: `frontend/**`, `wrangler.toml`.
 
-The TypeScript importer reads:
-- `data/marketsmithidsall4.xlsx` — MarketSmith IDs, market cap, industry, PB, ROCE and NikScore using the same positional columns as the desktop application.
-- `data/ChartInkQs.xlsx` — `QUERIES`, `Watchlist` and `Portfolio` sheets.
-- `data/Industrydata.xlsx` — industry autocomplete list and source rows.
-- `data/IndustryAnalysis/*.json` — saved industry-analysis results.
+The root `wrangler.toml` publishes `frontend/dist` as static assets. It intentionally has no `main` entry point, Worker script, API route, R2 binding or database. Keep the Worker name as `schcatweb` to match the existing Cloudflare deployment.
 
-It creates normalized JSON files in `backend/data-export/`. This generated folder is gitignored; your personal datasets are not committed to GitHub.
+## Data and privacy
 
-### 3. Test locally with the local R2 emulator
+- Never commit personal workbook data, provider credentials, session cookies or tokens.
+- Public static JSON files are readable by anyone who can access the website. Only place non-sensitive reference data there.
+- Use browser storage for personal settings and locally maintained watchlists/portfolio data. Browser storage is local to that browser/device and is not cloud-synchronised.
+- Excel-to-JSON conversion, if needed, is a development-time task. It must not introduce a runtime backend.
 
-From `backend/`, upload the generated files to the configured local preview bucket:
+## Migration rules
 
-```powershell
-.\data-export\upload-to-r2.ps1
-npm run dev
-```
-
-In another terminal, test:
-
-- http://127.0.0.1:8787/api/data/manifest
-- http://127.0.0.1:8787/api/data/market-ids
-- http://127.0.0.1:8787/api/data/stock-metadata
-- http://127.0.0.1:8787/api/data/queries
-- http://127.0.0.1:8787/api/data/watchlists
-- http://127.0.0.1:8787/api/data/portfolio
-- http://127.0.0.1:8787/api/data/industries
-- http://127.0.0.1:8787/api/data/industry-analysis
-
-### 4. Prepare the production R2 bucket (deployment is still Step 20)
-
-After logging in to Cloudflare Wrangler, create the buckets:
-
-```powershell
-npx wrangler login
-npx wrangler r2 bucket create schcat-data
-npx wrangler r2 bucket create schcat-data-dev
-```
-
-When production data upload is approved, run:
-
-```powershell
-.\data-export\upload-to-r2.ps1 -Remote
-```
-
-This uploads to the production `schcat-data` bucket. Do not run the remote upload until you are ready to put the imported personal data in your Cloudflare account.
-
-### Data API contract
-
-All data endpoints return `{ data, meta }`. `meta` identifies the R2 object key and upload time. Responses use a short cache policy and ETag when available. Endpoints are read-only in Step 5; workbook write-back and user-specific edits will be designed separately so concurrent edits cannot overwrite one another.
-
-If a dataset has not been uploaded, the API returns a clear 404. If the R2 binding is absent, it returns 503. No local filesystem fallback is used in production.
-
-## Development rules
-
-- Implement one migration step at a time; do not start the next step until the current step is reviewed and accepted.
-- Preserve the desktop SchCat application and its data.
-- Port formulas and business rules to TypeScript only with parity tests; do not silently alter formulas, fallback semantics or data meanings.
-- Do not put provider credentials in frontend code or committed configuration.
-- Be transparent about tests actually executed versus checks the user must run locally.
+- Implement one numbered step at a time; wait for the user's acceptance before moving to the next.
+- Work on `main`; do not create branches without explicit permission.
+- Preserve the original SchCat desktop repository and its data.
+- Port formulas and business rules to TypeScript with parity tests against the desktop behaviour.
+- Preserve existing provider choices and request semantics; do not silently substitute APIs or formulas.
+- Report browser CORS/authentication limitations honestly and do not expose secrets.
