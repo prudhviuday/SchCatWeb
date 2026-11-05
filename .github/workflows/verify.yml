@@ -24,6 +24,9 @@ jobs:
       - name: Install frontend dependencies
         working-directory: frontend
         run: npm install
+      - name: Run calculation parity tests
+        working-directory: frontend
+        run: npm run test:analysis
       - name: Build static website
         working-directory: frontend
         run: npm run build
