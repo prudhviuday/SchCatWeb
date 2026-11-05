@@ -53,7 +53,7 @@ The single root `wrangler.toml` sets `name = "schcatweb"` and `assets.directory 
 | 6 | Convert project to static-only Cloudflare deployment; remove backend/R2; update docs and CI | Complete — user confirmed the live Cloudflare site works; GitHub CI passes |
 | 7 | Port core provider-independent fundamental calculation kernels to browser TypeScript with parity tests | Complete — six pure calculation functions and deterministic tests; PEG field mapping deferred until provider field semantics are verified |
 | 8 | Audit and implement direct browser provider API access (MarketSmith, ChartInk, NSE); record CORS/auth limitations | In progress — browser diagnostic page and request-shape tests implemented; live-origin provider results pending |
-| 9 | Port chart data workflows and existing CRIP4 Node chart behaviour to browser-compatible TypeScript | Not started |
+| 9 | Port chart data workflows and existing CRIP4 Node chart behaviour to browser-compatible TypeScript | In progress — browser module and parity tests added; live Yahoo CORS test pending |
 | 10 | Port technical indicators with numerical parity tests | Not started |
 | 11 | Convert/import non-sensitive reference workbooks and JSON to static browser-readable data | Not started |
 | 12 | Stock screener: universe, filters, queries and sorting | Not started |
@@ -119,7 +119,7 @@ Not included in this pass: provider requests, UI wiring, chart indicators, deliv
 ## Step 8 — Direct browser provider access audit (in progress)
 
 Implemented on `main`:
-- `frontend/src/data/providers/providerDiagnostics.ts` builds and probes the two MarketSmith endpoints used by the desktop app, ChartInk's CSRF + scan POST flow, and NSE's historical delivery endpoint.
+- `frontend/src/data/providers/providerDiagnostics.ts` builds and probes the two MarketSmith endpoints used by the desktop app, ChartInk's CSRF + scan POST flow, NSE's historical delivery endpoint, and (added during Step 9) Yahoo Finance's chart JSON endpoint.
 - `frontend/src/features/diagnostics/ProviderDiagnostics.tsx` provides an isolated diagnostic route at `/?diagnostics=providers`; the normal home page is unchanged.
 - Requests run only after the user clicks the diagnostic button, directly from the browser. The page reports readable responses, HTTP/auth-policy errors, timeouts, and browser/network failures without displaying provider data or session material.
 - MarketSmith's legacy hard-coded `ms-auth` query values are deliberately not copied into the public frontend bundle. Cross-origin credentials are requested through Fetch's normal `credentials: "include"` option only; the application does not read, write, or manually set cookies.
