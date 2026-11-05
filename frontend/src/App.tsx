@@ -1,4 +1,10 @@
+import ProviderDiagnostics from "./features/diagnostics/ProviderDiagnostics";
+
 function App() {
+  if (new URLSearchParams(window.location.search).get("diagnostics") === "providers") {
+    return <ProviderDiagnostics />;
+  }
+
   return (
     <main className="terminal-shell">
       <aside className="sidebar">
