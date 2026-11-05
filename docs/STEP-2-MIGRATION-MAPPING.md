@@ -30,6 +30,19 @@ Node can call some APIs that browsers cannot. A provider may reject browser requ
 
 The prior Hono/R2 implementation and backend endpoint proposals are historical exploratory work, not target architecture.
 
+## 1A. Step 8 browser provider diagnostics
+
+The browser diagnostics implementation is in:
+- `src/data/providers/providerDiagnostics.ts`: MarketSmith, ChartInk and NSE URL builders, CSRF extraction, timeout handling and browser fetch probes.
+- `src/features/diagnostics/ProviderDiagnostics.tsx`: opt-in diagnostic page available at `/?diagnostics=providers`.
+- `tests/providers/providerDiagnostics.test.mjs`: deterministic request-shape and CSRF parser tests.
+
+Provider probes run only after a user action. They use `fetch` from the SchCatWeb origin with `credentials: "include"`; no cookies are read or manually set. The browser/website must satisfy the provider's CORS policy. When credentials are included cross-origin, the provider must explicitly permit the requesting origin and credentials; browser third-party-cookie rules still apply. See the [MDN Fetch credentials guidance](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch#including_credentials) and [MDN CORS guide](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS).
+
+Do not port the hard-coded legacy MarketSmith `ms-auth` query values into the website bundle. They are session-like values from the old desktop implementation and are not treated as public API keys. Browser code cannot manually set the `Cookie` header; it also does not attempt to override the browser's `User-Agent`. A Fetch rejection is reported as a possible CORS/network/privacy-policy failure; the browser's DevTools Console is required to distinguish the cause.
+
+**Live result status:** implementation and CI request-shape tests pass. Actual CORS/authentication results still need to be collected by opening `https://schcatweb.prudhvi123143.workers.dev/?diagnostics=providers` after deployment and clicking **Run browser diagnostics**. Do not infer provider access from server-side HTTP requests or from URL-builder unit tests.
+
 ## 2. Module-by-module feature mapping
 
 | Existing source | Existing responsibility | Browser TypeScript destination | Web screen |
