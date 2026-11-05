@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
-import { getRuntimeConfig, type EnvBindings } from "./config";
+import { getRuntimeConfig } from "./config";
 import { createLogger } from "./logger";
 import { requestContext, type AppBindings } from "./middleware/request-context";
 import health from "./routes/health";
@@ -37,14 +37,14 @@ app.notFound((c) => {
 
 app.onError((error, c) => {
   const requestId = c.get("requestId") || "unknown";
-  const config = (() => {
-    try {
-      return getRuntimeConfig(c.env);
-    } catch {
-      return { logLevel: "info" as const };
-    }
-  })();
-  const logger = createLogger(config.logLevel);
+  let logLevel: "debug" | "info" | "warn" | "error" = "info";
+  try {
+    logLevel = getRuntimeConfig(c.env).logLevel;
+  } catch {
+    // Keep error handling available even when environment configuration is invalid.
+  }
+
+  const logger = createLogger(logLevel);
   const status = error instanceof HTTPException ? error.status : 500;
   const code = error instanceof HTTPException ? "HTTP_ERROR" : "INTERNAL_SERVER_ERROR";
   const message = status < 500 ? error.message : "An unexpected server error occurred.";
@@ -63,7 +63,4 @@ app.onError((error, c) => {
 });
 
 export { app };
-export default {
-  fetch: (request: Request, env: EnvBindings, executionContext: ExecutionContext) =>
-    app.fetch(request, env, executionContext)
-};
+export default app;
