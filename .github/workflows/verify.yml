@@ -27,6 +27,9 @@ jobs:
       - name: Run calculation parity tests
         working-directory: frontend
         run: npm run test:analysis
+      - name: Run provider request-shape tests
+        working-directory: frontend
+        run: npm run test:providers
       - name: Build static website
         working-directory: frontend
         run: npm run build
