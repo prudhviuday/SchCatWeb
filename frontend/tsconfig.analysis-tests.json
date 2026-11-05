@@ -9,6 +9,9 @@
     "rootDir": "src",
     "types": []
   },
-  "files": ["src/domain/analysis/fundamentalMetrics.ts"],
+  "files": [
+    "src/domain/analysis/fundamentalMetrics.ts",
+    "src/data/providers/providerDiagnostics.ts"
+  ],
   "include": []
 }
