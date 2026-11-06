@@ -13,7 +13,8 @@
     "test:indicators": "tsc -p tsconfig.analysis-tests.json && node --test tests/analysis/technicalIndicators.test.mjs",
     "test:reference": "tsc -p tsconfig.analysis-tests.json && node --test tests/reference/*.test.mjs",
     "test:screener": "tsc -p tsconfig.analysis-tests.json && node --test tests/screener/*.test.mjs",
-    "test:workspace": "tsc -p tsconfig.analysis-tests.json && node --test tests/charts/*.test.mjs"
+    "test:workspace": "tsc -p tsconfig.analysis-tests.json && node --test tests/charts/*.test.mjs",
+    "test:industry": "tsc -p tsconfig.analysis-tests.json && node --test tests/industry/*.test.mjs"
   },
   "dependencies": {
     "react": "^19.1.0",
