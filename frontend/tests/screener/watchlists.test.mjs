@@ -40,7 +40,7 @@ test("watchlist CSV import/export preserves quoted names and symbols", () => {
 
 test("browser storage save/load uses versioned private key", () => {
   const values = new Map();
-  const storage = { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value); } };
+  const storage = { getItem: (key) => values.get(key) ?? null, setItem: (key, value) => { values.set(key, value); } };
   const library = { version: 1, watchlists: [{ name: "Test", symbols: ["ABC"] }], queries: [] };
   saveScreenerLibrary(library, storage);
   assert.deepEqual(JSON.parse(values.get("schcatweb.screener-library.v1")), library);
