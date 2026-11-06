@@ -365,3 +365,14 @@ Implemented on main:
 Tests:
 - Added tests for the desktop rolling calculation, invalid/missing delivery observations, same-origin Worker request parameters and input validation.
 - Full CI and actual NSE response on the deployed Cloudflare site remain to be confirmed.
+
+
+## Step 25 — Institutional ownership and holding-value history (implemented; CI pending)
+
+Implemented on main:
+- Extended the existing MarketSmith symbol-details parser to read quarterly fund share holdings from `quarterlySalesAndEarningsInternational.quarterlySalesAndEarningsOrigin`.
+- Institutional ownership is shown chronologically as the reported number of shares held by funds, alongside the desktop-compatible normalized 0–100 index. Constant/one-point series leave the index blank.
+- Institutional holding value follows the desktop `getInstitutionCostFromMs` formula exactly: integer shares held × integer current price ÷ 1,000,000,000. It is displayed as a legacy formula output without inventing a currency unit.
+- Reuses the existing on-demand symbol-details request and browser-local MarketSmith session; no extra API route or credential was added.
+- Added parser tests for ordering, normalization and the legacy holding-value calculation.
+- Live provider availability and Cloudflare publication remain to be verified separately.
