@@ -155,3 +155,51 @@ test("NSE Worker URL builder uses its same-origin route", () => {
   assert.equal(url.searchParams.get("from"), "01-11-2026");
   assert.equal(url.searchParams.get("to"), "06-11-2026");
 });
+
+
+test("missing MarketSmith Worker secrets are reported as configuration, not provider rejection", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input) => {
+    const url = String(input);
+    if (url.startsWith("/api/marketsmith/")) {
+      return new Response(JSON.stringify({
+        error: "marketsmith_auth_not_configured",
+        message: "Set the Cloudflare Worker secret."
+      }), { status: 503, headers: { "content-type": "application/json" } });
+    }
+    if (url === "/api/chartink/scan") {
+      return new Response(JSON.stringify({ data: [] }), { status: 200 });
+    }
+    if (url.startsWith("/api/nse/delivery")) {
+      return new Response(JSON.stringify({ data: [] }), { status: 200 });
+    }
+    if (url.startsWith("/api/yahoo/chart")) {
+      return new Response(JSON.stringify({
+        chart: { result: [{ timestamp: [1] }], error: null }
+      }), { status: 200 });
+    }
+    throw new Error("Unexpected URL: " + url);
+  };
+
+  try {
+    const results = await runProviderDiagnostics({
+      marketSmithStockId: "3159563",
+      marketSmithSymbol: "RVNL"
+    });
+    const marketSmith = results.filter((item) => item.provider === "MarketSmith");
+    assert.equal(marketSmith.length, 2);
+    assert.equal(marketSmith.every((item) => item.status === "configuration-required"), true);
+    assert.equal(marketSmith.every((item) => item.httpStatus === 503), true);
+    assert.equal(
+      marketSmith.every((item) => item.message.includes("No request has been sent to MarketSmith yet")),
+      true
+    );
+    assert.equal(
+      results.filter((item) => item.provider !== "MarketSmith")
+        .every((item) => item.status === "success"),
+      true
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
