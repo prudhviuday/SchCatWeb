@@ -18,7 +18,8 @@
     "src/data/reference/marketUniverse.ts",
     "src/data/reference/industries.ts",
     "src/features/screener/screener.ts",
-    "src/features/charts/chartPresentation.ts"
+    "src/features/charts/chartPresentation.ts",
+    "src/features/industry/industryAnalysis.ts"
   ],
   "include": []
 }
