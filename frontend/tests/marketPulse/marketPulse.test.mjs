@@ -43,6 +43,9 @@ test("response parser rejects missing metric groups and inconsistent arrays", ()
   const bad = fixture();
   bad.groupData[0].results[0]["4% bull"] = [1];
   assert.throws(() => parseMarketPulseResponse(bad), /inconsistent/);
+  const missing = fixture();
+  missing.groupData[0].results[0]["4% bull"][0] = null;
+  assert.throws(() => parseMarketPulseResponse(missing), /missing value/);
 });
 
 test("cell colours preserve desktop inclusive rule ordering and neutral gaps", () => {
