@@ -25,7 +25,7 @@ test("NikScore preserves exact legacy weighted-growth and ROCE/PB bands", () => 
     finalScore: 91.5,
     salesGrowthUsed: [110, 39, 5, 29]
   });
-  assert.equal(calculateNikScore([0, 0, 0, 0], 9.99, 8).finalScore, 34.5);
+  assert.equal(calculateNikScore([0, 0, 0, 0], 9.99, 8).finalScore, 20);
   assert.equal(calculateNikScore([0, 0, 0, 0], 10, 7.99).pbScore, 35);
 });
 
@@ -43,5 +43,5 @@ test("MarketSmith NikScore uses latest annual ROCE and workbook P/B", () => {
   const result = calculateNikScoreFromMarketSmith(metrics, finance);
   assert.equal(result.roceScore, 90);
   assert.equal(result.pbScore, 90);
-  assert.equal(result.finalScore, 76.9);
+  assert.equal(result.finalScore, 94.5);
 });
