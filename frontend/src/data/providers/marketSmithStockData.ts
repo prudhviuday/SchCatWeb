@@ -113,7 +113,7 @@ export function parseMarketSmithStockMetrics(payload: unknown): MarketSmithLiveM
 
   const pe = Math.trunc(finiteNumber(header.pe) ?? 0);
   const growthRaw = headerBlock.epsGrowthRate;
-  const quarterlyGrowth = quarters.map((quarter) => {
+  const quarterlyGrowth = quarters.slice().reverse().map((quarter) => {
     const year = textValue(quarter.prdYear) ?? "";
     const quarterName = textValue(quarter.prdQuarter) ?? "";
     return {
@@ -217,7 +217,7 @@ export function parseMarketSmithFinanceData(payload: unknown): MarketSmithFinanc
   const rows = Array.isArray(root?.ratiosAnnualData)
     ? root.ratiosAnnualData.map(asRecord).filter((item): item is Record<string, unknown> => item !== null)
     : [];
-  const chronological = rows.map((row) => ({
+  const chronological = rows.slice().reverse().map((row) => ({
     year: finiteNumber(row.c0),
     eps: finiteNumber(row.c20)
   })).filter((row): row is { year: number; eps: number } => row.year !== null && row.eps !== null);
