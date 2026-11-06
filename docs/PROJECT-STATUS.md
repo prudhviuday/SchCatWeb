@@ -398,3 +398,16 @@ Implemented on main:
 - The UI labels the series as a close-volume proxy, not official traded turnover, because that is exactly what the desktop calculation produces.
 - Added regression tests for ordering, latest-30 selection, rounding and invalid limits.
 - Full CI and deployed-site behaviour remain to be confirmed; Cloudflare publication is not assumed.
+
+
+## Step 28 — MarketSmith relative-strength history (implemented; verification pending)
+
+Implemented on main:
+- Ported desktop `util.fetch_RS_graph_from_MS` using the MarketSmith `details.json` chart prices and each row's `rlst` value.
+- Preserves the legacy default `marketcapNorm=false` behavior: calculate the integer mean of available RS values, substitute that mean for missing observations, and reverse the provider's newest-first sequence into chronological order. The optional market-cap multiplication path is not enabled because the desktop caller's intended normalization is not established in this migration.
+- Added a same-origin Worker route at `/api/marketsmith/relative-strength`. It uses a rolling five-year date window, the desktop benchmark/settings (`0INNSE50`, `p=1`, `ie=0`, `iq=0`, `rs=N`), and the browser-local MarketSmith session header. No credential is committed or stored by the Worker.
+- Stock Workspace now has an explicit **Fetch RS history** action and displays the historical sequence as a line chart. The x-axis is intentionally labelled oldest/latest rather than dates because the legacy function only returns the RS values and does not preserve date labels.
+- Added tests for null substitution, chronological reversal and same-origin authenticated requests.
+
+Verification:
+- GitHub Actions and a real MarketSmith response must pass/be checked before treating the provider path as fully verified. Cloudflare publication is not assumed.
