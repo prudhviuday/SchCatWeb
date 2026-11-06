@@ -90,14 +90,14 @@ export function parseSavedQueriesCsv(csv:string):SavedQuery[] {
   for(const row of rows.slice(1)){
     const name=row[nameIndex]?.trim(),queryCode=row[codeIndex]?.trim();
     if(!name||!queryCode)continue;
-    const symbols=symbolsIndex<0?[]:(row[symbolsIndex]??"").split(/[\\s,;]+/).map(x=>x.trim().toUpperCase()).filter(Boolean);
+    const symbols=symbolsIndex<0?[]:(row[symbolsIndex]??"").split(/[\s,;]+/).map(x=>x.trim().toUpperCase()).filter(Boolean);
     queries.push({name,queryCode,symbols:[...new Set(symbols)]});
   }
   return uniqueNames(queries,"query");
 }
 export function serializeSavedQueriesCsv(queries:readonly SavedQuery[]):string {
   const q=(s:string)=>'"'+s.replaceAll('"','""')+'"';
-  return ["QueryName,QueryCode,Symbols",...queries.map(x=>[q(x.name),q(x.queryCode),q(x.symbols.join(" "))].join(","))].join("\\r\\n");
+  return ["QueryName,QueryCode,Symbols",...queries.map(x=>[q(x.name),q(x.queryCode),q(x.symbols.join(" "))].join(","))].join("\r\n");
 }
 
 export function serializeWatchlistsCsv(items:readonly Watchlist[]):string {
