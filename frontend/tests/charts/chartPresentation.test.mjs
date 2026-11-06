@@ -32,7 +32,7 @@ test("legacy SMA50 and EMA50 overlays align to their source candle before visibl
   assert.equal(view.points[4].sma50, 125.5);
   assert.equal(view.points[4].ema50, 125.5);
   assert.equal(view.points.at(-1).sma50, 135.5);
-  assert.ok(view.points.at(-1).ema50 > 135.5);
+  assert.equal(view.points.at(-1).ema50, 135.5);
   assert.equal(view.points.at(-1).ema200, null);
 });
 
