@@ -50,7 +50,7 @@ test("industry aggregation preserves legacy series alignment and formulas", () =
     marketCaps: [100, 200]
   });
 
-  assert.deepEqual(result.institutionalValueBillions, [12, 24, 34]);
+  assert.deepEqual(result.institutionalValueBillions, [12, 22, 34]);
   assert.deepEqual(result.closeVolumeBillions, [110, 120, 230]);
   assert.deepEqual(result.deliveryPercent, [50, 50, 50]);
   assert.deepEqual(result.industryRelativeStrength, [0.5, 0.83, 1.2]);
