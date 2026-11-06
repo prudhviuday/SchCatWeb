@@ -19,14 +19,14 @@ This is the durable source of truth for continuing the SchCat migration. In a ne
 - UI and analysis: React + TypeScript + Vite in `frontend/`.
 - Runtime API: `worker/index.js` handles fixed, validated provider routes under `/api/*`.
 - Hosting: one Cloudflare Worker serves both the API and the Vite production assets through the `ASSETS` binding configured in root `wrangler.toml`.
-- Hybrid architecture: Yahoo chart data now fetches directly from the user's browser (verified HTTP 200); MarketSmith, NSE and ChartInk direct-browser access are tested by the provider diagnostics. The Worker retains fixed server-side routes as fallbacks.
-- Market Pulse keeps its proven Worker-backed ChartInk CSRF/session flow until the direct browser diagnostic confirms that the browser can read ChartInk and complete the scan POST.
+- Provider architecture: the browser calls only same-origin `/api/*` routes. The Worker calls Yahoo, MarketSmith, ChartInk and NSE server-side, matching the old desktop split (Node `got` for Yahoo/MarketSmith; Python `requests` for ChartInk/NSE). Direct browser calls failed because providers did not expose readable CORS responses; those tests were exercising the wrong network path.
+- Market Pulse uses the Worker-backed ChartInk CSRF/session flow; do not switch it to external browser fetches.
 - The Worker uses upstream timeouts and short edge caching for successful read-only GET data. ChartInk scan POSTs are not cached.
 - Static JSON assets hold non-sensitive reference datasets. Personal holdings, settings and watchlists remain browser-local unless a sync feature is separately approved.
 - Node/npm are development/build tools only. No always-on Node server or Python runtime is required for the current Cloudflare deployment.
 - This is not a VPN. No VPN/proxy configuration was found in the inspected legacy Node service; it used server-side `got` and Python `requests` calls. Cloudflare Workers can still be blocked by provider-side IP, authentication or anti-bot controls. If that happens, assess a separately hosted Node service with an approved network route.
 - No database or R2 bucket is required. The earlier Hono/R2 implementation was exploratory and superseded.
-- Never expose private API keys, session cookies or MarketSmith authentication values in frontend code or committed source. An optional `MARKETSMITH_AUTH` Worker secret is supported; configure only a valid value the user is authorized to use.
+- Never expose private API keys, session cookies or MarketSmith authentication values in frontend code or committed source. The Worker accepts `MARKETSMITH_FINANCE_AUTH` and `MARKETSMITH_SYMBOL_AUTH` secrets, with shared `MARKETSMITH_AUTH` as fallback. Use current authorized session values; legacy hard-coded values may be expired.
 
 ## Deployment configuration
 
@@ -53,19 +53,19 @@ The root `wrangler.toml` sets `main = "worker/index.js"`, binds `frontend/dist` 
 | 5 | Exploratory R2 data integration/importer | Superseded; no production data import performed |
 | 6 | Convert project to static-only Cloudflare deployment; remove backend/R2; update docs and CI | Complete — user confirmed the live Cloudflare site works; GitHub CI passes |
 | 7 | Port core provider-independent fundamental calculation kernels to browser TypeScript with parity tests | Complete — six pure calculation functions and deterministic tests; PEG field mapping deferred until provider field semantics are verified |
-| 8 | Audit and implement provider API access (MarketSmith, ChartInk, NSE) | In progress — same-origin Worker routes and server-side CSRF flow implemented; live Cloudflare egress/authentication results pending |
-| 9 | Port chart data workflows and existing CRIP4 Node chart behaviour to TypeScript | In progress — chart shaping is in frontend TypeScript and Yahoo fetch now uses the Worker API; live Cloudflare provider access pending |
+| 8 | Audit and implement provider API access (MarketSmith, ChartInk, NSE) | In progress — all provider calls and diagnostics now use same-origin Worker routes; confirm live Cloudflare egress/authentication |
+| 9 | Port chart data workflows and existing CRIP4 Node chart behaviour to TypeScript | In progress — chart shaping is in TypeScript and Yahoo candles use the same-origin Worker; confirm live upstream access |
 | 10 | Port technical indicators with numerical parity tests | Complete — exact fast-technical-indicators 1.1.4 SMA/EMA/RSI kernels, CRIP4 wrappers, ULTM/ATP ports and CI parity tests |
 | 11 | Convert/import non-sensitive reference workbooks and JSON to static browser-readable data | Complete — 2,256-row stock universe, 107-industry list and 1,256-symbol CRIP4 MarketSmith ID map converted to static JSON; provenance, freshness and duplicate-ID warnings captured |
 | 12 | Stock screener: universe, filters, queries and sorting | Complete — browser screener, tests and production build pass |
 | 13 | Charts and Stock Workspace | Complete — responsive multi-timeframe chart workspace, stock detail panel, tests and production build pass |
 | 14 | Industry Analysis | Complete — industry explorer, legacy aggregation kernels, saved JSON import/export, tests and static build pass; fresh provider aggregation deferred until Steps 8–9 are validated |
 | 15 | Research module | Complete — browser CSV/JSON imports, desktop match calculations, results chart/export, tests and build pass; live ChartInk historical scans deferred until browser-origin access is verified |
-| 16 | Market Pulse | Implemented; live ChartInk browser access must be confirmed from the deployed origin |
+| 16 | Market Pulse | Implemented; proven Worker-backed ChartInk CSRF/session flow retained and covered by diagnostics |
 | 17 | Portfolio using browser-local storage/import/export | Complete — holdings, P&L, legacy synthetic OHLC charts, CSV/JSON backup and parity tests |
 | 18 | Watchlists and query management using browser-local storage/import/export | Complete — browser-local watchlists and saved queries, desktop-format CSV migration, JSON/CSV backup and parity tests |
 | 19 | Integration, parity, browser compatibility and end-to-end testing | Complete — all six modules linked from Overview; production preview smoke tests cover SPA fallback, bundle, reference data and static deployment config |
-| 20 | Cloudflare Worker API integration, production deployment and final release verification | In progress — Worker/API foundation implemented; live deployment and provider reachability verification pending |
+| 20 | Cloudflare Worker API integration, production deployment and final release verification | In progress — provider paths restored to server-side Worker calls; confirm CI, Cloudflare deployment and live upstream outcomes |
 
 Steps 7–11 are ordered to establish calculations, provider access, chart behaviour and static data before completing the feature screens. The original desktop app remains the behavioural reference throughout.
 
@@ -117,30 +117,33 @@ Parity tests are in `frontend/tests/analysis/fundamentalMetrics.test.mjs`. They 
 
 Not included in this pass: provider requests, UI wiring, chart indicators, delivery rolling windows and the PEG row assembly. The legacy PEG code has a type-inconsistent missing-field default (a string is later used as a divisor); do not silently change it. Verify actual MarketSmith field types and preserve the legacy error/fallback behaviour when addressing it during the provider/screener integration steps.
 
-## Step 8 — Direct browser provider access audit (in progress)
+## Step 8 — Server-side provider access restoration (in progress)
 
 Implemented on `main`:
-- `frontend/src/data/providers/providerDiagnostics.ts` builds and probes the two MarketSmith endpoints used by the desktop app, ChartInk's CSRF + scan POST flow, NSE's historical delivery endpoint, and (added during Step 9) Yahoo Finance's chart JSON endpoint.
-- `frontend/src/features/diagnostics/ProviderDiagnostics.tsx` provides an isolated diagnostic route at `/?diagnostics=providers`; the normal home page is unchanged.
-- Requests run only after the user clicks the diagnostic button, directly from the browser. The page reports readable responses, HTTP/auth-policy errors, timeouts, and browser/network failures without displaying provider data or session material.
-- MarketSmith's legacy hard-coded `ms-auth` query values are deliberately not copied into the public frontend bundle. Cross-origin credentials are requested through Fetch's normal `credentials: "include"` option only; the application does not read, write, or manually set cookies.
-- JavaScript does not set a custom `User-Agent` or `Cookie` header. Browser restrictions and provider CORS rules determine whether the calls can work. A failed Fetch cannot reliably distinguish CORS from another network/privacy-policy failure; inspect DevTools Console.
+- Source audit confirmed the desktop split: `CRIP4/public/Tools/fixer.js` uses Node `got` for Yahoo chart data and MarketSmith weekly data; `util.py` uses Python `requests` for MarketSmith finance/symbol details and NSE delivery; `chartink.py` uses a persistent `requests.Session()` for ChartInk CSRF + scan POST.
+- `worker/index.js` exposes fixed same-origin routes for all four providers. MarketSmith auth values are accepted only as Cloudflare Worker secrets, never as frontend query strings or source constants.
+- ChartInk retains the legacy CSRF bootstrap, session-cookie forwarding and scan POST flow. Market Pulse continues to use this route.
+- NSE now bootstraps the NSE homepage and forwards its anonymous session cookie before requesting historical delivery data; if bootstrap fails, it falls back to the legacy direct API request shape.
+- Yahoo chart requests now use `/api/yahoo/chart` from the browser, while the Worker contacts Yahoo server-side using browser-like request headers.
+- Provider diagnostics now exercise the same-origin Worker routes for Yahoo, MarketSmith finance/symbol, ChartInk and NSE. They report the Worker/upstream result rather than an external-provider CORS error.
+- MarketSmith still requires a current authorized `ms-auth` value. Configure `MARKETSMITH_FINANCE_AUTH` and `MARKETSMITH_SYMBOL_AUTH` as Cloudflare secrets, or use shared `MARKETSMITH_AUTH`. The old source values are not copied because they are session-like and may be expired.
 - Provider request URL, parameter, and CSRF parser tests are in `frontend/tests/providers/providerDiagnostics.test.mjs`, run with `npm run test:providers`.
 
 Verification:
 - GitHub Actions passed on commit `a2f16a3ae211520b39d4b3d264b7d83a1b31d142`: calculation tests, provider request-shape tests, TypeScript/Vite production build and static output checks.
-- The actual live-origin HTTP/CORS/authentication outcomes have not yet been collected. After Cloudflare deploys the latest `main` commit, open `https://schcatweb.prudhvi123143.workers.dev/?diagnostics=providers`, click **Run browser diagnostics**, and share the results plus any relevant Console errors.
-- Do not add a proxy/backend by default. If a particular provider proves to require server-side access, document the specific reason and obtain user approval first.
+- The earlier direct-browser tests returned browser-blocked for Yahoo, MarketSmith, ChartInk and NSE. That is expected when the providers do not grant this website CORS access; it does not mean their server-side APIs are unavailable.
+- The Worker-backed code changes are committed on `main`, but require the latest CI run and Cloudflare deployment before live provider results can be collected. After deployment, open `https://schcatweb.prudhvi123143.workers.dev/?diagnostics=providers` and click **Run server-side diagnostics**.
+- If MarketSmith reports `marketsmith_auth_not_configured`, configure current authorized endpoint-specific Cloudflare secrets. If Yahoo, ChartInk or NSE returns an upstream HTTP/network error, use that actual upstream response to decide the next provider-specific fix.
 
 ## Step 9 — Chart data workflow and CRIP4 chart transforms (in progress)
 
 Implemented in `frontend/src/data/providers/chartData.ts`:
-- Direct browser Yahoo chart JSON request builder and parser for explicit 1W, 1D, 1H and 5m intervals.
+- Yahoo chart JSON request builder and parser for explicit 1W, 1D, 1H and 5m intervals; live requests use the same-origin `/api/yahoo/chart` Worker route.
 - 15m grouping from three consecutive 5m candles and 4H aggregation at the legacy 09:15 and 13:15 IST session starts.
 - Chronological OHLCV candles, weekly close×volume history, stock/gold timestamp merge + forward-fill, and fixed-₹50-notional synthetic stock-vs-gold series.
 - No local Node chart server or session credentials are required.
 
-The original `CRIP4/public/Tools/fixer.js` contains `else if (key = 1000)`, an assignment rather than a comparison. The browser port uses the explicit timeframe labels from `chartengine.py` rather than perpetuating the unintended daily-only branch. The hard-coded MarketSmith weekly-chart `ms-auth` value and gold network fetch have not been ported. Yahoo browser-origin CORS is still unverified.
+The original `CRIP4/public/Tools/fixer.js` contains `else if (key = 1000)`, an assignment rather than a comparison. The browser port uses the explicit timeframe labels from `chartengine.py` rather than perpetuating the unintended daily-only branch. The hard-coded MarketSmith weekly-chart `ms-auth` value and gold network fetch have not been ported. Yahoo now runs through the Worker; its live upstream response still needs deployment verification.
 
 Tests: `frontend/tests/providers/chartData.test.mjs`, run by `npm run test:charts`. GitHub Actions passed on commit `a88368fb8b65ed985a11eacd3d9659cc15463d01`: https://github.com/prudhviuday/SchCatWeb/actions/runs/42073743174. Step 9 remains open only for provider-origin validation / any resulting access decision; do not create a proxy without user approval.
 
