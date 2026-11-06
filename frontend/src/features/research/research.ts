@@ -238,6 +238,18 @@ export function parseHistoricalMatchesJson(input: unknown): ResearchMatchSet[] {
  * different. A failed/missing query history is reported as unavailable rather
  * than being misrepresented as a genuine 0% result.
  */
+function roundLikePython(value: number, digits: number): number {
+  const factor = 10 ** digits;
+  const scaled = value * factor;
+  const lower = Math.floor(scaled);
+  const fraction = scaled - lower;
+  const tolerance = Number.EPSILON * Math.max(1, Math.abs(scaled)) * 2;
+  const rounded = Math.abs(fraction - 0.5) <= tolerance
+    ? (lower % 2 === 0 ? lower : lower + 1)
+    : Math.round(scaled);
+  return rounded / factor;
+}
+
 export function evaluateResearch(inputs: ResearchInputs): ResearchResult[] {
   const performanceSymbols = new Set(uniqueSymbols(inputs.performanceSymbols));
   const total = performanceSymbols.size;
@@ -276,7 +288,7 @@ export function evaluateResearch(inputs: ResearchInputs): ResearchResult[] {
     }
 
     const matchPercent = historySymbols.size > 0
-      ? Math.round((matches / historySymbols.size) * 10000) / 100
+      ? roundLikePython((matches / historySymbols.size) * 100, 2)
       : 0;
 
     return {
