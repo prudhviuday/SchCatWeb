@@ -86,6 +86,11 @@ function ProviderDiagnostics() {
 
   const runAudit = async () => {
     if (running) return;
+    const savedAuth = readStoredMarketSmithAuth();
+    if (marketSmithAuth !== savedAuth) {
+      setMarketSmithAuthMessage("Save your MarketSmith value in this browser before running diagnostics.");
+      return;
+    }
     setRunning(true);
     setResults([]);
     setStartedAt(new Date().toLocaleString());
@@ -94,7 +99,7 @@ function ProviderDiagnostics() {
       const nextResults = await runProviderDiagnostics({
         marketSmithStockId,
         marketSmithSymbol,
-        marketSmithAuth: readStoredMarketSmithAuth()
+        marketSmithAuth: savedAuth
       });
       setResults(nextResults);
     } finally {
