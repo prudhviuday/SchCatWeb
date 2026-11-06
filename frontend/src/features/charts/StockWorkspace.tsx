@@ -6,6 +6,7 @@ import {
   type ChartTimeframe
 } from "../../data/providers/chartData";
 import type { MarketUniverseRecord } from "../../data/reference/marketUniverse";
+import { fetchNseDeliveryHistory, type NseDeliveryPoint } from "../../data/providers/nseDelivery";
 import { getMarketSmithId, loadMarketSmithIds } from "../../data/reference/marketSmithIds";
 import { readStoredMarketSmithAuth } from "../../data/providers/providerDiagnostics";
 import {
@@ -203,6 +204,10 @@ function StockWorkspace({
   const [annualRoce, setAnnualRoce] = useState<Array<{ year: number; value: number; normalized: number | null }>>([]);
   const [annualRevenue, setAnnualRevenue] = useState<Array<{ year: number; value: number; normalized: number | null }>>([]);
   const [fundamentalsUpdatedAt, setFundamentalsUpdatedAt] = useState<string | null>(null);
+  const [deliveryStatus, setDeliveryStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [deliveryMessage, setDeliveryMessage] = useState("");
+  const [deliveryHistory, setDeliveryHistory] = useState<NseDeliveryPoint[]>([]);
+  const [deliveryUpdatedAt, setDeliveryUpdatedAt] = useState<string | null>(null);
 
   useEffect(() => {
     if (!symbol) return;
@@ -268,6 +273,22 @@ function StockWorkspace({
     dailyChange !== null && dailyView?.previousClose
       ? dailyChange / dailyView.previousClose * 100
       : null;
+
+  async function fetchDeliveryHistory() {
+    if (!symbol || deliveryStatus === "loading") return;
+    setDeliveryStatus("loading");
+    setDeliveryMessage("Loading approximately 300 calendar days from NSE…");
+    setDeliveryHistory([]);
+    try {
+      const history = await fetchNseDeliveryHistory(symbol);
+      if (history.length === 0) throw new Error("NSE returned no usable delivery observations after the five-session rolling window.");
+      setDeliveryHistory(history);
+      const updatedAt = new Date().toLocaleString("en-IN");
+      setDeliveryUpdatedAt(updatedAt);
+      setDeliveryStatus("ready");
+      setDeliveryMessage("NSE delivery history updated at " + updatedAt + ".");
+    } catch (error) { setDeliveryStatus("error"); setDeliveryMessage(errorText(error)); }
+  }
 
   async function fetchLiveFundamentals() {
     if (!symbol || fundamentalStatus === "loading") return;
@@ -343,6 +364,7 @@ function StockWorkspace({
     setFundamentalStatus("idle");
     setFundamentalMessage("");
     setFundamentalsUpdatedAt(null);
+    setDeliveryStatus("idle"); setDeliveryMessage(""); setDeliveryHistory([]); setDeliveryUpdatedAt(null);
     setSymbol(next);
   }
 
@@ -486,6 +508,31 @@ function StockWorkspace({
               </div>
             )}
             {fundamentalsUpdatedAt && <span className="workspace-chart-note">Last refreshed: {fundamentalsUpdatedAt} · MarketSmith India</span>}
+          </section>
+
+          <section className="workspace-delivery-section" aria-live="polite">
+            <div className="workspace-chart-section-heading">
+              <div><div className="eyebrow">NSE DELIVERY ANALYSIS</div><h2>Delivery participation · 300-day history</h2></div>
+              <button type="button" className="screener-button" onClick={() => void fetchDeliveryHistory()} disabled={!symbol || deliveryStatus === "loading"}>{deliveryStatus === "loading" ? "Fetching NSE data…" : deliveryStatus === "ready" ? "Refresh delivery data" : "Fetch NSE delivery history"}</button>
+            </div>
+            <p className="workspace-chart-note">{deliveryMessage || "Fetches NSE price-volume-delivery observations on demand. Delivery and traded values use the desktop's five-session rolling average; delivery percentage is the reported daily value."}</p>
+            {deliveryHistory.length > 0 && (() => {
+              const latest = deliveryHistory[deliveryHistory.length - 1];
+              const previous = deliveryHistory.length > 1 ? deliveryHistory[deliveryHistory.length - 2] : null;
+              return <>
+                <div className="workspace-delivery-summary">
+                  <div><span>Latest delivery %</span><strong>{latest.deliveryPct.toFixed(2)}%</strong><small>{latest.date}</small></div>
+                  <div><span>5-session avg delivery value</span><strong>{latest.deliveryValueCr.toFixed(2)} Cr</strong><small>Rolling mean</small></div>
+                  <div><span>5-session avg traded value</span><strong>{latest.tradedValueCr.toFixed(2)} Cr</strong><small>Rolling mean</small></div>
+                  <div><span>Change vs prior session</span><strong>{previous ? (latest.deliveryPct - previous.deliveryPct >= 0 ? "+" : "") + (latest.deliveryPct - previous.deliveryPct).toFixed(2) + " pp" : "—"}</strong><small>Daily delivery percentage</small></div>
+                </div>
+                <div className="workspace-delivery-table-wrap"><table className="workspace-delivery-table">
+                  <thead><tr><th>Date</th><th>Delivery %</th><th>Avg delivery value (Cr)</th><th>Avg traded value (Cr)</th></tr></thead>
+                  <tbody>{deliveryHistory.slice(-12).reverse().map((point) => <tr key={point.date}><td>{point.date}</td><td>{point.deliveryPct.toFixed(2)}%</td><td>{point.deliveryValueCr.toFixed(2)}</td><td>{point.tradedValueCr.toFixed(2)}</td></tr>)}</tbody>
+                </table></div>
+                {deliveryUpdatedAt && <span className="workspace-chart-note">Last refreshed: {deliveryUpdatedAt} · Source: NSE India</span>}
+              </>;
+            })()}
           </section>
 
           <section className="workspace-chart-section">
