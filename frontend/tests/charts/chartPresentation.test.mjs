@@ -24,13 +24,26 @@ test("chart presentation sorts candles and exposes the latest close/previous clo
   assert.equal(view.previousClose, 102);
 });
 
-test("EMA overlays align to their source candle rather than the visible window start", () => {
+test("legacy SMA50 and EMA50 overlays align to their source candle before visible-window slicing", () => {
   const view = prepareChartView(candles(60), "1W", 15);
   assert.equal(view.points.length, 15);
-  assert.equal(view.points[0].ema20, 136.5);
+  assert.equal(view.points[0].sma50, null);
   assert.equal(view.points[0].ema50, null);
-  assert.equal(view.points.at(-1).ema20, 150.5);
-  assert.equal(view.points.at(-1).ema50, 135.5);
+  assert.equal(view.points[4].sma50, 125.5);
+  assert.equal(view.points[4].ema50, 125.5);
+  assert.equal(view.points.at(-1).sma50, 135.5);
+  assert.ok(view.points.at(-1).ema50 > 135.5);
+  assert.equal(view.points.at(-1).ema200, null);
+});
+
+test("legacy EMA200 starts at candle 200 and remains aligned after slicing", () => {
+  const view = prepareChartView(candles(240), "1D", 50);
+  assert.equal(view.points.length, 50);
+  assert.equal(view.points[0].ema200, null);
+  assert.equal(view.points[9].ema200, 200.5);
+  assert.equal(view.latestEma200, view.points.at(-1).ema200);
+  assert.equal(view.latestSma50, view.points.at(-1).sma50);
+  assert.equal(view.latestEma50, view.points.at(-1).ema50);
 });
 
 test("RSI-21 is calculated on the complete price history", () => {
@@ -39,9 +52,14 @@ test("RSI-21 is calculated on the complete price history", () => {
   assert.equal(view.latestRsi21, 99.01);
 });
 
-test("insufficient history keeps unavailable indicator values empty", () => {
+test("insufficient history keeps unavailable legacy indicators empty", () => {
   const view = prepareChartView(candles(10), "1D");
-  assert.ok(view.points.every((point) => point.ema20 === null && point.ema50 === null));
+  assert.ok(view.points.every((point) =>
+    point.sma50 === null && point.ema50 === null && point.ema200 === null
+  ));
+  assert.equal(view.latestSma50, null);
+  assert.equal(view.latestEma50, null);
+  assert.equal(view.latestEma200, null);
   assert.equal(view.latestRsi21, null);
 });
 

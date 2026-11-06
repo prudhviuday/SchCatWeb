@@ -86,11 +86,11 @@ function ChartGraphic({ points, title }: { points: ChartDisplayPoint[]; title: s
   const chartWidth = width - left - right;
   const highs = points.map((point) => point.high);
   const lows = points.map((point) => point.low);
-  const emaValues = points.flatMap((point) =>
-    [point.ema20, point.ema50].filter((value): value is number => value !== null)
+  const overlayValues = points.flatMap((point) =>
+    [point.sma50, point.ema50, point.ema200].filter((value): value is number => value !== null)
   );
-  const minimum = Math.min(...lows, ...emaValues);
-  const maximum = Math.max(...highs, ...emaValues);
+  const minimum = Math.min(...lows, ...overlayValues);
+  const maximum = Math.max(...highs, ...overlayValues);
   const spread = maximum - minimum || Math.max(1, Math.abs(maximum) * 0.02);
   const yMin = minimum - spread * 0.08;
   const yMax = maximum + spread * 0.08;
@@ -100,7 +100,7 @@ function ChartGraphic({ points, title }: { points: ChartDisplayPoint[]; title: s
   const xAt = (index: number) =>
     left + (points.length === 1 ? chartWidth / 2 : index * chartWidth / (points.length - 1));
   const candleWidth = Math.max(1.2, Math.min(7, chartWidth / points.length * 0.62));
-  const emaPath = (field: "ema20" | "ema50") =>
+  const indicatorPath = (field: "sma50" | "ema50" | "ema200") =>
     points
       .map((point, index) =>
         point[field] === null
@@ -170,16 +170,18 @@ function ChartGraphic({ points, title }: { points: ChartDisplayPoint[]; title: s
             </g>
           );
         })}
-        {emaPath("ema20").length > 1 && <polyline points={emaPath("ema20").join(" ")} className="chart-ema20" />}
-        {emaPath("ema50").length > 1 && <polyline points={emaPath("ema50").join(" ")} className="chart-ema50" />}
+        {indicatorPath("sma50").length > 1 && <polyline points={indicatorPath("sma50").join(" ")} className="chart-sma50" />}
+        {indicatorPath("ema50").length > 1 && <polyline points={indicatorPath("ema50").join(" ")} className="chart-ema50" />}
+        {indicatorPath("ema200").length > 1 && <polyline points={indicatorPath("ema200").join(" ")} className="chart-ema200" />}
         <text x={left} y={height - 8} className="chart-axis-label">{points[0].label}</text>
         <text x={width / 2} y={height - 8} textAnchor="middle" className="chart-axis-label">{middle.label}</text>
         <text x={width - right} y={height - 8} textAnchor="end" className="chart-axis-label">{last.label}</text>
         <text x={left} y={volumeTop - 10} className="chart-volume-label">VOLUME</text>
       </svg>
       <div className="workspace-chart-legend">
-        <span><i className="legend-ema20" /> EMA 20</span>
+        <span><i className="legend-sma50" /> SMA 50</span>
         <span><i className="legend-ema50" /> EMA 50</span>
+        <span><i className="legend-ema200" /> EMA 200</span>
         <span><i className="legend-bull" /> Up</span>
         <span><i className="legend-bear" /> Down</span>
       </div>
@@ -505,9 +507,11 @@ function StockWorkspace({
                   ? "Daily change unavailable"
                   : `${dailyChange >= 0 ? "+" : ""}${dailyChange.toFixed(2)} (${dailyChangePct >= 0 ? "+" : ""}${dailyChangePct.toFixed(2)}%) vs previous daily candle`}
               </div>
-              <div className="workspace-rsi">
-                <span>Daily RSI (21)</span>
-                <strong>{dailyView?.latestRsi21 === null || dailyView?.latestRsi21 === undefined ? "—" : dailyView.latestRsi21.toFixed(2)}</strong>
+              <div className="workspace-rsi" aria-label="Latest daily technical indicators">
+                <span>RSI 21 <strong>{dailyView?.latestRsi21 == null ? "—" : dailyView.latestRsi21.toFixed(2)}</strong></span>
+                <span>SMA 50 <strong>{dailyView?.latestSma50 == null ? "—" : formatPrice(dailyView.latestSma50)}</strong></span>
+                <span>EMA 50 <strong>{dailyView?.latestEma50 == null ? "—" : formatPrice(dailyView.latestEma50)}</strong></span>
+                <span>EMA 200 <strong>{dailyView?.latestEma200 == null ? "—" : formatPrice(dailyView.latestEma200)}</strong></span>
               </div>
             </section>
 
@@ -670,7 +674,7 @@ function StockWorkspace({
               </div>
             </div>
             <p className="workspace-chart-note">
-              Yahoo Finance via same-origin Worker · Last {visiblePoints} candles where available · Time labels use IST · EMA 20/50 overlays and volume
+              Yahoo Finance via same-origin Worker · Last {visiblePoints} candles where available · Time labels use IST · SMA 50, EMA 50/200, RSI 21 and volume
             </p>
             <div className="workspace-chart-grid">
               {TIMEFRAMES.map((timeframe) => {

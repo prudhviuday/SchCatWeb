@@ -532,3 +532,14 @@ Implemented on `main`:
 - Clicking any table row selects it for the detail/action panel. Double-clicking a non-Industry cell opens the stock workspace; double-clicking Industry performs the industry toggle.
 - Added parity tests for the full advanced-filter set, Acc/Dis coercion, industry restore behaviour and keyboard-to-watchlist mapping.
 - User testing remains necessary for the interactive browser workflow and live MarketSmith responses; CI covers deterministic logic and build only.
+
+
+## Step 37 — Chart and indicator parity (2026-11-06)
+
+- Re-checked the original `CRIP4/app.js` chart-data route and `CRIP4/indicators.js`. The standard route calculates SMA 50, EMA 50, EMA 200, RSI 21 and legacy ULTM 12/120 on each candle series.
+- Replaced the web chart's non-legacy EMA 20 overlay with the original SMA 50 overlay and added the missing EMA 200 overlay. EMA 50 remains. The chart legend, axis scaling and latest daily indicator summary now use the legacy moving-average set.
+- Moving averages are calculated against the complete chronological candle history and aligned to their original candle indexes before the visible 100/200/500-candle window is sliced. This avoids restarting indicators at the left edge of the visible chart.
+- RSI 21 remains calculated from the complete daily close history and is shown alongside the latest SMA 50, EMA 50 and EMA 200 values. Insufficient history shows an unavailable marker rather than fabricated averages.
+- ULTM 12/120 remains covered by the Step 10 parity tests, including its original unaligned-array/invalid-tail behaviour. It is not presented as a reliable visual indicator because the legacy implementation emits invalid tail values; changing that formula would require a separately reviewed behavior change.
+- Added chart-presentation tests for SMA 50, EMA 50 and EMA 200 source positions, full-history calculation, visible-window alignment and insufficient-history handling.
+- Deterministic CI does not confirm live Yahoo access from the Cloudflare origin or prove that the latest commit has been published.

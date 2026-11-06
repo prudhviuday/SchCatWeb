@@ -1,18 +1,23 @@
 import type { ChartCandle, ChartTimeframe } from "../../data/providers/chartData.js";
 import {
   calculateEma,
-  calculateRsi
+  calculateRsi,
+  calculateSma
 } from "../../domain/analysis/technicalIndicators.js";
 
 export interface ChartDisplayPoint extends ChartCandle {
   label: string;
-  ema20: number | null;
+  sma50: number | null;
   ema50: number | null;
+  ema200: number | null;
 }
 
 export interface ChartView {
   points: ChartDisplayPoint[];
   latestRsi21: number | null;
+  latestSma50: number | null;
+  latestEma50: number | null;
+  latestEma200: number | null;
   latestClose: number | null;
   previousClose: number | null;
 }
@@ -39,9 +44,10 @@ export function formatChartTime(time: number, timeframe: ChartTimeframe): string
 }
 
 /**
- * Prepare the most recent N candles for the SVG chart while calculating EMA20,
- * EMA50 and RSI-21 against the complete history. The EMA overlays retain
- * their correct original candle positions after the visible-range slice.
+ * Prepare the most recent N candles for the SVG chart while calculating the
+ * legacy chart-route indicators (SMA50, EMA50, EMA200 and RSI-21) against the
+ * complete history. Each moving average retains its source candle position
+ * after visible-range slicing; unavailable early values remain null.
  */
 export function prepareChartView(
   candles: readonly ChartCandle[],
@@ -54,12 +60,21 @@ export function prepareChartView(
 
   const ordered = [...candles].sort((a, b) => a.time - b.time);
   if (ordered.length === 0) {
-    return { points: [], latestRsi21: null, latestClose: null, previousClose: null };
+    return {
+      points: [],
+      latestRsi21: null,
+      latestSma50: null,
+      latestEma50: null,
+      latestEma200: null,
+      latestClose: null,
+      previousClose: null
+    };
   }
 
   const closes = ordered.map((candle) => candle.close);
-  const ema20 = alignIndicator(calculateEma(closes, 20), ordered.length, 20);
+  const sma50 = alignIndicator(calculateSma(closes, 50), ordered.length, 50);
   const ema50 = alignIndicator(calculateEma(closes, 50), ordered.length, 50);
+  const ema200 = alignIndicator(calculateEma(closes, 200), ordered.length, 200);
   const rsi = calculateRsi(closes, 21);
   const startIndex = Math.max(0, ordered.length - maxPoints);
 
@@ -68,14 +83,18 @@ export function prepareChartView(
     return {
       ...candle,
       label: formatChartTime(candle.time, timeframe),
-      ema20: ema20[originalIndex],
-      ema50: ema50[originalIndex]
+      sma50: sma50[originalIndex],
+      ema50: ema50[originalIndex],
+      ema200: ema200[originalIndex]
     };
   });
 
   return {
     points,
     latestRsi21: rsi.length > 0 ? rsi[rsi.length - 1] : null,
+    latestSma50: sma50[ordered.length - 1],
+    latestEma50: ema50[ordered.length - 1],
+    latestEma200: ema200[ordered.length - 1],
     latestClose: ordered[ordered.length - 1].close,
     previousClose: ordered.length > 1 ? ordered[ordered.length - 2].close : null
   };

@@ -760,13 +760,15 @@ h2 { font-size: 17px; letter-spacing: -.3px; font-weight: 600; margin: 7px 0 0; 
 .chart-candle-bear { fill: #c85e64; stroke: #e17b7e; stroke-width: .5; }
 .chart-volume-bull { fill: #36a879; opacity: .42; }
 .chart-volume-bear { fill: #c85e64; opacity: .42; }
-.chart-ema20 { fill: none; stroke: #e5a64e; stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; }
+.chart-sma50 { fill: none; stroke: #e5a64e; stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; }
 .chart-ema50 { fill: none; stroke: #65a6da; stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; }
+.chart-ema200 { fill: none; stroke: #bd8be7; stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; }
 .workspace-chart-legend { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 12px; padding: 3px 4px 0; }
 .workspace-chart-legend span { display: flex; align-items: center; gap: 5px; color: #77879b; font-size: 8px; }
 .workspace-chart-legend i { display: inline-block; width: 13px; height: 2px; border-radius: 2px; }
-.legend-ema20 { background: #e5a64e; }
+.legend-sma50 { background: #e5a64e; }
 .legend-ema50 { background: #65a6da; }
+.legend-ema200 { background: #bd8be7; }
 .legend-bull { background: #36a879; }
 .legend-bear { background: #c85e64; }
 .workspace-chart-empty, .workspace-chart-failure {
@@ -817,8 +819,9 @@ h2 { font-size: 17px; letter-spacing: -.3px; font-weight: 600; margin: 7px 0 0; 
   .workspace-chart-card-heading { padding: 9px 10px; }
 }
 
-.workspace-rsi { display: flex; align-items: center; gap: 9px; margin-top: 12px; color: #8696aa; font-size: 10px; }
-.workspace-rsi strong { color: #e5a64e; font-size: 12px; font-variant-numeric: tabular-nums; }
+.workspace-rsi { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-top: 12px; color: #8696aa; font-size: 9px; }
+.workspace-rsi span { white-space: nowrap; }
+.workspace-rsi strong { color: #e5a64e; margin-left: 3px; font-size: 10px; font-variant-numeric: tabular-nums; }
 
 
 /* Step 14: Industry Analysis */
