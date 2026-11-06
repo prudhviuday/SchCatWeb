@@ -76,10 +76,17 @@ test("all published reference datasets load and agree with their manifest", asyn
   assert.match(universe.freshness, /Static snapshot/);
 });
 
-test("Cloudflare deployment remains static-only and points at the production build", async () => {
+test("Cloudflare deploys the provider API Worker with the SPA static asset binding", async () => {
   const config = await readFile(new URL("../../../wrangler.toml", import.meta.url), "utf8");
+  const worker = await readFile(new URL("../../../worker/index.js", import.meta.url), "utf8");
+  assert.match(config, /^main\s*=\s*["']worker\/index\.js["']/m);
   assert.match(config, /directory\s*=\s*["']\.\/frontend\/dist["']/);
+  assert.match(config, /binding\s*=\s*["']ASSETS["']/);
   assert.match(config, /not_found_handling\s*=\s*["']single-page-application["']/);
-  assert.doesNotMatch(config, /^\s*main\s*=/m);
+  assert.match(config, /run_worker_first\s*=\s*\[["']\/api\/\*["']\]/);
+  assert.match(worker, /\/api\/yahoo\/chart/);
+  assert.match(worker, /\/api\/marketsmith\/finance/);
+  assert.match(worker, /\/api\/chartink\/scan/);
+  assert.match(worker, /\/api\/nse\/delivery/);
   assert.doesNotMatch(config, /^\s*\[\[?r2_buckets\]?\]/m);
 });
