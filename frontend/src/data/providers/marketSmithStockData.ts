@@ -1,4 +1,4 @@
-import { calculateEarningsSalesScore, normalizeSeries } from "../../domain/analysis/fundamentalMetrics.js";
+import { calculateEarningsSalesScore, clampQuarterlyGrowth, normalizeSeries } from "../../domain/analysis/fundamentalMetrics.js";
 import {
   getMarketSmithId,
   type MarketSmithIdMap
@@ -20,6 +20,7 @@ export interface MarketSmithLiveMetrics {
   livePb: number | null;
   cashFlow: number | null;
   currentPrice: number | null;
+  quarterlyGrowth: MarketSmithQuarterlyGrowthPoint[];
 }
 
 export interface MarketSmithAnnualEpsPoint {
@@ -112,10 +113,19 @@ export function parseMarketSmithStockMetrics(payload: unknown): MarketSmithLiveM
 
   const pe = Math.trunc(finiteNumber(header.pe) ?? 0);
   const growthRaw = headerBlock.epsGrowthRate;
-  const quarterlyGrowth = quarters.slice(0, 3).map((quarter) => ({
-    epsPct: finiteNumber(quarter.epsPct) ?? 0,
-    salesPct: finiteNumber(quarter.salesPct) ?? 0
-  }));
+  const quarterlyGrowth = quarters.map((quarter) => {
+    const year = textValue(quarter.prdYear) ?? "";
+    const quarterName = textValue(quarter.prdQuarter) ?? "";
+    return {
+      period: [year, quarterName].filter(Boolean).join(" "),
+      epsPct: clampQuarterlyGrowth(finiteNumber(quarter.epsPct)),
+      salesPct: clampQuarterlyGrowth(finiteNumber(quarter.salesPct))
+    };
+  });
+  const score = calculateEarningsSalesScore(quarters.slice(0, 3).map((quarter) => ({
+    epsPct: finiteNumber(quarter.epsPct),
+    salesPct: finiteNumber(quarter.salesPct)
+  })));
 
   return {
     groupRank: finiteNumber(header.industryGroupRank),
@@ -125,13 +135,14 @@ export function parseMarketSmithStockMetrics(payload: unknown): MarketSmithLiveM
     accDis: textValue(header.accDisRating),
     pe,
     peg: pythonCompatiblePeg(pe, growthRaw),
-    fScore: calculateEarningsSalesScore(quarterlyGrowth),
+    fScore: score,
     roe: finiteNumber(header.roe),
     epsGrowth: finiteNumber(growthRaw),
     stability: finiteNumber(headerBlock.earningsStability),
     livePb: finiteNumber(headerBlock.bookVal),
     cashFlow: finiteNumber(headerBlock.cashFlow),
-    currentPrice: finiteNumber(header.currentPrice)
+    currentPrice: finiteNumber(header.currentPrice),
+    quarterlyGrowth
   };
 }
 
