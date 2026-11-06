@@ -74,12 +74,17 @@ export function createPortfolioHolding(
 export function validatePortfolioHoldings(value: unknown): PortfolioHolding[] {
   if (!Array.isArray(value)) throw new TypeError("Portfolio data must be an array of holdings.");
   const seen = new Set<string>();
+  const symbols = new Set<string>();
   return value.map((item, index) => {
     if (!item || typeof item !== "object") throw new TypeError("Holding " + (index + 1) + " is invalid.");
-    const row = item as Record<string, unknown>;
+    const row = (Array.isArray(item)
+      ? { symbol: item[0], quantity: item[1], buyPrice: item[2] }
+      : item) as Record<string, unknown>;
     const symbol = normalizePortfolioSymbol(row.symbol ?? row.stock ?? row.Stock);
     const quantity = finitePositive(row.quantity ?? row.qty ?? row.Qty, "Quantity for " + symbol);
     const buyPrice = finitePositive(row.buyPrice ?? row.buy_price ?? row["Buy price"], "Buy price for " + symbol);
+    if (symbols.has(symbol)) throw new TypeError("Duplicate portfolio symbol: " + symbol);
+    symbols.add(symbol);
     const idValue = typeof row.id === "string" && row.id.trim() ? row.id.trim() : "holding-" + (index + 1) + "-" + symbol;
     if (seen.has(idValue)) throw new TypeError("Duplicate holding ID: " + idValue);
     seen.add(idValue);
