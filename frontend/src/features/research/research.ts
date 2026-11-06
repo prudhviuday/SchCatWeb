@@ -126,13 +126,19 @@ export function parseCsvTable(input: string): CsvTable {
   return { headers, rows: dataRows };
 }
 
-function columnIndex(headers: readonly string[], candidates: readonly string[]): number {
+function columnIndices(headers: readonly string[], candidates: readonly string[]): number[] {
   const byName = new Map(headers.map((header, index) => [canonicalHeader(header), index]));
-  for (const candidate of candidates) {
-    const found = byName.get(candidate.toLocaleLowerCase());
-    if (found !== undefined) return found;
+  return candidates
+    .map((candidate) => byName.get(candidate.toLocaleLowerCase()))
+    .filter((index): index is number => index !== undefined);
+}
+
+function firstNonEmptyCell(row: readonly string[], indices: readonly number[]): string {
+  for (const index of indices) {
+    const value = row[index]?.trim() ?? "";
+    if (value) return value;
   }
-  return -1;
+  return "";
 }
 
 export function parsePerformanceCsv(input: string): string[] {
@@ -151,15 +157,15 @@ export function parsePerformanceCsv(input: string): string[] {
 
 export function parseQueriesCsv(input: string): ResearchQuery[] {
   const table = parseCsvTable(input);
-  const nameColumn = columnIndex(table.headers, ["queryname", "name"]);
-  const codeColumn = columnIndex(table.headers, ["querycode", "query"]);
-  if (nameColumn < 0 || codeColumn < 0) {
+  const nameColumns = columnIndices(table.headers, ["queryname", "name"]);
+  const codeColumns = columnIndices(table.headers, ["querycode", "query"]);
+  if (nameColumns.length === 0 || codeColumns.length === 0) {
     throw new TypeError("Queries CSV must contain QueryName/Name and QueryCode/Query columns");
   }
 
   const queries = table.rows.map((row) => ({
-    name: row[nameColumn].trim() || "Unnamed",
-    code: row[codeColumn].trim()
+    name: firstNonEmptyCell(row, nameColumns) || "Unnamed",
+    code: firstNonEmptyCell(row, codeColumns)
   })).filter((query) => query.code.length > 0);
 
   if (queries.length === 0) {
