@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { MarketUniverseRecord } from "../../data/reference/marketUniverse";
 import { loadMarketUniverse } from "../../data/reference/marketUniverse";
+import { readStoredMarketSmithAuth } from "../../data/providers/providerDiagnostics";
+import { runLiveIndustryAnalysis } from "./industryLive";
 import {
   buildIndustryReferenceSummaries,
   filterIndustrySummaries,
@@ -112,6 +114,11 @@ function IndustryAnalysis({
   const [savedResults, setSavedResults] = useState<LegacyIndustryResult[]>([]);
   const [importError, setImportError] = useState("");
   const [importLabel, setImportLabel] = useState("");
+  const [liveRunning, setLiveRunning] = useState(false);
+  const [liveProgress, setLiveProgress] = useState({ completed: 0, total: 0, symbol: "" });
+  const [liveError, setLiveError] = useState("");
+  const [liveFailures, setLiveFailures] = useState<Array<{ symbol: string; message: string }>>([]);
+  const [liveResultIndustries, setLiveResultIndustries] = useState<string[]>([]);
   const fileInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -145,6 +152,41 @@ function IndustryAnalysis({
   const totalStocks = summaries.reduce((sum, item) => sum + item.stockCount, 0);
   const importedCount = savedResults.length;
 
+  async function runSelectedIndustryLive() {
+    if (!activeIndustry || liveRunning) return;
+    setLiveError("");
+    setLiveFailures([]);
+    const auth = readStoredMarketSmithAuth();
+    if (!auth) {
+      setLiveError("A MarketSmith session is required. Open Provider Diagnostics, save your current ms-auth value, then return here.");
+      return;
+    }
+    setLiveRunning(true);
+    setLiveProgress({ completed: 0, total: activeIndustry.stocks.length, symbol: "" });
+    try {
+      const live = await runLiveIndustryAnalysis(activeIndustry.industry, activeIndustry.stocks, auth, {
+        concurrency: 3,
+        onProgress: (progress) => setLiveProgress(progress)
+      });
+      setSavedResults((current) => [
+        ...current.filter((item) => item.industry !== live.result.industry),
+        live.result
+      ].sort((left, right) => left.industry.localeCompare(right.industry)));
+      setLiveResultIndustries((current) => [...new Set([...current, live.result.industry])]);
+      setLiveFailures(live.failures);
+      setImportLabel("Live run · " + new Date().toLocaleString("en-IN"));
+      if (live.successfulStocks === 0) {
+        setLiveError("No constituents completed all four provider requests. Check the failure list and Provider Diagnostics.");
+      } else if (live.failures.length > 0) {
+        setLiveError(`Completed with partial coverage: ${live.successfulStocks}/${live.total} stocks contributed.`);
+      }
+    } catch (error) {
+      setLiveError(error instanceof Error ? error.message : "Live industry analysis failed");
+    } finally {
+      setLiveRunning(false);
+    }
+  }
+
   async function importFile(file?: File) {
     if (!file) return;
     setImportError("");
@@ -152,6 +194,9 @@ function IndustryAnalysis({
       const raw: unknown = JSON.parse(await file.text());
       const parsed = parseLegacyIndustryResults(raw);
       setSavedResults(parsed);
+      setLiveResultIndustries([]);
+      setLiveFailures([]);
+      setLiveError("");
       setImportLabel(file.name);
     } catch (error) {
       setImportError(error instanceof Error ? error.message : "Unable to read industry results file");
@@ -195,12 +240,11 @@ function IndustryAnalysis({
       </div>
 
       <section className="industry-provider-notice">
-        <strong>Live analysis is not enabled yet.</strong>
+        <strong>Live analysis uses your saved MarketSmith session.</strong>
         <span>
-          The desktop calculation needs MarketSmith institutional value and relative-strength data, Yahoo weekly close×volume, and NSE delivery/traded data.
-          Browser-origin provider access has not been verified. This screen will not substitute zeros, stale values or synthetic series.
+          Run one selected industry at a time. Each constituent is included only when MarketSmith institutional value and RS, Yahoo weekly close×volume, and NSE delivery/traded data all return successfully. Failed stocks are listed separately; missing provider data is never replaced with zero.
         </span>
-        <a href="/?diagnostics=providers">Open provider diagnostics ↗</a>
+        <a href="/?diagnostics=providers">Manage provider session ↗</a>
       </section>
 
       <section className="industry-toolbar">
@@ -210,13 +254,20 @@ function IndustryAnalysis({
         </label>
         <div className="industry-import-status">
           {importedCount > 0
-            ? <><strong>{importedCount} saved industries loaded</strong><span>{importLabel} · local to this browser session</span></>
-            : <><strong>No saved analysis loaded</strong><span>Import a five-series JSON file produced by the desktop application.</span></>}
+            ? <><strong>{importedCount} industry results available</strong><span>{importLabel} · local to this browser session</span></>
+            : <><strong>No analysis results yet</strong><span>Run a live analysis or import a five-series desktop JSON file.</span></>}
         </div>
       </section>
 
       {importError && <div className="screener-error" role="alert">{importError}</div>}
       {loadError && <div className="screener-error" role="alert">{loadError}</div>}
+      {liveError && <div className="screener-error" role="status">{liveError}</div>}
+      {liveFailures.length > 0 && (
+        <details className="industry-live-failures">
+          <summary>{liveFailures.length} constituent provider failure(s)</summary>
+          <ul>{liveFailures.map((failure) => <li key={failure.symbol}><strong>{failure.symbol}</strong> — {failure.message}</li>)}</ul>
+        </details>
+      )}
 
       <div className="industry-layout">
         <aside className="industry-list-panel">
@@ -248,6 +299,10 @@ function IndustryAnalysis({
                   <div className="eyebrow">SELECTED INDUSTRY</div>
                   <h2>{activeIndustry.industry}</h2>
                   <p>{activeIndustry.stockCount} stocks in the imported reference universe</p>
+                  <button type="button" className="screener-button" onClick={() => void runSelectedIndustryLive()} disabled={liveRunning}>
+                    {liveRunning ? `Analyzing ${liveProgress.completed}/${liveProgress.total}…` : "Run live analysis"}
+                  </button>
+                  {liveRunning && <small className="screener-muted">Latest completed: {liveProgress.symbol || "Preparing requests"}</small>}
                 </div>
                 <div className="industry-overview-metrics">
                   <div><span>Stocks</span><strong>{activeIndustry.stockCount}</strong></div>
@@ -273,13 +328,13 @@ function IndustryAnalysis({
 
               <section className="industry-history-section">
                 <div className="industry-panel-heading">
-                  <div><div className="eyebrow">SAVED INDUSTRY SERIES</div><h3>{activeSavedResult ? "Imported historical analysis" : "No historical result for this industry"}</h3></div>
-                  {activeSavedResult && <span className="industry-saved-tag">Loaded JSON</span>}
+                  <div><div className="eyebrow">INDUSTRY SERIES</div><h3>{activeSavedResult ? (liveResultIndustries.includes(selectedIndustry) ? "Latest live analysis" : "Imported historical analysis") : "No result for this industry"}</h3></div>
+                  {activeSavedResult && <span className="industry-saved-tag">{liveResultIndustries.includes(selectedIndustry) ? "Live run" : "Loaded JSON"}</span>}
                 </div>
                 <div className="industry-measure-notes">
                   <span>Institutional measure = institutional shares × stock price / 1bn (not ownership %).</span>
                   <span>“Close × volume” is a turnover proxy (not revenue).</span>
-                  <span>Imported legacy arrays do not include dates; x-axes are observation indexes, not calendar dates.</span>
+                  <span>Provider series are aggregated by legacy positional alignment; x-axes are observation indexes, not calendar dates.</span>
                 </div>
                 <div className="industry-series-grid">
                   <SeriesChart
@@ -313,7 +368,7 @@ function IndustryAnalysis({
       <footer className="industry-disclaimer">
         * Market Cap values come from an undated source workbook and are reference-only. Saved series are imported from a local JSON file and are not sent to a server.
       </footer>
-      <footer className="page-footer">SCHCATWEB <span>·</span> INDUSTRY ANALYSIS <span>·</span> STEP 14</footer>
+      <footer className="page-footer">SCHCATWEB <span>·</span> INDUSTRY ANALYSIS <span>·</span> STEP 33</footer>
     </div>
   );
 }

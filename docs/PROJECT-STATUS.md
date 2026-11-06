@@ -478,3 +478,19 @@ CI must pass before considering Step 31 verified. Actual MarketSmith responses a
 **User test:** open Stock Screener, save a query with a name and a valid ChartInk clause (symbols may be left blank), click **Run scan**, and confirm that the returned symbol count appears and the screener filters to those matches. Try two saved scans together to confirm AND intersection. If ChartInk rejects the upstream request, the UI shows the Worker error and keeps the prior results.
 
 **Provider boundary:** unit and Worker-mock tests prove request handling, not live ChartInk availability from Cloudflare. Confirm a successful ChartInk row count on the deployed site before treating the provider as operational.
+
+
+## Step 33 — Live Industry Analysis
+
+Implemented on `main`:
+- Added `frontend/src/features/industry/industryLive.ts` to run the legacy `IndustryWorker` workflow for the currently selected industry only.
+- Reuses the existing same-origin providers: MarketSmith symbol details for institutional value, MarketSmith relative-strength history, Yahoo weekly candles for the latest 30 close×volume observations, and NSE historical delivery/traded data (including the existing five-session rolling calculation).
+- Uses the saved MarketSmith session from Provider Diagnostics; no credentials are embedded in source, no new Worker route is added, and no data is uploaded or persisted.
+- Runs at most three constituents concurrently. Each constituent contributes only if all four provider requests succeed; failures are reported by symbol rather than silently converted to zero.
+- Preserves legacy first-value left-padding for institutional/close-volume/RS series, zero-padding for delivery/traded series, market-cap weighting of each stock RS series, and the legacy market-cap denominator (including the initial +1 and missing-cap fallback).
+- Live results appear in the existing four charts and can be exported in the desktop-compatible five-array JSON format. Imported results remain supported.
+- The charts use positional observation indexes because the desktop aggregation aligns series by array position and does not emit a common date axis.
+
+**User test:** deploy the latest main commit, open Industry Analysis, save a valid MarketSmith session in Provider Diagnostics if not already saved, select a small industry and click **Run live analysis**. Confirm progress reaches the constituent count, four charts populate, and any provider failures are listed by symbol. Export JSON and re-import it to confirm desktop format compatibility. Try a second industry to confirm the previous result remains available.
+
+**Provider boundary:** CI tests use deterministic provider stubs. A successful real run still depends on current MarketSmith session validity and live Yahoo/NSE/MarketSmith availability from the Cloudflare Worker. Do not treat CI as proof of provider availability or Cloudflare publication.
