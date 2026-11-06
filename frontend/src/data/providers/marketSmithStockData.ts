@@ -21,6 +21,8 @@ export interface MarketSmithLiveMetrics {
   cashFlow: number | null;
   currentPrice: number | null;
   quarterlyGrowth: MarketSmithQuarterlyGrowthPoint[];
+  institutionalOwnership: MarketSmithInstitutionPoint[];
+  institutionalCost: MarketSmithInstitutionPoint[];
 }
 
 export interface MarketSmithAnnualEpsPoint {
@@ -29,7 +31,7 @@ export interface MarketSmithAnnualEpsPoint {
   normalized: number | null;
 }
 
-export interface MarketSmithQuarterlyGrowthPoint {
+export interface MarketSmithInstitutionPoint {\n  period: string;\n  value: number;\n  normalized: number | null;\n}\n\nexport interface MarketSmithQuarterlyGrowthPoint {
   period: string;
   epsPct: number;
   salesPct: number;
@@ -130,6 +132,29 @@ export function parseMarketSmithStockMetrics(payload: unknown): MarketSmithLiveM
       salesPct: clampQuarterlyGrowth(finiteNumber(quarter.salesPct))
     };
   });
+  const institutionBlock = asRecord(response.quarterlySalesAndEarningsInternational);
+  const institutionRows = Array.isArray(institutionBlock?.quarterlySalesAndEarningsOrigin)
+    ? institutionBlock.quarterlySalesAndEarningsOrigin.map(asRecord).filter((item): item is Record<string, unknown> => item !== null)
+    : [];
+  const currentPrice = Math.trunc(finiteNumber(header.currentPrice) ?? 0);
+  const institutionChronological = institutionRows.slice().reverse().map((item) => ({
+    period: "01-" + (textValue(item.prdYear) ?? ""),
+    shares: finiteNumber(item.totSharesHeldByFunds) ?? 0
+  }));
+  const ownershipValues = institutionChronological.map((item) => item.shares);
+  let ownershipIndices: number[] = [];
+  if (ownershipValues.length > 1) {
+    try { ownershipIndices = normalizeSeries(ownershipValues); } catch { ownershipIndices = []; }
+  }
+  const institutionalOwnership = institutionChronological.map((item, index) => ({
+    period: item.period, value: item.shares, normalized: ownershipIndices[index] ?? null
+  }));
+  const institutionalCost = institutionChronological.map((item) => ({
+    period: item.period,
+    value: Math.trunc(item.shares * currentPrice / 1_000_000_000),
+    normalized: null
+  }));
+
   const score = calculateEarningsSalesScore(quarters.slice(0, 3).map((quarter) => ({
     epsPct: finiteNumber(quarter.epsPct),
     salesPct: finiteNumber(quarter.salesPct)
