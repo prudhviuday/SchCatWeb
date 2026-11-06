@@ -26,7 +26,7 @@ This is the durable source of truth for continuing the SchCat migration. In a ne
 - Node/npm are development/build tools only. No always-on Node server or Python runtime is required for the current Cloudflare deployment.
 - This is not a VPN. No VPN/proxy configuration was found in the inspected legacy Node service; it used server-side `got` and Python `requests` calls. Cloudflare Workers can still be blocked by provider-side IP, authentication or anti-bot controls. If that happens, assess a separately hosted Node service with an approved network route.
 - No database or R2 bucket is required. The earlier Hono/R2 implementation was exploratory and superseded.
-- Never expose private API keys, session cookies or MarketSmith authentication values in frontend code or committed source. The Worker accepts `MARKETSMITH_FINANCE_AUTH` and `MARKETSMITH_SYMBOL_AUTH` secrets, with shared `MARKETSMITH_AUTH` as fallback. Use current authorized session values; legacy hard-coded values may be expired.
+- Never commit private API keys, session cookies or MarketSmith authentication values. The diagnostics page stores the user's current MarketSmith value in browser `localStorage` and sends it to the Worker only in the `x-marketsmith-auth` request header. The Worker-secret variables remain an optional backward-compatible fallback, not a setup requirement. Use a current authorized session value; legacy hard-coded values may be expired.
 
 ## Deployment configuration
 
@@ -121,19 +121,19 @@ Not included in this pass: provider requests, UI wiring, chart indicators, deliv
 
 Implemented on `main`:
 - Source audit confirmed the desktop split: `CRIP4/public/Tools/fixer.js` uses Node `got` for Yahoo chart data and MarketSmith weekly data; `util.py` uses Python `requests` for MarketSmith finance/symbol details and NSE delivery; `chartink.py` uses a persistent `requests.Session()` for ChartInk CSRF + scan POST.
-- `worker/index.js` exposes fixed same-origin routes for all four providers. MarketSmith auth values are accepted only as Cloudflare Worker secrets, never as frontend query strings or source constants.
+- `worker/index.js` exposes fixed same-origin routes for all four providers. MarketSmith accepts the browser-local session value through the `x-marketsmith-auth` request header (not a browser query parameter); optional Worker-secret fallback remains for older deployments.
 - ChartInk retains the legacy CSRF bootstrap, session-cookie forwarding and scan POST flow. Market Pulse continues to use this route.
 - NSE now bootstraps the NSE homepage and forwards its anonymous session cookie before requesting historical delivery data; if bootstrap fails, it falls back to the legacy direct API request shape.
 - Yahoo chart requests now use `/api/yahoo/chart` from the browser, while the Worker contacts Yahoo server-side using browser-like request headers.
 - Provider diagnostics now exercise the same-origin Worker routes for Yahoo, MarketSmith finance/symbol, ChartInk and NSE. They report the Worker/upstream result rather than an external-provider CORS error.
-- MarketSmith symbol-details now matches the user-supplied working URL shape: `marketsmithindia.com/.../symboldetails.json`, `isConsolidated=1`, `lang=en`, symbol text, and a rolling five-year `s/e` range. The diagnostic UI loads `marketSmithIds.json` and resolves the entered symbol to its instrument ID (RVNL → 3159563) rather than asking the user to type an ID. The current `ms-auth` value remains a Cloudflare Worker secret (`MARKETSMITH_SYMBOL_AUTH` or shared `MARKETSMITH_AUTH`); finance can use `MARKETSMITH_FINANCE_AUTH` or the shared fallback. Never commit the auth value.
+- MarketSmith symbol-details now matches the user-supplied working URL shape: `marketsmithindia.com/.../symboldetails.json`, `isConsolidated=1`, `lang=en`, symbol text, and a rolling five-year `s/e` range. The diagnostic UI loads `marketSmithIds.json` and resolves the entered symbol to its instrument ID (RVNL → 3159563) rather than asking the user to type an ID. The diagnostics page accepts the current `ms-auth` value or the full working URL, saves it in browser `localStorage`, and supplies it to both finance and symbol requests through the Worker header. No Cloudflare secret is required for this flow; optional legacy Worker-secret fallback remains available.
 - Provider request URL, parameter, and CSRF parser tests are in `frontend/tests/providers/providerDiagnostics.test.mjs`, run with `npm run test:providers`.
 
 Verification:
 - GitHub Actions passed on commit `a2f16a3ae211520b39d4b3d264b7d83a1b31d142`: calculation tests, provider request-shape tests, TypeScript/Vite production build and static output checks.
 - The earlier direct-browser tests returned browser-blocked for Yahoo, MarketSmith, ChartInk and NSE. That is expected when the providers do not grant this website CORS access; it does not mean their server-side APIs are unavailable.
 - The Worker-backed code changes are committed on `main`. The latest successful CI run validates the MarketSmith endpoint URL/parameters, rolling date range, diagnostic symbol-to-ID lookup compile, provider tests, production build and Worker integration tests. After Cloudflare deploys the latest commit, open `https://schcatweb.prudhvi123143.workers.dev/?diagnostics=providers` and click **Run server-side diagnostics**.
-- If MarketSmith reports `marketsmith_auth_not_configured`, configure current authorized endpoint-specific Cloudflare secrets. If Yahoo, ChartInk or NSE returns an upstream HTTP/network error, use that actual upstream response to decide the next provider-specific fix.
+- If MarketSmith reports that no browser value was supplied, enter the current `ms-auth` value on the diagnostics page, save it in this browser, and rerun the checks. If Yahoo, ChartInk, MarketSmith or NSE returns an upstream HTTP/network error, use that actual upstream response to decide the next provider-specific fix.
 
 ## Step 9 — Chart data workflow and CRIP4 chart transforms (in progress)
 
@@ -280,7 +280,7 @@ Implemented on `main`:
 - Market Pulse's ChartInk widget request continues through the Worker, including CSRF bootstrap and short-lived session-cookie forwarding server-side, because that path is confirmed to return 3,000 rows.
 - The last live diagnostic results were MarketSmith HTTP 403 on both endpoints, ChartInk Worker HTTP 200 (3,000 rows), NSE Worker HTTP 520 and Yahoo HTTP 200. These are observed results, not assumptions about the new direct-browser probes.
 - The Worker validates symbols, stock IDs, intervals, ranges and NSE dates; applies 12-second upstream timeouts; uses short edge caching for successful read-only GETs; and does not cache ChartInk POSTs.
-- No arbitrary URL proxy, database, R2 bucket, committed credential or frontend cookie access has been introduced. An optional `MARKETSMITH_AUTH` Cloudflare secret can be configured if a valid authorized value is available.
+- No arbitrary URL proxy, database, R2 bucket or committed credential has been introduced. The MarketSmith session value is stored in browser-local storage and passed per request; no Cloudflare secret is required. An optional legacy `MARKETSMITH_AUTH` secret remains supported for backward compatibility.
 - Integration tests cover health, Yahoo routing and validation, MarketSmith URL construction, ChartInk CSRF/session flow, safe redirect handling, invalid request bodies, static asset forwarding, unknown API routes and Wrangler configuration.
 - CI now runs `npx --yes wrangler deploy --dry-run --config ./wrangler.toml` after the frontend build to verify that Cloudflare can bundle the Worker and static assets before a real deployment.
 
