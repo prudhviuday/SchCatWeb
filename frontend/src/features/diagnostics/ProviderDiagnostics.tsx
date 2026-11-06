@@ -125,7 +125,7 @@ function ProviderDiagnostics() {
       <section className="diagnostics-explainer">
         <h2>What this test checks</h2>
         <p>
-          MarketSmith finance and symbol endpoints, the ChartInk CSRF + scan flow, NSE historical delivery data, and Yahoo chart data.
+          Worker health and route inventory, MarketSmith finance/symbol/relative-strength endpoints, the ChartInk CSRF + scan flow, NSE historical delivery data, and Yahoo chart data.
           The browser only talks to SchCatWeb; provider cookies and upstream requests stay inside the Worker.
         </p>
         <p>
@@ -133,7 +133,7 @@ function ProviderDiagnostics() {
           It is saved only in this browser and supplied to the SchCatWeb Worker for each MarketSmith request.
         </p>
         <p>
-          The results now include the upstream HTTP response returned by the Worker. This separates provider restrictions (401/403/520) from a failure to reach SchCatWeb itself.
+          Results distinguish the Worker HTTP status from the upstream provider status. A green check now requires the expected JSON fields, not merely HTTP 200.
         </p>
       </section>
 
@@ -225,7 +225,8 @@ function ProviderDiagnostics() {
               </div>
               <p>{result.message}</p>
               <div className="diagnostic-meta">
-                {result.httpStatus !== undefined && <span>HTTP {result.httpStatus}</span>}
+                {result.httpStatus !== undefined && <span>Worker HTTP {result.httpStatus}</span>}
+                {result.upstreamStatus !== undefined && <span>Upstream HTTP {result.upstreamStatus}</span>}
                 <span>{result.elapsedMs} ms</span>
               </div>
             </article>

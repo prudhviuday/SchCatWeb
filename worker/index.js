@@ -392,8 +392,16 @@ async function handleApi(request, env) {
     return json({
       ok: true,
       service: "schcatweb-api",
-      version: "1",
+      version: "2",
       providers: ["yahoo", "marketsmith", "chartink", "nse"],
+      routes: [
+        "GET /api/yahoo/chart",
+        "GET /api/marketsmith/finance",
+        "GET /api/marketsmith/symbol",
+        "GET /api/marketsmith/relative-strength",
+        "POST /api/chartink/scan",
+        "GET /api/nse/delivery"
+      ],
       marketSmithAuthConfigured: Boolean(
         env.MARKETSMITH_AUTH ||
         env.MARKETSMITH_FINANCE_AUTH ||
@@ -410,6 +418,9 @@ async function handleApi(request, env) {
   }
   if (request.method === "GET" && url.pathname === "/api/marketsmith/symbol") {
     return marketSmithSymbol(url, env, request);
+  }
+  if (request.method === "GET" && url.pathname === "/api/marketsmith/relative-strength") {
+    return marketSmithRelativeStrength(url, env, request);
   }
   if (request.method === "GET" && url.pathname === "/api/nse/delivery") {
     return nseDelivery(url);

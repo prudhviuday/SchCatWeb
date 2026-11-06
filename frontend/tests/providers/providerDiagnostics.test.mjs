@@ -7,6 +7,7 @@ import {
   buildNseDeliveryUrl,
   buildMarketSmithFinanceProxyUrl,
   buildMarketSmithSymbolProxyUrl,
+  buildMarketSmithRelativeStrengthProxyUrl,
   buildNseDeliveryProxyUrl,
   extractCsrfToken,
   normalizeMarketSmithAuthInput,
@@ -107,6 +108,16 @@ test("provider diagnostics call only same-origin Worker APIs", async () => {
     if (url.startsWith("/api/marketsmith/symbol")) {
       return new Response(JSON.stringify({ response: {} }), { status: 200 });
     }
+    if (url.startsWith("/api/marketsmith/relative-strength")) {
+      return new Response(JSON.stringify({ chart: { prices: [{ rlst: 87 }] } }), { status: 200 });
+    }
+    if (url === "/api/health") {
+      return new Response(JSON.stringify({
+        ok: true, service: "schcatweb-api", version: "2",
+        routes: ["GET /api/yahoo/chart","GET /api/marketsmith/finance","GET /api/marketsmith/symbol","GET /api/marketsmith/relative-strength","POST /api/chartink/scan","GET /api/nse/delivery"],
+        marketSmithAuthConfigured: false
+      }), { status: 200 });
+    }
     if (url === "/api/chartink/scan") {
       return new Response(JSON.stringify({ data: [{ nsecode: "RELIANCE" }] }), { status: 200 });
     }
@@ -115,7 +126,10 @@ test("provider diagnostics call only same-origin Worker APIs", async () => {
     }
     if (url.startsWith("/api/yahoo/chart")) {
       return new Response(JSON.stringify({
-        chart: { result: [{ timestamp: [1] }], error: null }
+        chart: { result: [{
+          timestamp: [1],
+          indicators: { quote: [{ open: [10], high: [11], low: [9], close: [10.5], volume: [100] }] }
+        }], error: null }
       }), { status: 200 });
     }
     throw new Error("Unexpected URL: " + url);
@@ -127,13 +141,16 @@ test("provider diagnostics call only same-origin Worker APIs", async () => {
       marketSmithSymbol: "RVNL",
       marketSmithAuth: "sample auth value"
     });
-    assert.equal(results.length, 5);
+    assert.equal(results.length, 7);
     assert.equal(results.every((item) => item.status === "success"), true);
+    assert.equal(results.find((item) => item.id === "schcatweb-api-health")?.provider, "SchCatWeb API");
+    assert.equal(results.find((item) => item.id === "marketsmith-relative-strength")?.status, "success");
     assert.equal(calls.every((call) => call.url.startsWith("/api/")), true);
     assert.equal(calls.some((call) => call.url.startsWith("https://")), false);
     const marketSmithCalls = calls.filter((call) => call.url.startsWith("/api/marketsmith/"));
-    assert.equal(marketSmithCalls.length, 2);
+    assert.equal(marketSmithCalls.length, 3);
     assert.equal(marketSmithCalls.every((call) => call.init.headers["x-marketsmith-auth"] === "sample auth value"), true);
+    assert.equal(marketSmithCalls.some((call) => call.url.startsWith("/api/marketsmith/relative-strength")), true);
     const chartink = calls.find((call) => call.url === "/api/chartink/scan");
     assert.equal(chartink.init.method, "POST");
     assert.equal(chartink.init.mode, "same-origin");
@@ -175,6 +192,10 @@ test("missing browser-saved MarketSmith value is reported before sending request
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async (input) => {
     const url = String(input);
+    if (url === "/api/health") return new Response(JSON.stringify({
+      ok: true, service: "schcatweb-api", version: "2",
+      routes: ["GET /api/yahoo/chart","GET /api/marketsmith/finance","GET /api/marketsmith/symbol","GET /api/marketsmith/relative-strength","POST /api/chartink/scan","GET /api/nse/delivery"]
+    }), { status: 200 });
     if (url === "/api/chartink/scan") {
       return new Response(JSON.stringify({ data: [] }), { status: 200 });
     }
@@ -183,7 +204,10 @@ test("missing browser-saved MarketSmith value is reported before sending request
     }
     if (url.startsWith("/api/yahoo/chart")) {
       return new Response(JSON.stringify({
-        chart: { result: [{ timestamp: [1] }], error: null }
+        chart: { result: [{
+          timestamp: [1],
+          indicators: { quote: [{ open: [10], high: [11], low: [9], close: [10.5], volume: [100] }] }
+        }], error: null }
       }), { status: 200 });
     }
     throw new Error("Unexpected URL: " + url);
@@ -196,7 +220,7 @@ test("missing browser-saved MarketSmith value is reported before sending request
       marketSmithAuth: ""
     });
     const marketSmith = results.filter((item) => item.provider === "MarketSmith");
-    assert.equal(marketSmith.length, 2);
+    assert.equal(marketSmith.length, 3);
     assert.equal(marketSmith.every((item) => item.status === "configuration-required"), true);
     assert.equal(marketSmith.every((item) => item.httpStatus === undefined), true);
     assert.equal(
@@ -211,4 +235,51 @@ test("missing browser-saved MarketSmith value is reported before sending request
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+
+test("provider diagnostics do not count HTTP 200 with invalid provider payloads as success", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input) => {
+    const url = String(input);
+    if (url === "/api/health") return new Response(JSON.stringify({ ok: true, service: "schcatweb-api", version: "2", routes: [] }), { status: 200 });
+    if (url.startsWith("/api/marketsmith/")) return new Response(JSON.stringify({ response: {} }), { status: 200 });
+    if (url === "/api/chartink/scan") return new Response(JSON.stringify({ rows: [] }), { status: 200 });
+    if (url.startsWith("/api/nse/delivery")) return new Response(JSON.stringify({ rows: [] }), { status: 200 });
+    if (url.startsWith("/api/yahoo/chart")) return new Response(JSON.stringify({ chart: { result: [{ timestamp: [1] }], error: null } }), { status: 200 });
+    throw new Error("Unexpected URL: " + url);
+  };
+  try {
+    const results = await runProviderDiagnostics({ marketSmithStockId: "3159563", marketSmithSymbol: "RVNL", marketSmithAuth: "sample auth" });
+    assert.equal(results.find((item) => item.id === "schcatweb-api-health")?.status, "invalid-response");
+    assert.equal(results.find((item) => item.id === "chartink-worker-scan")?.status, "invalid-response");
+    assert.equal(results.find((item) => item.id === "nse-delivery")?.status, "invalid-response");
+    assert.equal(results.find((item) => item.id === "yahoo-chart")?.status, "invalid-response");
+  } finally { globalThis.fetch = originalFetch; }
+});
+
+test("upstream HTTP status is shown separately from the Worker HTTP status", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input) => {
+    const url = String(input);
+    if (url.startsWith("/api/marketsmith/finance")) return new Response(JSON.stringify({ error: "provider_denied" }), { status: 403, headers: { "x-schcat-upstream-status": "403" } });
+    if (url.startsWith("/api/marketsmith/")) return new Response(JSON.stringify({ response: {} }), { status: 200 });
+    if (url === "/api/health") return new Response(JSON.stringify({
+      ok: true, service: "schcatweb-api", version: "2",
+      routes: ["GET /api/yahoo/chart","GET /api/marketsmith/finance","GET /api/marketsmith/symbol","GET /api/marketsmith/relative-strength","POST /api/chartink/scan","GET /api/nse/delivery"]
+    }), { status: 200 });
+    if (url === "/api/chartink/scan") return new Response(JSON.stringify({ data: [] }), { status: 200 });
+    if (url.startsWith("/api/nse/delivery")) return new Response(JSON.stringify({ data: [] }), { status: 200 });
+    if (url.startsWith("/api/yahoo/chart")) return new Response(JSON.stringify({
+      chart: { result: [{ timestamp: [1], indicators: { quote: [{ open: [1], high: [1], low: [1], close: [1], volume: [10] }] } }], error: null }
+    }), { status: 200 });
+    throw new Error("Unexpected URL: " + url);
+  };
+  try {
+    const results = await runProviderDiagnostics({ marketSmithStockId: "3159563", marketSmithSymbol: "RVNL", marketSmithAuth: "sample auth" });
+    const finance = results.find((item) => item.id === "marketsmith-finance");
+    assert.equal(finance?.status, "auth-or-policy");
+    assert.equal(finance?.httpStatus, 403);
+    assert.equal(finance?.upstreamStatus, 403);
+  } finally { globalThis.fetch = originalFetch; }
 });

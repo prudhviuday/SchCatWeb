@@ -543,3 +543,14 @@ Implemented on `main`:
 - ULTM 12/120 remains covered by the Step 10 parity tests, including its original unaligned-array/invalid-tail behaviour. It is not presented as a reliable visual indicator because the legacy implementation emits invalid tail values; changing that formula would require a separately reviewed behavior change.
 - Added chart-presentation tests for SMA 50, EMA 50 and EMA 200 source positions, full-history calculation, visible-window alignment and insufficient-history handling.
 - Deterministic CI does not confirm live Yahoo access from the Cloudflare origin or prove that the latest commit has been published.
+
+
+## Step 38 — Provider/API verification (2026-11-06)
+
+- Audited every browser provider client against the Cloudflare Worker router and integration tests: Yahoo chart, MarketSmith finance/symbol/relative-strength, ChartInk scan/history/widget and NSE delivery.
+- Found and fixed a live route wiring gap: `marketSmithRelativeStrength()` already existed in `worker/index.js`, and the browser clients for Workspace and Industry Analysis already called `/api/marketsmith/relative-strength`, but the Worker router did not register that path. The route is now registered and requires the same browser-supplied or Worker-configured MarketSmith session as the other MarketSmith endpoints.
+- The Worker health endpoint now reports version 2 and the required provider route inventory. Diagnostics verify that the active Worker advertises every required route.
+- Provider diagnostics now check payload shape as well as HTTP status. A 200 response missing expected fields is marked **Unexpected response**, not success. Yahoo checks timestamps and OHLCV arrays; MarketSmith checks finance/symbol/RS structures; ChartInk and NSE check their data arrays.
+- Diagnostics now include MarketSmith relative-strength access and the Worker health check. They display Worker HTTP status and upstream HTTP status separately when the Worker exposes it.
+- Added integration tests for the RS route and its credential/input requirements, health route inventory, malformed 200 payloads and separate upstream status reporting.
+- Automated tests validate request routing and mocked upstream behavior. The live Cloudflare origin was not independently reachable from this verification environment, so actual Yahoo/MarketSmith/ChartInk/NSE provider availability still must be confirmed in the diagnostics page after the Worker deployment completes.

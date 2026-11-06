@@ -11,12 +11,26 @@ export type ProviderProbeStatus =
 
 export interface ProviderProbeResult {
   id: string;
-  provider: "MarketSmith" | "ChartInk" | "NSE" | "Yahoo Finance";
+  provider: "SchCatWeb API" | "MarketSmith" | "ChartInk" | "NSE" | "Yahoo Finance";
   title: string;
   status: ProviderProbeStatus;
   message: string;
   httpStatus?: number;
+  upstreamStatus?: number;
   elapsedMs: number;
+}
+
+interface ProbeSummary {
+  status: "success" | "invalid-response";
+  message: string;
+}
+
+function validSummary(message: string): ProbeSummary {
+  return { status: "success", message };
+}
+
+function invalidSummary(message: string): ProbeSummary {
+  return { status: "invalid-response", message };
 }
 
 export interface ProviderAuditOptions {
@@ -133,6 +147,18 @@ export function buildMarketSmithFinanceProxyUrl(stockId: string): string {
     throw new TypeError("MarketSmith stock ID must contain digits only");
   }
   return apiUrl(`/api/marketsmith/finance?stockId=${encodeURIComponent(safeId)}`);
+}
+
+export function buildMarketSmithRelativeStrengthProxyUrl(
+  stockId: string,
+  symbol: string
+): string {
+  const safeId = stockId.trim();
+  const safeSymbol = symbol.trim().toUpperCase();
+  if (!/^\d+$/.test(safeId)) throw new TypeError("MarketSmith stock ID must contain digits only");
+  if (!/^[A-Z0-9&._-]+$/.test(safeSymbol)) throw new TypeError("MarketSmith symbol contains unsupported characters");
+  const params = new URLSearchParams({ stockId: safeId, symbol: safeSymbol });
+  return apiUrl(`/api/marketsmith/relative-strength?${params.toString()}`);
 }
 
 export function buildMarketSmithSymbolProxyUrl(
@@ -317,12 +343,16 @@ function httpFailure(
     ? "No MarketSmith ms-auth value reached the Worker. Enter it in the diagnostics page and save it in this browser."
     : providerErrorMessage(data, fallback);
 
+  const rawUpstreamStatus = Number(response.headers.get("x-schcat-upstream-status"));
   return {
     id,
     provider,
     title,
     status,
     httpStatus: response.status,
+    ...(Number.isInteger(rawUpstreamStatus) && rawUpstreamStatus >= 100 && rawUpstreamStatus <= 599
+      ? { upstreamStatus: rawUpstreamStatus }
+      : {}),
     message,
     elapsedMs
   };
@@ -333,7 +363,7 @@ function jsonResult(
   provider: ProviderProbeResult["provider"],
   title: string,
   attempt: FetchAttempt,
-  summary: (data: unknown) => string
+  summary: (data: unknown) => ProbeSummary
 ): ProviderProbeResult {
   if (!attempt.ok) return attempt.result;
   const { response, body, elapsedMs } = attempt.value;
@@ -354,13 +384,14 @@ function jsonResult(
     };
   }
 
+  const result = summary(data);
   return {
     id,
     provider,
     title,
-    status: "success",
+    status: result.status,
     httpStatus: response.status,
-    message: summary(data),
+    message: result.message,
     elapsedMs
   };
 }
@@ -368,19 +399,23 @@ function jsonResult(
 function probeMarketSmith(
   stockId: string,
   symbol: string,
-  endpoint: "finance" | "symbol",
+  endpoint: "finance" | "symbol" | "relative-strength",
   authValue: string
 ): Promise<ProviderProbeResult> {
-  const id = endpoint === "finance" ? "marketsmith-finance" : "marketsmith-symbol";
+  const id = endpoint === "finance" ? "marketsmith-finance" : endpoint === "symbol" ? "marketsmith-symbol" : "marketsmith-relative-strength";
   const title = endpoint === "finance"
     ? "MarketSmith financeDetails via SchCatWeb Worker"
-    : "MarketSmith symboldetails via SchCatWeb Worker";
+    : endpoint === "symbol"
+      ? "MarketSmith symboldetails via SchCatWeb Worker"
+      : "MarketSmith relative-strength history via SchCatWeb Worker";
 
   let url: string;
   try {
     url = endpoint === "finance"
       ? buildMarketSmithFinanceProxyUrl(stockId)
-      : buildMarketSmithSymbolProxyUrl(stockId, symbol);
+      : endpoint === "symbol"
+        ? buildMarketSmithSymbolProxyUrl(stockId, symbol)
+        : buildMarketSmithRelativeStrengthProxyUrl(stockId, symbol);
   } catch (error) {
     return Promise.resolve({
       id,
@@ -407,11 +442,25 @@ function probeMarketSmith(
     headers: { "x-marketsmith-auth": authValue }
   }).then((attempt) =>
     jsonResult(id, "MarketSmith", title, attempt, (data) => {
-      if (!data || typeof data !== "object") {
-        return "JSON response received, but the payload is not an object.";
+      const root = asRecord(data);
+      if (endpoint === "finance") {
+        if (!Array.isArray(root?.ratiosAnnualData)) return invalidSummary("MarketSmith finance JSON is missing the ratiosAnnualData array.");
+        return validSummary(`Finance endpoint returned a valid ratiosAnnualData array (${root.ratiosAnnualData.length} annual rows).`);
       }
-      const keys = Object.keys(data);
-      return `Worker successfully read MarketSmith JSON. Top-level fields: ${keys.slice(0, 8).join(", ") || "(none)"}.`;
+      if (endpoint === "symbol") {
+        if (!asRecord(root?.response)) return invalidSummary("MarketSmith symbol JSON is missing the response object.");
+        return validSummary("MarketSmith symbol-details response object received.");
+      }
+      const prices = asRecord(root?.chart)?.prices;
+      if (!Array.isArray(prices)) return invalidSummary("MarketSmith RS JSON is missing chart.prices.");
+      const usable = prices.filter((raw) => {
+        const value = asRecord(raw)?.rlst;
+        return (typeof value === "number" && Number.isFinite(value))
+          || (typeof value === "string" && value.trim() !== "" && Number.isFinite(Number(value)));
+      }).length;
+      return usable > 0
+        ? validSummary(`MarketSmith RS history returned ${usable} usable observations.`)
+        : invalidSummary("MarketSmith returned no usable relative-strength observations.");
     })
   );
 }
@@ -439,13 +488,10 @@ async function probeChartInk(): Promise<ProviderProbeResult> {
     title,
     attempt,
     (data) => {
-      if (!data || typeof data !== "object") {
-        return "Worker received a response, but the payload is not an object.";
-      }
-      const rows = (data as { data?: unknown }).data;
+      const rows = asRecord(data)?.data;
       return Array.isArray(rows)
-        ? `Server-side ChartInk session and scan succeeded (${rows.length} rows).`
-        : "ChartInk returned JSON, but the expected data array is missing.";
+        ? validSummary(`Server-side ChartInk session and scan succeeded (${rows.length} rows).`)
+        : invalidSummary("ChartInk returned JSON, but the expected data array is missing.");
     }
   );
 }
@@ -474,13 +520,11 @@ async function probeNse(): Promise<ProviderProbeResult> {
     { headers: { Accept: "application/json" } }
   );
   return jsonResult("nse-delivery", "NSE", title, attempt, (data) => {
-    if (!data || typeof data !== "object") {
-      return "Worker received JSON, but the payload is not an object.";
-    }
-    const rows = (data as { data?: unknown }).data;
-    return Array.isArray(rows)
-      ? `Worker successfully read ${rows.length} historical rows for RELIANCE (${from} to ${to}).`
-      : "NSE returned JSON, but the expected data array is missing.";
+    const rows = asRecord(data)?.data;
+    if (!Array.isArray(rows)) return invalidSummary("NSE returned JSON, but the expected data array is missing.");
+    return validSummary(rows.length > 0
+      ? `Worker read ${rows.length} historical rows for RELIANCE (${from} to ${to}).`
+      : `NSE endpoint returned a valid empty data array for RELIANCE (${from} to ${to}); the requested window may have no usable observations.`);
   });
 }
 
@@ -506,27 +550,59 @@ async function probeYahooFinance(): Promise<ProviderProbeResult> {
     const results = chart?.result;
     if (!Array.isArray(results) || results.length === 0) {
       const error = asRecord(chart?.error)?.description;
-      return typeof error === "string"
-        ? `Worker reached Yahoo Finance, but Yahoo returned: ${error}`
-        : "Worker received JSON, but the chart result array is empty.";
+      return invalidSummary(typeof error === "string" ? `Yahoo Finance returned: ${error}` : "Yahoo response is missing its chart result array.");
     }
     const first = asRecord(results[0]);
     const timestamps = first?.timestamp;
-    return Array.isArray(timestamps)
-      ? `Server-side Yahoo Finance request succeeded (${timestamps.length} timestamp slots).`
-      : "Yahoo returned JSON, but timestamp data is missing.";
+    const quotes = asRecord(first?.indicators)?.quote;
+    const quote = Array.isArray(quotes) ? asRecord(quotes[0]) : null;
+    const fields = ["open", "high", "low", "close", "volume"];
+    if (!Array.isArray(timestamps) || timestamps.length === 0 || !quote || fields.some((field) => !Array.isArray(quote[field]))) {
+      return invalidSummary("Yahoo response is missing timestamps or one or more OHLCV arrays.");
+    }
+    const usable = timestamps.filter((time, index) =>
+      typeof time === "number" && Number.isFinite(time)
+      && ["open", "high", "low", "close"].every((field) => {
+        const values = quote[field] as unknown[];
+        return typeof values[index] === "number" && Number.isFinite(values[index]);
+      })
+    ).length;
+    return usable > 0
+      ? validSummary(`Yahoo Finance returned ${usable} usable OHLCV candles.`)
+      : invalidSummary("Yahoo returned OHLCV arrays but no usable candle could be assembled.");
+  });
+}
+
+async function probeWorkerHealth(): Promise<ProviderProbeResult> {
+  const id = "schcatweb-api-health";
+  const title = "SchCatWeb Worker health and route inventory";
+  const attempt = await requestText(id, "SchCatWeb API", title, "/api/health", { headers: { Accept: "application/json" } });
+  return jsonResult(id, "SchCatWeb API", title, attempt, (data) => {
+    const health = asRecord(data);
+    const routes = Array.isArray(health?.routes) ? health.routes.filter((route): route is string => typeof route === "string") : [];
+    const required = [
+      "GET /api/yahoo/chart", "GET /api/marketsmith/finance", "GET /api/marketsmith/symbol",
+      "GET /api/marketsmith/relative-strength", "POST /api/chartink/scan", "GET /api/nse/delivery"
+    ];
+    const missing = required.filter((route) => !routes.includes(route));
+    if (health?.ok !== true || health?.service !== "schcatweb-api") return invalidSummary("Health response is missing the expected SchCatWeb API service identity.");
+    if (missing.length) return invalidSummary(`Worker is online, but its route inventory is missing: ${missing.join(", ")}.`);
+    const version = typeof health.version === "string" ? health.version : "unknown";
+    return validSummary(`Worker API v${version} is online and lists all ${required.length} required provider routes. MarketSmith Worker secret: ${health.marketSmithAuthConfigured === true ? "configured" : "not configured (browser-local session remains supported)"}.`);
   });
 }
 
 export async function runProviderDiagnostics(
   options: ProviderAuditOptions
 ): Promise<ProviderProbeResult[]> {
-  const [finance, symbol, chartInk, nse, yahoo] = await Promise.all([
+  const [health, finance, symbol, relativeStrength, chartInk, nse, yahoo] = await Promise.all([
+    probeWorkerHealth(),
     probeMarketSmith(options.marketSmithStockId, options.marketSmithSymbol, "finance", options.marketSmithAuth || ""),
     probeMarketSmith(options.marketSmithStockId, options.marketSmithSymbol, "symbol", options.marketSmithAuth || ""),
+    probeMarketSmith(options.marketSmithStockId, options.marketSmithSymbol, "relative-strength", options.marketSmithAuth || ""),
     probeChartInk(),
     probeNse(),
     probeYahooFinance()
   ]);
-  return [finance, symbol, chartInk, nse, yahoo];
+  return [health, finance, symbol, relativeStrength, chartInk, nse, yahoo];
 }

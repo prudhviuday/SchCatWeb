@@ -412,3 +412,8 @@ Industry double-click toggles a drill-down and restores the previous industry se
 ### Step 37 — chart overlay and indicator parity
 
 The original standard CRIP4 route applies SMA 50, EMA 50, EMA 200 and RSI 21 to each candle series, plus ULTM 12/120. The browser Stock Workspace now plots SMA 50, EMA 50 and EMA 200; calculates them over the full available candle series; aligns each value to its original candle index; and only then selects the visible last 100/200/500 bars. The latest daily RSI 21 and moving-average values are shown in the summary. Insufficient history remains null/unavailable. ULTM remains a tested legacy kernel but is not presented as a trustworthy overlay because the original algorithm combines unaligned EMA arrays and produces invalid tail values.
+
+
+### Step 38 — provider/API verification
+
+Verified the live clients against the Worker route inventory. The MarketSmith relative-strength worker function existed but was not registered; `GET /api/marketsmith/relative-strength` is now exposed and used for both Workspace and Industry Analysis. The health endpoint publishes a versioned list of required routes. Diagnostics checks Worker health, MarketSmith finance/symbol/RS, ChartInk scan, NSE delivery and Yahoo OHLCV. Results validate expected JSON shapes and display Worker and upstream HTTP statuses separately. CI mocks upstream services and does not establish live third-party availability.
