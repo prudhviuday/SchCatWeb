@@ -57,6 +57,7 @@ function PnlChart({ rows, title }: { rows: PortfolioCandle[]; title: string }) {
   const xAt = (index: number) => left + (rows.length === 1 ? (width - left - right) / 2 : index * (width - left - right) / (rows.length - 1));
   const yAt = (value: number) => bottom - (value - yMin) / (yMax - yMin) * (bottom - top);
   const closePath = rows.map((row, index) => xAt(index).toFixed(2) + "," + yAt(row.close).toFixed(2)).join(" ");
+  const candleWidth = Math.max(1, Math.min(7, (width - left - right) / rows.length * 0.62));
   const zeroY = yAt(0);
   return (
     <div className="portfolio-chart-graphic">
@@ -67,7 +68,7 @@ function PnlChart({ rows, title }: { rows: PortfolioCandle[]; title: string }) {
           return <g key={tick}><line x1={left} x2={width - right} y1={y} y2={y} className="portfolio-chart-gridline" /><text x={left + 3} y={y - 4} className="portfolio-chart-label">{Math.round(value).toLocaleString("en-IN")}</text></g>;
         })}
         <line x1={left} x2={width - right} y1={zeroY} y2={zeroY} className="portfolio-chart-zero" />
-        {rows.map((row, index) => <line key={row.time} x1={xAt(index)} x2={xAt(index)} y1={yAt(row.high)} y2={yAt(row.low)} className={row.close >= 0 ? "portfolio-chart-positive-wick" : "portfolio-chart-negative-wick"} />)}
+        {rows.map((row, index) => <g key={row.time}><line x1={xAt(index)} x2={xAt(index)} y1={yAt(row.high)} y2={yAt(row.low)} className={row.close >= row.open ? "portfolio-chart-positive-wick" : "portfolio-chart-negative-wick"} /><rect x={xAt(index) - candleWidth / 2} y={yAt(Math.max(row.open, row.close))} width={candleWidth} height={Math.max(1, Math.abs(yAt(row.open) - yAt(row.close)))} className={row.close >= row.open ? "portfolio-chart-positive-body" : "portfolio-chart-negative-body"} /></g>)}
         <polyline points={closePath} className="portfolio-chart-close" />
         <text x={left} y={height - 9} className="portfolio-chart-label">{rows[0].date}</text>
         <text x={width - right} y={height - 9} textAnchor="end" className="portfolio-chart-label">{rows[rows.length - 1].date}</text>
