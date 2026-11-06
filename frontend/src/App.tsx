@@ -108,7 +108,7 @@ function App() {
                 ["05", "Market Pulse", "Market breadth and signal dashboard"],
                 ["06", "Portfolio", "Holdings and P&L analytics"]
               ].map(([number, title, description]) => (
-                {number === "06" ? (
+                number === "06" ? (
                   <button type="button" className="module-card module-card-button" key={number} onClick={() => setActivePage("portfolio")}>
                     <span className="module-number">{number}</span>
                     <div><h3>{title}</h3><p>{description}</p></div>
