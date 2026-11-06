@@ -118,7 +118,8 @@ test("MarketSmith institutional ownership leaves normalized index blank for a co
   }});
   assert.deepEqual(result.institutionalOwnership.map(point => point.normalized), [null, null]);
 });
-\ntest("single-stock request uses the same-origin Worker and browser-saved auth header", async () => {
+
+test("single-stock request uses the same-origin Worker and browser-saved auth header", async () => {
   let requestUrl = "";
   let requestInit = {};
   const result = await fetchMarketSmithStockMetrics(
