@@ -327,9 +327,7 @@ async function probeChartInk(): Promise<ProviderProbeResult[]> {
       headers: {
         Accept: "application/json,text/plain,*/*",
         "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
-        "X-CSRF-TOKEN": csrf,
-        Origin: "https://chartink.com",
-        Referer: "https://chartink.com/screener/"
+        "X-CSRF-TOKEN": csrf
       },
       body: form.toString()
     },
