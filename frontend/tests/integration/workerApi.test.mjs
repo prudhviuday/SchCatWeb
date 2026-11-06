@@ -249,8 +249,8 @@ test("MarketSmith symbol endpoint defaults to a rolling five-year date range", a
   const upstream = new URL(requestedUrl);
   const start = upstream.searchParams.get("s");
   const end = upstream.searchParams.get("e");
-  assert.match(start, /^\\d{8}$/);
-  assert.match(end, /^\\d{8}$/);
+  assert.match(start, /^\d{8}$/);
+  assert.match(end, /^\d{8}$/);
   const startDate = new Date(Date.UTC(+start.slice(0, 4), +start.slice(4, 6) - 1, +start.slice(6, 8)));
   const endDate = new Date(Date.UTC(+end.slice(0, 4), +end.slice(4, 6) - 1, +end.slice(6, 8)));
   assert.equal(endDate.getUTCFullYear() - startDate.getUTCFullYear(), 5);
