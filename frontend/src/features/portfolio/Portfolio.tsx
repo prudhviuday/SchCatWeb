@@ -64,7 +64,7 @@ function PnlChart({ rows, title }: { rows: PortfolioCandle[]; title: string }) {
         {[0, 1, 2, 3].map((tick) => {
           const y = top + tick * (bottom - top) / 3;
           const value = yMax - tick * (yMax - yMin) / 3;
-          return <g key={tick}><line x1={left} x2={width - right} y1={y} y2={y} className="portfolio-chart-grid" /><text x={left + 3} y={y - 4} className="portfolio-chart-label">{Math.round(value).toLocaleString("en-IN")}</text></g>;
+          return <g key={tick}><line x1={left} x2={width - right} y1={y} y2={y} className="portfolio-chart-gridline" /><text x={left + 3} y={y - 4} className="portfolio-chart-label">{Math.round(value).toLocaleString("en-IN")}</text></g>;
         })}
         <line x1={left} x2={width - right} y1={zeroY} y2={zeroY} className="portfolio-chart-zero" />
         {rows.map((row, index) => <line key={row.time} x1={xAt(index)} x2={xAt(index)} y1={yAt(row.high)} y2={yAt(row.low)} className={row.close >= 0 ? "portfolio-chart-positive-wick" : "portfolio-chart-negative-wick"} />)}
@@ -313,7 +313,7 @@ function Portfolio() {
       <section className="portfolio-panel portfolio-charts-panel">
         <div className="portfolio-panel-heading"><div><div className="eyebrow">SYNTHETIC PORTFOLIO PERFORMANCE</div><h2>Aggregate unrealised P&amp;L charts</h2><p>Legacy SchCat logic: quantity × (OHLC − buy price), aligned by timestamp and forward-filled per holding.</p></div><span className="portfolio-chart-status">{Object.values(charts).filter((item) => item.status === "ready").length}/4 timeframes ready</span></div>
         {!Object.keys(charts).length && <div className="portfolio-chart-prompt">{holdings.length ? "Refresh prices & charts to build the four portfolio timeframes." : "Add or import holdings before generating portfolio charts."}</div>}
-        <div className="portfolio-chart-grid">
+        <div className="portfolio-chart-gridline">
           {PORTFOLIO_TIMEFRAMES.map((timeframe) => {
             const state = charts[timeframe];
             return <article className="portfolio-chart-card" key={timeframe}><div className="portfolio-chart-title"><strong>{TIMEFRAME_LABELS[timeframe]}</strong><span>{timeframe}</span></div>{!state ? <div className="portfolio-chart-empty">Not loaded</div> : <PnlChart rows={state.rows} title={TIMEFRAME_LABELS[timeframe]} />}</article>;
