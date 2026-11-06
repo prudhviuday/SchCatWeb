@@ -1407,3 +1407,7 @@ h2 { font-size: 17px; letter-spacing: -.3px; font-weight: 600; margin: 7px 0 0; 
 
 /* Step 25: institutional ownership history */
 .workspace-institution-history { margin-top: 12px; }
+
+.workspace-rs-history { margin-top: 12px; padding: 12px; border: 1px solid #29374a; border-radius: 7px; background: #0c141f; }
+.workspace-rs-history svg { display: block; width: 100%; height: auto; margin-top: 8px; overflow: visible; }
+.workspace-rs-line { fill: none; stroke: #e5a64e; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
