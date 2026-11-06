@@ -88,23 +88,23 @@ test("MarketSmith institutional ownership and cost histories match desktop formu
       detailsGeneralInformationHeader: { currentPrice: "125" },
       quarterlySalesAndEarningsInternational: {
         quarterlySalesAndEarningsOrigin: [
-          { prdYear: "2026 Q2", totSharesHeldByFunds: 3000000 },
-          { prdYear: "2026 Q1", totSharesHeldByFunds: 2000000 },
-          { prdYear: "2025 Q4", totSharesHeldByFunds: 1000000 }
+          { prdYear: "2026 Q2", totSharesHeldByFunds: 3000000000 },
+          { prdYear: "2026 Q1", totSharesHeldByFunds: 2000000000 },
+          { prdYear: "2025 Q4", totSharesHeldByFunds: 1000000000 }
         ]
       }
     }
   };
   const result = parseMarketSmithStockMetrics(payload);
   assert.deepEqual(result.institutionalOwnership, [
-    { period: "01-2025 Q4", value: 1000000, normalized: 0 },
-    { period: "01-2026 Q1", value: 2000000, normalized: 50 },
-    { period: "01-2026 Q2", value: 3000000, normalized: 100 }
+    { period: "01-2025 Q4", value: 1000000000, normalized: 0 },
+    { period: "01-2026 Q1", value: 2000000000, normalized: 50 },
+    { period: "01-2026 Q2", value: 3000000000, normalized: 100 }
   ]);
   assert.deepEqual(result.institutionalCost, [
-    { period: "01-2025 Q4", value: 0, normalized: null },
-    { period: "01-2026 Q1", value: 0, normalized: null },
-    { period: "01-2026 Q2", value: 0, normalized: null }
+    { period: "01-2025 Q4", value: 125, normalized: null },
+    { period: "01-2026 Q1", value: 250, normalized: null },
+    { period: "01-2026 Q2", value: 375, normalized: null }
   ]);
 });
 
