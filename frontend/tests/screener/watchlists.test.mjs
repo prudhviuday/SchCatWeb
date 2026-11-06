@@ -5,7 +5,7 @@ import {
   parseScreenerLibraryJson, parseWatchlistsCsv, removeSavedQuery,
   saveScreenerLibrary, serializeScreenerLibrary, serializeWatchlistsCsv,
   upsertSavedQuery, validateScreenerLibrary, type ScreenerLibrary
-} from "../../src/features/screener/watchlists.js";
+} from "../../.test-dist/features/screener/watchlists.js";
 
 test("watchlist symbols normalize, deduplicate and add to an existing list", () => {
   const one = addSymbolToWatchlist(EMPTY_SCREENER_LIBRARY, "Leaders", "reliance");
