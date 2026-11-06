@@ -200,7 +200,7 @@ Tests cover CSV quoting/BOM/CRLF parsing, supported column aliases and per-row f
 
 After the latest frontend commit is deployed, open `https://schcatweb.prudhvi123143.workers.dev/?diagnostics=providers` and select **Run browser diagnostics**. This executes requests in the actual website origin for both MarketSmith hosts, ChartInk's CSRF + scan flow, NSE historical delivery data, and a small Yahoo Finance chart sample. Use the MarketSmith ID/symbol fields for a known valid pair. The normal home page is unchanged.
 
-The page never embeds the legacy `ms-auth` query values or reads/stores cookies. Credentialed cross-origin requests are subject to provider CORS headers and browser third-party-cookie policy. A browser `fetch` failure is reported as a possible CORS/network/privacy-policy block; inspect DevTools Console for the specific browser message.
+The browser calls same-origin Worker routes. The Worker performs upstream requests, including ChartInk's CSRF/session flow, and keeps any short-lived provider cookies server-side. This removes browser CORS enforcement but cannot bypass provider authentication, anti-bot controls or Cloudflare outbound-IP restrictions.
 
 
 ## Production integration smoke tests (Step 19)
@@ -211,7 +211,7 @@ After building the static site, run:
 npm run test:integration
 ```
 
-This starts Vite's production preview locally and verifies SPA fallback for deep links, the compiled bundle's six workspace modules and provider diagnostics, public reference-data availability/counts against the manifest, and the static-only Cloudflare asset configuration. CI runs this suite after `npm run build`.
+This starts Vite's production preview locally and verifies SPA fallback for deep links, the compiled bundle's six workspace modules and provider diagnostics, public reference-data availability/counts against the manifest, Worker API routes, and the Cloudflare Worker/static-asset configuration. CI runs this suite after `npm run build`.
 
 These tests do not contact external market-data providers and do not prove that the latest commit has been deployed to Cloudflare. Live provider CORS/authentication and production-origin verification are part of the final release step.
 
