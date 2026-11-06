@@ -80,3 +80,29 @@ export function prepareChartView(
     previousClose: ordered.length > 1 ? ordered[ordered.length - 2].close : null
   };
 }
+
+
+export interface WeeklyCloseVolumePoint {
+  time: number;
+  value: number;
+}
+
+/**
+ * Desktop util.fetch_closexvol_for_stock: weekly close × volume / 1,000,000,000,
+ * rounded to two decimals, retaining the latest 30 observations chronologically.
+ */
+export function prepareWeeklyCloseVolume(
+  candles: readonly ChartCandle[],
+  maxPoints = 30
+): WeeklyCloseVolumePoint[] {
+  if (!Number.isInteger(maxPoints) || maxPoints <= 0) {
+    throw new RangeError("Weekly close-volume point limit must be a positive integer");
+  }
+  return [...candles]
+    .sort((left, right) => left.time - right.time)
+    .slice(-maxPoints)
+    .map((candle) => ({
+      time: candle.time,
+      value: Math.round((candle.close * candle.volume / 1_000_000_000) * 100) / 100
+    }));
+}
