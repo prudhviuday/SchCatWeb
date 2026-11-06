@@ -18,6 +18,7 @@ import {
 } from "../../data/providers/marketSmithStockData";
 import {
   prepareChartView,
+  prepareWeeklyCloseVolume,
   type ChartDisplayPoint
 } from "./chartPresentation";
 
@@ -605,6 +606,24 @@ function StockWorkspace({
                 );
               })}
             </div>
+            {states["1W"].status === "ready" && (() => {
+              const history = prepareWeeklyCloseVolume(states["1W"].candles);
+              return history.length > 0 ? (
+                <div className="workspace-financial-history">
+                  <div className="eyebrow">WEEKLY CLOSE × VOLUME · DESKTOP LEGACY FORMULA</div>
+                  <p className="workspace-chart-note">Close × weekly volume ÷ 1,000,000,000 · Latest {history.length} observations · Values are a relative turnover proxy, not a reported exchange turnover figure.</p>
+                  <div className="workspace-financial-history-list">
+                    {history.map((point) => (
+                      <div key={point.time}>
+                        <span>{new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "2-digit" }).format(new Date(point.time * 1000))}</span>
+                        <strong>{point.value.toFixed(2)}</strong>
+                        <small>Close × volume / 1bn</small>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null;
+            })()}
           </section>
 
           <footer className="workspace-disclaimer">
