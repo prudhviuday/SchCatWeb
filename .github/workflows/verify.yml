@@ -36,6 +36,9 @@ jobs:
       - name: Run provider request-shape tests
         working-directory: frontend
         run: npm run test:providers
+      - name: Run live MarketSmith data mapping tests
+        working-directory: frontend
+        run: npm run test:marketsmith
       - name: Run chart data parity tests
         working-directory: frontend
         run: npm run test:charts
