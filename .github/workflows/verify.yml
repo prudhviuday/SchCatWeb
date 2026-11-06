@@ -46,6 +46,9 @@ jobs:
       - name: Run stock screener tests
         working-directory: frontend
         run: npm run test:screener
+      - name: Run watchlist and saved query tests
+        working-directory: frontend
+        run: npm run test:watchlists
       - name: Run chart workspace tests
         working-directory: frontend
         run: npm run test:workspace
