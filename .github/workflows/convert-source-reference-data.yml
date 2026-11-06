@@ -1,0 +1,42 @@
+name: Convert source reference workbooks
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "tools/convert-source-reference-data.mjs"
+      - ".github/workflows/convert-source-reference-data.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  convert:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/checkout@v4
+        with:
+          repository: prudhviuday/SchCat
+          ref: main
+          path: source-schcat
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install temporary XLSX reader
+        run: npm install --no-save xlsx
+      - name: Convert approved public reference workbooks
+        run: node tools/convert-source-reference-data.mjs source-schcat .
+      - name: Commit generated static datasets
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/public/data/marketUniverse.json frontend/public/data/industries.json frontend/public/data/manifest.json frontend/public/data/conversion-report.json
+          if git diff --cached --quiet; then
+            echo "Static reference datasets are already up to date."
+          else
+            git commit -m "Add converted stock universe and industry reference data"
+            git push origin HEAD:main
+          fi
