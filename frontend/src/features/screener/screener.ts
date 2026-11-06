@@ -1,7 +1,12 @@
+import type { MarketSmithLiveMetrics } from "../../data/providers/marketSmithStockData.js";
 import type { MarketUniverseRecord } from "../../data/reference/marketUniverse.js";
 
-export type ScreenerNumericField = "marketCap" | "pb" | "roce" | "nikScore";
-export type ScreenerSortField = keyof MarketUniverseRecord;
+export interface ScreenerRow extends MarketUniverseRecord, Partial<MarketSmithLiveMetrics> {}
+
+export type ScreenerNumericField =
+  | "marketCap" | "pb" | "roce" | "nikScore"
+  | "groupRank" | "rs" | "epsRank" | "masterScore" | "pe" | "peg" | "fScore";
+export type ScreenerSortField = keyof ScreenerRow;
 
 export interface NumericRange {
   min?: number;
@@ -22,7 +27,14 @@ export const SCREENER_COLUMNS: ReadonlyArray<{
 }> = [
   { key: "symbol", label: "Stock", numeric: false },
   { key: "industry", label: "Industry", numeric: false },
-  { key: "sector", label: "Sector", numeric: false },
+  { key: "groupRank", label: "Group Rank", numeric: true },
+  { key: "rs", label: "RS", numeric: true },
+  { key: "epsRank", label: "EPS Rank", numeric: true },
+  { key: "masterScore", label: "MasterScore", numeric: true },
+  { key: "accDis", label: "Acc/Dis", numeric: false },
+  { key: "pe", label: "PE", numeric: true },
+  { key: "peg", label: "PEG", numeric: true },
+  { key: "fScore", label: "FScore", numeric: true },
   { key: "marketCap", label: "Market Cap*", numeric: true },
   { key: "pb", label: "P/B*", numeric: true },
   { key: "roce", label: "ROCE*", numeric: true },
@@ -39,10 +51,10 @@ function normalized(value: string | null | undefined): string {
  * handling. A valid query that returns no symbols remains an empty match set.
  */
 export function intersectSelectedQueries(
-  records: readonly MarketUniverseRecord[],
+  records: readonly ScreenerRow[],
   selectedQueryNames: readonly string[],
   queryMatches: ReadonlyMap<string, readonly string[]>
-): MarketUniverseRecord[] {
+): ScreenerRow[] {
   const matchSets = selectedQueryNames
     .filter((name) => queryMatches.has(name))
     .map((name) => new Set(queryMatches.get(name)!.map((symbol) => symbol.trim().toUpperCase())));
@@ -60,11 +72,11 @@ export function intersectSelectedQueries(
 }
 
 export function applyScreenerFilters(
-  records: readonly MarketUniverseRecord[],
+  records: readonly ScreenerRow[],
   filters: ScreenerFilters = {},
   selectedQueryNames: readonly string[] = [],
   queryMatches: ReadonlyMap<string, readonly string[]> = new Map()
-): MarketUniverseRecord[] {
+): ScreenerRow[] {
   const queryFiltered = intersectSelectedQueries(records, selectedQueryNames, queryMatches);
   const search = normalized(filters.search);
   const sector = normalized(filters.sector);
@@ -82,12 +94,15 @@ export function applyScreenerFilters(
     if (sector && normalized(record.sector) !== sector) return false;
     if (industry && normalized(record.industry) !== industry) return false;
 
-    for (const field of ["marketCap", "pb", "roce", "nikScore"] as const) {
+    for (const field of [
+      "marketCap", "pb", "roce", "nikScore",
+      "groupRank", "rs", "epsRank", "masterScore", "pe", "peg", "fScore"
+    ] as const) {
       const range = ranges[field];
       if (!range || (range.min === undefined && range.max === undefined)) continue;
 
       const value = record[field];
-      if (value === null || !Number.isFinite(value)) return false;
+      if (value === null || value === undefined || !Number.isFinite(value)) return false;
       if (range.min !== undefined && value < range.min) return false;
       if (range.max !== undefined && value > range.max) return false;
     }
@@ -101,19 +116,19 @@ export function applyScreenerFilters(
  * desktop table's numeric coercion / na_position="last" behaviour.
  */
 export function sortScreenerRecords(
-  records: readonly MarketUniverseRecord[],
+  records: readonly ScreenerRow[],
   field: ScreenerSortField,
   ascending = true
-): MarketUniverseRecord[] {
+): ScreenerRow[] {
   return records
     .map((record, index) => ({ record, index }))
     .sort((left, right) => {
       const a = left.record[field];
       const b = right.record[field];
 
-      if (a === null || b === null) {
-        if (a === null && b === null) return left.index - right.index;
-        return a === null ? 1 : -1;
+      if (a == null || b == null) {
+        if (a == null && b == null) return left.index - right.index;
+        return a == null ? 1 : -1;
       }
 
       let comparison: number;
