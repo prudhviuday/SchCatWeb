@@ -56,7 +56,7 @@ The single root `wrangler.toml` sets `name = "schcatweb"` and `assets.directory 
 | 9 | Port chart data workflows and existing CRIP4 Node chart behaviour to browser-compatible TypeScript | In progress — implementation and CI pass; live Yahoo CORS test pending |
 | 10 | Port technical indicators with numerical parity tests | Complete — exact fast-technical-indicators 1.1.4 SMA/EMA/RSI kernels, CRIP4 wrappers, ULTM/ATP ports and CI parity tests |
 | 11 | Convert/import non-sensitive reference workbooks and JSON to static browser-readable data | Complete — 2,256-row stock universe, 107-industry list and 1,256-symbol CRIP4 MarketSmith ID map converted to static JSON; provenance, freshness and duplicate-ID warnings captured |
-| 12 | Stock screener: universe, filters, queries and sorting | Not started |
+| 12 | Stock screener: universe, filters, queries and sorting | In progress — implementation and CI validation underway |
 | 13 | Charts and Stock Workspace | Not started |
 | 14 | Industry Analysis | Not started |
 | 15 | Research module | Not started |
