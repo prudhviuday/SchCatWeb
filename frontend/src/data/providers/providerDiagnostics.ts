@@ -22,7 +22,7 @@ export interface ProviderProbeResult {
 export interface ProviderAuditOptions {
   marketSmithStockId: string;
   marketSmithSymbol: string;
-  marketSmithAuth: string;
+  marketSmithAuth?: string;
 }
 
 interface FetchBody {
@@ -522,8 +522,8 @@ export async function runProviderDiagnostics(
   options: ProviderAuditOptions
 ): Promise<ProviderProbeResult[]> {
   const [finance, symbol, chartInk, nse, yahoo] = await Promise.all([
-    probeMarketSmith(options.marketSmithStockId, options.marketSmithSymbol, "finance", options.marketSmithAuth),
-    probeMarketSmith(options.marketSmithStockId, options.marketSmithSymbol, "symbol", options.marketSmithAuth),
+    probeMarketSmith(options.marketSmithStockId, options.marketSmithSymbol, "finance", options.marketSmithAuth || ""),
+    probeMarketSmith(options.marketSmithStockId, options.marketSmithSymbol, "symbol", options.marketSmithAuth || ""),
     probeChartInk(),
     probeNse(),
     probeYahooFinance()
