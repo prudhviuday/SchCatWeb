@@ -59,7 +59,9 @@ function App() {
           <div className="topbar-right"><span className="market-status"><i /> LOCAL WORKSPACE</span><div className="avatar">U</div></div>
         </header>
 
-        {activePage === "pulse" ? (\n          <MarketPulse />\n        ) : activePage === "research" ? (
+        {activePage === "pulse" ? (
+          <MarketPulse />
+        ) : activePage === "research" ? (
           <Research />
         ) : activePage === "industry" ? (
           <IndustryAnalysis onOpenStock={openStock} />
