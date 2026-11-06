@@ -8,6 +8,7 @@ const STATUS_LABELS: Record<ProviderProbeResult["status"], string> = {
   success: "Readable",
   "http-error": "HTTP error",
   "auth-or-policy": "Auth / access policy",
+  "configuration-required": "Configuration required",
   "browser-blocked": "Site/API unreachable",
   timeout: "Timed out",
   "invalid-response": "Unexpected response"
