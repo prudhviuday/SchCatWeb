@@ -369,7 +369,6 @@ async function probeChartInk(): Promise<ProviderProbeResult[]> {
 async function probeNse(): Promise<ProviderProbeResult> {
   const title = "NSE historical delivery API (direct browser request)";
   const { from, to } = recentNseWindow();
-  buildNseDeliveryUrl("RELIANCE", from, to);
   const url = buildNseDeliveryUrl("RELIANCE", from, to);
   const attempt = await requestText(
     "nse-delivery",
