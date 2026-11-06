@@ -165,6 +165,33 @@ Known legacy defects retained for review:
 
 Tests: `frontend/tests/analysis/technicalIndicators.test.mjs`, command `npm run test:indicators`. GitHub Actions passed on final code commit `28807e6e55db209e959f0fcefd74e9c25be6a7a8`: calculation tests, provider tests, chart tests, indicator tests, TypeScript/Vite production build and static-deployment checks. Run: https://github.com/prudhviuday/SchCatWeb/actions/runs/42076058333.
 
+## Step 14 — Industry Analysis (complete; live provider aggregation deferred)
+
+Implemented on `main`:
+- `frontend/src/features/industry/industryAnalysis.ts`: industry grouping, desktop-compatible series aggregation, saved-result validation and legacy-format serialization.
+- `frontend/src/features/industry/IndustryAnalysis.tsx`: industry explorer, stock constituents, local JSON import/export and four historical series charts.
+- App navigation exposes Industry Analysis. Clicking a constituent opens that stock in Charts & Workspace.
+- The explorer groups the 2,256-row static market universe, sorts industry labels and excludes labels beginning with `BSE`.
+- Saved desktop JSON is imported with the browser File API and exported in the same five-array structure; no file upload or server storage is used.
+
+Formula compatibility:
+- Institutional value, close×volume and weighted RS use first-value left padding, then element-wise sum.
+- Delivery and traded values use zero left padding, then element-wise sum.
+- Delivery percentage = aggregate delivery value × 100 / aggregate traded value, rounded to two decimals.
+- Industry RS = summed market-cap-weighted stock RS divided by (1 + summed stock market caps), rounded to two decimals. The desktop's initial +1 and missing-cap fallback +1 are retained.
+- Saved result arrays have no dates; imported charts use observation indexes and warn that they are not calendar-aligned.
+
+Semantic corrections:
+- The source labelled “Institutional Ownership (%)” is actually fund shares × current price / 1bn, an institutional value measure.
+- The source “Revenue (Total)” series is weekly close × volume / 1bn, a turnover proxy rather than revenue.
+- The website uses accurate labels and does not present these metrics with misleading names.
+
+Live provider boundary:
+- Fresh industry calculation is not enabled. It requires MarketSmith institutional value and RS, Yahoo weekly OHLCV and NSE delivery/traded values. Steps 8–9 browser CORS/authentication outcomes remain unverified; no proxy, secret credential or synthetic fallback has been introduced.
+- Market Cap totals in the explorer come from the undated workbook and are reference-only.
+
+Tests: `npm run test:industry` covers padding behaviour, industry aggregation, denominator rules, zero traded-value rejection, grouping/filtering and legacy saved-file parsing/serialization. Full CI passed on commit `af6d7402024c9a997fd3cb011c3d5cd1e49a75ed`: https://github.com/prudhviuday/SchCatWeb/actions/runs/42153154031. All existing suites, nine industry tests, TypeScript/Vite production build and static output checks passed. Cloudflare publication of this commit has not been independently verified.
+
 ## Next step
 
-Step 11: inspect and convert/import only non-sensitive reference workbooks and JSON datasets into static browser-readable assets. Keep personal watchlists, portfolio data and personal files out of public static assets. Live provider CORS checks from Steps 8–9 remain open and should be revisited before provider-dependent screens are completed.
+Step 15 — Research module. Live provider CORS/authentication checks from Steps 8–9 remain open and must be revisited before fresh provider-driven industry calculations are enabled.
