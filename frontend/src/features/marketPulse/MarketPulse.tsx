@@ -33,6 +33,8 @@ function MarketPulse() {
     }
   }, []);
 
+  useEffect(() => { void refresh(); }, [refresh]);
+
   useEffect(() => {
     if (!autoRefresh) return undefined;
     const timer = globalThis.setInterval(() => { void refresh(); }, 60_000);
@@ -55,7 +57,7 @@ function MarketPulse() {
             <input type="checkbox" checked={autoRefresh} onChange={(event) => setAutoRefresh(event.target.checked)} />
             <span>Auto-refresh · 60 sec</span>
           </label>
-          <button className="primary-button" type="button" onClick={() => void refresh()} disabled={loading}>
+          <button className="pulse-refresh-button" type="button" onClick={() => void refresh()} disabled={loading}>
             {loading ? "Refreshing…" : "↻ Refresh"}
           </button>
         </div>
