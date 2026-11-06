@@ -192,6 +192,7 @@ function Portfolio() {
       const imported = parsePortfolioImport(await file.text(), file.name);
       const next = importMode === "replace" ? imported.holdings : mergePortfolioHoldings(holdings, imported.holdings);
       setHoldings(next);
+      setStorageError("");
       setPrices({});
       setCharts({});
       setFormMessage(imported.holdings.length + " holdings imported (" + (importMode === "replace" ? "replaced" : "merged by symbol") + ").");
