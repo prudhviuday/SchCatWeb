@@ -41,6 +41,7 @@ export interface MarketSmithQuarterlyGrowthPoint {
   period: string;
   epsPct: number;
   salesPct: number;
+  salesValue: number | null;
 }
 
 export interface MarketSmithAnnualValuePoint {
@@ -141,7 +142,8 @@ export function parseMarketSmithStockMetrics(payload: unknown): MarketSmithLiveM
     return {
       period: [year, quarterName].filter(Boolean).join(" "),
       epsPct: clampQuarterlyGrowth(finiteNumber(quarter.epsPct)),
-      salesPct: clampQuarterlyGrowth(finiteNumber(quarter.salesPct))
+      salesPct: clampQuarterlyGrowth(finiteNumber(quarter.salesPct)),
+      salesValue: finiteNumber(quarter.sales)
     };
   });
   const institutionBlock = asRecord(response.quarterlySalesAndEarningsInternational);
