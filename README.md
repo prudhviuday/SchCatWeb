@@ -116,6 +116,28 @@ npm run test:screener
 
 The tests cover search/category filters, numeric ranges, AND query intersection, missing query keys, case normalization, stable text sorting and numeric sorting with null values last. GitHub Actions runs these tests as part of the normal verification workflow.
 
+## Charts & Stock Workspace (Step 13)
+
+The **Charts & Workspace** navigation opens a browser-only stock workspace. Selecting a symbol in the Stock Screener opens the same workspace with that stock preselected; a symbol can also be entered directly.
+
+The screen requests the desktop app's four chart periods independently:
+- Weekly: Yahoo Finance `1wk` candles, five-year range.
+- Daily: `1d`, two-year range.
+- Hourly: `1h`, six-month range.
+- Five-minute: `5m`, one-month range.
+
+Charts render candlesticks and volume, with EMA 20/50 overlays calculated on the full returned series and aligned to their candle positions. The daily panel shows last close, change against the previous daily candle, and RSI(21). Visible chart history can be set to 100, 200 or 500 candles. Time labels use Asia/Kolkata.
+
+The selected-stock reference panel displays only the existing workbook fields (Market Cap, P/B, ROCE and NikScore) with the same explicit undated-snapshot warning as the screener. Provider-only fundamentals and the legacy ROCE, institutional ownership, quarterly sales and EPS charts have not been fabricated; they remain pending validated MarketSmith/NSE browser access. Yahoo Finance CORS from the deployed origin also remains unverified, so individual chart cards show their own provider error and retry control when access fails. No server proxy, local Node service, API key or session token has been added.
+
+Run chart view tests with:
+
+```powershell
+npm run test:workspace
+```
+
+Tests cover chronological ordering, indicator alignment after viewport slicing, RSI-21 calculation, insufficient indicator history, invalid viewport limits and IST time labels. GitHub Actions runs this suite alongside all previous parity tests and the production build.
+
 ## Provider diagnostics (Steps 8–9)
 
 After the latest frontend commit is deployed, open `https://schcatweb.prudhvi123143.workers.dev/?diagnostics=providers` and select **Run browser diagnostics**. This executes requests in the actual website origin for both MarketSmith hosts, ChartInk's CSRF + scan flow, NSE historical delivery data, and a small Yahoo Finance chart sample. Use the MarketSmith ID/symbol fields for a known valid pair. The normal home page is unchanged.
