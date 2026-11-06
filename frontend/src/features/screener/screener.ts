@@ -5,7 +5,7 @@ export interface ScreenerRow extends MarketUniverseRecord, Partial<Omit<MarketSm
 
 export type ScreenerNumericField =
   | "marketCap" | "pb" | "roce" | "nikScore"
-  | "groupRank" | "rs" | "epsRank" | "masterScore" | "pe" | "peg" | "fScore";
+  | "groupRank" | "rs" | "epsRank" | "masterScore" | "pe" | "peg" | "fScore" | "accDis";
 export type ScreenerSortField = keyof ScreenerRow;
 
 export interface NumericRange {
@@ -96,13 +96,20 @@ export function applyScreenerFilters(
 
     for (const field of [
       "marketCap", "pb", "roce", "nikScore",
-      "groupRank", "rs", "epsRank", "masterScore", "pe", "peg", "fScore"
+      "groupRank", "rs", "epsRank", "masterScore", "pe", "peg", "fScore", "accDis"
     ] as const) {
       const range = ranges[field];
       if (!range || (range.min === undefined && range.max === undefined)) continue;
 
-      const value = record[field];
-      if (value === null || value === undefined || !Number.isFinite(value)) return false;
+      const rawValue = record[field];
+      // Legacy pandas.to_numeric(errors="coerce") accepted numeric Acc/Dis
+      // values and excluded alphabetic ratings while an Acc/Dis range was active.
+      const value = typeof rawValue === "number"
+        ? rawValue
+        : field === "accDis" && typeof rawValue === "string" && rawValue.trim() !== ""
+          ? Number(rawValue)
+          : null;
+      if (value === null || !Number.isFinite(value)) return false;
       if (range.min !== undefined && value < range.min) return false;
       if (range.max !== undefined && value > range.max) return false;
     }
@@ -153,4 +160,36 @@ export function parseSymbolList(input: string): string[] {
       .map((symbol) => symbol.trim().toUpperCase())
       .filter(Boolean)
   )];
+}
+
+
+export interface IndustryDrilldownState {
+  previousIndustry: string;
+  activeIndustry: string;
+}
+
+/** Mirrors the desktop Industry-column double-click toggle and restores the prior filter. */
+export function toggleIndustryDrilldown(
+  currentIndustry: string,
+  clickedIndustry: string,
+  state: IndustryDrilldownState | null
+): { industry: string; state: IndustryDrilldownState | null } {
+  if (state) return { industry: state.previousIndustry, state: null };
+  const nextIndustry = clickedIndustry.trim();
+  if (!nextIndustry) return { industry: currentIndustry, state: null };
+  return {
+    industry: nextIndustry,
+    state: { previousIndustry: currentIndustry, activeIndustry: nextIndustry }
+  };
+}
+
+/** Desktop shortcuts: Right Arrow uses the selected watchlist; 1–9 use list order. */
+export function resolveWatchlistShortcut(
+  key: string,
+  selectedWatchlist: string,
+  watchlistNames: readonly string[]
+): string | null | undefined {
+  if (key === "ArrowRight") return selectedWatchlist.trim() || null;
+  if (/^[1-9]$/.test(key)) return watchlistNames[Number(key) - 1] ?? null;
+  return undefined;
 }

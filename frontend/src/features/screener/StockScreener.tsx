@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import {
   loadMarketUniverse,
   type MarketUniverseRecord
@@ -20,6 +20,9 @@ import {
   parseSymbolList,
   SCREENER_COLUMNS,
   sortScreenerRecords,
+  toggleIndustryDrilldown,
+  resolveWatchlistShortcut,
+  type IndustryDrilldownState,
   type ScreenerNumericField,
   type ScreenerSortField,
   type ScreenerRow
@@ -39,7 +42,8 @@ const EMPTY_RANGES: RangeInputs = {
   masterScore: { min: "", max: "" },
   pe: { min: "", max: "" },
   peg: { min: "", max: "" },
-  fScore: { min: "", max: "" }
+  fScore: { min: "", max: "" },
+  accDis: { min: "", max: "" }
 };
 
 const RANGE_LABELS: Record<ScreenerNumericField, string> = {
@@ -53,7 +57,8 @@ const RANGE_LABELS: Record<ScreenerNumericField, string> = {
   masterScore: "MasterScore",
   pe: "PE",
   peg: "PEG",
-  fScore: "FScore"
+  fScore: "FScore",
+  accDis: "Acc/Dis"
 };
 
 function numberValue(value: number | null): string {
@@ -149,6 +154,7 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
   const [search, setSearch] = useState("");
   const [sector, setSector] = useState("");
   const [industry, setIndustry] = useState("");
+  const [industryDrilldown, setIndustryDrilldown] = useState<IndustryDrilldownState | null>(null);
   const [ranges, setRanges] = useState<RangeInputs>(EMPTY_RANGES);
   const [sortField, setSortField] = useState<ScreenerSortField>("symbol");
   const [ascending, setAscending] = useState(true);
@@ -212,7 +218,15 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
       nikScore: {
         min: toNumber(ranges.nikScore.min),
         max: toNumber(ranges.nikScore.max)
-      }
+      },
+      groupRank: { min: toNumber(ranges.groupRank.min), max: toNumber(ranges.groupRank.max) },
+      rs: { min: toNumber(ranges.rs.min), max: toNumber(ranges.rs.max) },
+      epsRank: { min: toNumber(ranges.epsRank.min), max: toNumber(ranges.epsRank.max) },
+      masterScore: { min: toNumber(ranges.masterScore.min), max: toNumber(ranges.masterScore.max) },
+      pe: { min: toNumber(ranges.pe.min), max: toNumber(ranges.pe.max) },
+      peg: { min: toNumber(ranges.peg.min), max: toNumber(ranges.peg.max) },
+      fScore: { min: toNumber(ranges.fScore.min), max: toNumber(ranges.fScore.max) },
+      accDis: { min: toNumber(ranges.accDis.min), max: toNumber(ranges.accDis.max) }
     }
   }), [search, sector, industry, ranges]);
 
@@ -356,6 +370,7 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
     setSearch("");
     setSector("");
     setIndustry("");
+    setIndustryDrilldown(null);
     setRanges(EMPTY_RANGES);
     setSelectedQueries([]);
     setActiveWatchlist("");
@@ -429,6 +444,36 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
     setPage(0);
   }
 
+  function addSelectedToWatchlist(watchlistName: string | null) {
+    if (!selectedStock) {
+      setWatchlistNotice("Select a stock row first, then use the watchlist shortcut.");
+      return;
+    }
+    if (!watchlistName) {
+      setWatchlistNotice("Choose a target watchlist first (or use keys 1–9).");
+      return;
+    }
+    if (!library.watchlists.some((item) => item.name === watchlistName)) {
+      setWatchlistNotice("That watchlist is no longer available. Refresh the selection and try again.");
+      return;
+    }
+    setLibrary((current) => addSymbolToWatchlist(current, watchlistName, selectedStock.symbol));
+    setWatchlistNotice(selectedStock.symbol + " added to " + watchlistName + ".");
+  }
+
+  function handleTableKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    const target = event.target as HTMLElement;
+    if (target.closest("input, textarea, select, [contenteditable='true']")) return;
+    const watchlistName = resolveWatchlistShortcut(
+      event.key,
+      watchlistTarget || activeWatchlist,
+      library.watchlists.map((item) => item.name)
+    );
+    if (watchlistName === undefined) return;
+    event.preventDefault();
+    addSelectedToWatchlist(watchlistName);
+  }
+
   const sectors = useMemo(
     () => [...new Set(records.map((record) => record.sector).filter((value): value is string => Boolean(value)))].sort(),
     [records]
@@ -495,7 +540,7 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
           </label>
           <label className="screener-field">
             <span>Industry</span>
-            <select value={industry} onChange={(event) => { setIndustry(event.target.value); setPage(0); }}>
+            <select value={industry} onChange={(event) => { setIndustry(event.target.value); setIndustryDrilldown(null); setPage(0); }}>
               <option value="">All industries</option>
               {industries.map((value) => <option key={value} value={value}>{value}</option>)}
             </select>
@@ -603,11 +648,16 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
             <div><strong>{selectedStock.symbol}</strong><span>{selectedStock.industry ?? "Industry unavailable"} · {selectedStock.sector ?? "Sector unavailable"}</span></div>
             <span>MarketSmith ID: {selectedStock.instrumentId ?? "—"}</span>
             <select aria-label="Select watchlist" value={watchlistTarget} onChange={event=>setWatchlistTarget(event.target.value)}><option value="">Select watchlist</option>{library.watchlists.map(item=><option key={item.name} value={item.name}>{item.name}</option>)}</select>
-            <button type="button" onClick={()=>{if(!watchlistTarget){setWatchlistNotice("Create or select a target watchlist first.");return;}setLibrary(current=>addSymbolToWatchlist(current,watchlistTarget,selectedStock.symbol));setWatchlistNotice(selectedStock.symbol+" added to "+watchlistTarget);}}>Add to watchlist</button>
+            <button type="button" onClick={()=>addSelectedToWatchlist(watchlistTarget)}>Add to watchlist</button>
             <button type="button" onClick={() => setSelectedStock(null)}>Close</button>
           </div>
         )}
-        <div className="screener-table-wrap">
+        <div
+          className="screener-table-wrap"
+          tabIndex={0}
+          onKeyDown={handleTableKeyDown}
+          aria-label="Stock results. Right Arrow adds the selected stock to the target watchlist; keys 1–9 add it to watchlists in list order."
+        >
           <table className="screener-table">
             <thead>
               <tr>
@@ -623,13 +673,34 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
             </thead>
             <tbody>
               {pageRecords.map((record) => (
-                <tr key={record.symbol} className={selectedStock?.symbol === record.symbol ? "selected" : ""}>
+                <tr
+                  key={record.symbol}
+                  className={selectedStock?.symbol === record.symbol ? "selected" : ""}
+                  aria-selected={selectedStock?.symbol === record.symbol}
+                  onClick={() => setSelectedStock(record)}
+                  onDoubleClick={(event) => {
+                    if ((event.target as HTMLElement).closest("[data-industry-cell]")) return;
+                    onOpenStock(record);
+                  }}
+                >
                   {SCREENER_COLUMNS.map((column) => (
                     <td className={column.numeric ? "numeric" : undefined} key={column.key}>
                       {column.key === "symbol" ? (
                         <button type="button" className="screener-symbol" onClick={() => { setSelectedStock(record); onOpenStock(record); }}>{record.symbol}</button>
                       ) : column.key === "industry" ? (
-                        <button type="button" className="screener-industry" onDoubleClick={() => { setIndustry(record.industry ?? ""); setPage(0); }} title="Double-click to filter this industry">{record.industry ?? "—"}</button>
+                        <button
+                           type="button"
+                           className="screener-industry"
+                           data-industry-cell
+                           onDoubleClick={(event) => {
+                             event.stopPropagation();
+                             const next = toggleIndustryDrilldown(industry, record.industry ?? "", industryDrilldown);
+                             setIndustry(next.industry);
+                             setIndustryDrilldown(next.state);
+                             setPage(0);
+                           }}
+                           title="Double-click to filter this industry; double-click an industry again to restore the previous filter"
+                         >{record.industry ?? "—"}</button>
                       ) : column.key === "marketCap" ? (
                         compactNumber(record.marketCap)
                       ) : (
@@ -649,6 +720,7 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
         <div className="screener-table-footer">
           <span>Showing {filteredRecords.length === 0 ? 0 : page * pageSize + 1}–{Math.min((page + 1) * pageSize, filteredRecords.length)} of {filteredRecords.length}</span>
           <span>MarketSmith metrics are live only after refresh; * fields remain static reference values.</span>
+          <span>Keyboard shortcuts: Right Arrow adds the selected stock to the target watchlist; 1–9 adds it to the corresponding watchlist in list order.</span>
         </div>
       </section>
 

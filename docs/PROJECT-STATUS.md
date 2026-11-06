@@ -520,3 +520,15 @@ Implemented on `main`:
 - Refreshed values update the in-page market universe and can be exported with the existing CSV export. Browser code cannot overwrite the source XLSX/static JSON, so the user explicitly downloads the updated CSV rather than a silent workbook mutation.
 - Tests cover quarter ordering/padding, all three score components, weighting, latest annual ROCE selection and score output.
 - Live provider availability still requires user-side testing with a current MarketSmith session; CI uses deterministic fixtures.
+
+
+## Step 36 — Main screener workflow parity (2026-11-06)
+
+- Compared the desktop screener in `Guimain2.py`, `helper.py` and `util.py` with the current browser screener.
+- Fixed the range-filter wiring: every advanced field shown in the web screener is now applied, including Group Rank, RS, EPS Rank, MasterScore, Acc/Dis, PE, PEG and FScore in addition to the static reference metrics.
+- Acc/Dis range filtering follows the desktop `pandas.to_numeric(errors="coerce")` behaviour: numeric values are filterable, while alphabetic grades are excluded only when an Acc/Dis range is active.
+- Industry double-click now acts as a drill-down toggle and restores the prior industry selection on the next double-click. Other filters remain intact.
+- Restored desktop keyboard shortcuts on the stock-results area: Right Arrow adds the selected row to the chosen target (or active) watchlist; keys 1–9 add it to the watchlist at that position in the displayed list.
+- Clicking any table row selects it for the detail/action panel. Double-clicking a non-Industry cell opens the stock workspace; double-clicking Industry performs the industry toggle.
+- Added parity tests for the full advanced-filter set, Acc/Dis coercion, industry restore behaviour and keyboard-to-watchlist mapping.
+- User testing remains necessary for the interactive browser workflow and live MarketSmith responses; CI covers deterministic logic and build only.

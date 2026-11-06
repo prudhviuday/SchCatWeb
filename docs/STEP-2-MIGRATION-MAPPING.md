@@ -400,3 +400,10 @@ Browser port:
 ## 12. Migration sequence
 
 See `docs/PROJECT-STATUS.md` for the binding 20-step plan. Steps 7–11 cover core calculations, provider diagnostics, browser chart-data transformations, technical-indicator parity and static reference-data conversion. Steps 12 (Stock Screener), 13 (Charts & Stock Workspace), 14 (Industry Analysis) and 15 (Research) are implemented; see their sections above. Live browser CORS checks for the required external providers remain open. The previous backend endpoint proposals are superseded; app-internal workflows should be TypeScript functions, not HTTP routes.
+
+
+### Step 36 — main screener interaction parity
+
+The web screener applies all visible numeric min/max inputs. The original advanced-filter fields are GroupRank, RS, EPS, MasterScore, AccDis, FScore, PE, PEG, ROCE and NikScore. In the current web model, Acc/Dis is usually a letter rating; when a range is set, numeric values are coerced as in legacy `pandas.to_numeric(errors="coerce")`, while non-numeric grades are excluded. Market Cap and P/B remain additional web filters for static reference values.
+
+Industry double-click toggles a drill-down and restores the previous industry selection on the next double-click. All other filters remain in effect. Clicking a result row selects it; double-clicking a non-Industry cell opens its stock workspace. Keyboard actions are supported when the result table is focused: Right Arrow adds the selected stock to the chosen target (or active) watchlist, and number keys 1–9 add it to the watchlist in the displayed order. The tests cover these interactions' deterministic state transitions and shortcut routing.

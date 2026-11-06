@@ -5,7 +5,9 @@ import {
   applyScreenerFilters,
   intersectSelectedQueries,
   parseSymbolList,
-  sortScreenerRecords
+  sortScreenerRecords,
+  toggleIndustryDrilldown,
+  resolveWatchlistShortcut
 } from "../../.test-dist/features/screener/screener.js";
 
 const rows = [
@@ -108,4 +110,48 @@ test("live MarketSmith fields support numeric filtering and stable sorting", () 
     sortScreenerRecords(liveRows, "rs", false).map(row => row.symbol),
     ["RELIANCE", "TCS", "ONGC"]
   );
+});
+
+
+test("all legacy advanced numeric fields are applied, including numeric Acc/Dis values", () => {
+  const liveRows = [
+    { ...rows[0], groupRank: 8, rs: 94, epsRank: 91, masterScore: 97, accDis: "3", pe: 22, peg: 0.8, fScore: 27 },
+    { ...rows[1], groupRank: 15, rs: 82, epsRank: 76, masterScore: 73, accDis: "A", pe: 32, peg: 1.4, fScore: 18 }
+  ];
+
+  const result = applyScreenerFilters(liveRows, {
+    ranges: {
+      groupRank: { min: 5, max: 10 },
+      rs: { min: 90 },
+      epsRank: { min: 85 },
+      masterScore: { min: 90 },
+      accDis: { min: 2, max: 4 },
+      pe: { max: 25 },
+      peg: { max: 1 },
+      fScore: { min: 25 }
+    }
+  });
+  assert.deepEqual(result.map((row) => row.symbol), ["RELIANCE"]);
+});
+
+test("industry double-click toggles back to the previous industry filter", () => {
+  const drilled = toggleIndustryDrilldown("IT services", "Refineries", null);
+  assert.equal(drilled.industry, "Refineries");
+  assert.deepEqual(drilled.state, {
+    previousIndustry: "IT services",
+    activeIndustry: "Refineries"
+  });
+
+  const restored = toggleIndustryDrilldown(drilled.industry, "Oil exploration", drilled.state);
+  assert.equal(restored.industry, "IT services");
+  assert.equal(restored.state, null);
+});
+
+test("desktop watchlist shortcuts map Right Arrow and 1–9 in watchlist order", () => {
+  const names = ["Core", "Breakouts", "Watch"];
+  assert.equal(resolveWatchlistShortcut("ArrowRight", "Core", names), "Core");
+  assert.equal(resolveWatchlistShortcut("ArrowRight", "", names), null);
+  assert.equal(resolveWatchlistShortcut("2", "Core", names), "Breakouts");
+  assert.equal(resolveWatchlistShortcut("9", "Core", names), null);
+  assert.equal(resolveWatchlistShortcut("a", "Core", names), undefined);
 });
