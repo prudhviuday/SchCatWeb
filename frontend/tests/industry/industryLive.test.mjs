@@ -45,7 +45,7 @@ test("a constituent provider failure excludes its series but remains in legacy m
   });
   assert.equal(result.successfulStocks, 1);
   assert.deepEqual(result.failures, [{ symbol: "BBB", message: "MarketSmith unavailable" }]);
-  assert.deepEqual(result.result.industryRelativeStrength, [3.32, 6.64]);
+  assert.deepEqual(result.result.industryRelativeStrength, [0.03, 0.07]);
   assert.deepEqual(result.result.institutionalValueBillions, [10, 20]);
 });
 
