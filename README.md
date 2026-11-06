@@ -192,6 +192,19 @@ After the latest frontend commit is deployed, open `https://schcatweb.prudhvi123
 
 The page never embeds the legacy `ms-auth` query values or reads/stores cookies. Credentialed cross-origin requests are subject to provider CORS headers and browser third-party-cookie policy. A browser `fetch` failure is reported as a possible CORS/network/privacy-policy block; inspect DevTools Console for the specific browser message.
 
+
+## Production integration smoke tests (Step 19)
+
+After building the static site, run:
+
+```powershell
+npm run test:integration
+```
+
+This starts Vite's production preview locally and verifies SPA fallback for deep links, the compiled bundle's six workspace modules and provider diagnostics, public reference-data availability/counts against the manifest, and the static-only Cloudflare asset configuration. CI runs this suite after `npm run build`.
+
+These tests do not contact external market-data providers and do not prove that the latest commit has been deployed to Cloudflare. Live provider CORS/authentication and production-origin verification are part of the final release step.
+
 ## Cloudflare Workers Builds
 
 Configure the existing Cloudflare Worker `schcatweb` as follows:
