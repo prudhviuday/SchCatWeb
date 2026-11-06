@@ -1,7 +1,8 @@
 /**
- * Chart data shaping and Yahoo requests run directly in the user's browser.
- * Yahoo's public chart endpoint was verified to return readable JSON from the
- * deployed browser origin; the Worker route remains available as a fallback.
+ * Chart data is fetched through the same-origin SchCatWeb Worker. The original
+ * CRIP4 desktop app used Node's got() for Yahoo Finance; browser fetches cannot
+ * reproduce that flow because Yahoo does not grant the deployed site CORS
+ * access. The Worker performs the provider request and returns the JSON.
  *
  * The old Node stockUrlmaker contains "else if (key = 1000)", an assignment
  * that routes most requests to daily candles. This module implements the
@@ -272,8 +273,8 @@ export function aggregateHourlyToFourHour(
 }
 
 /**
- * Fetch and shape chart candles directly in the browser. The 15m/4H views are
- * built from Yahoo 5m/1h candles with the same grouping rules as CRIP4.
+ * Fetch and shape chart candles through the same-origin Worker. The 15m/4H
+ * views are built from Yahoo 5m/1h candles with the same grouping rules as CRIP4.
  */
 export async function fetchChartData(
   symbol: string,
@@ -296,7 +297,7 @@ async function fetchYahooCandles(
   timeframe: Exclude<ChartTimeframe, "15m" | "4H">,
   options: ChartRequestOptions
 ): Promise<ChartCandle[]> {
-  const url = buildYahooChartUrl(symbol, timeframe);
+  const url = buildYahooProxyUrl(symbol, timeframe);
   const controller = new AbortController();
   const timeoutMs = options.timeoutMs ?? 15_000;
   const timeoutId = globalThis.setTimeout(
@@ -309,8 +310,8 @@ async function fetchYahooCandles(
     try {
       response = await fetch(url, {
         method: "GET",
-        mode: "cors",
-        credentials: "omit",
+        mode: "same-origin",
+        credentials: "same-origin",
         headers: { Accept: "application/json" },
         signal: controller.signal
       });
@@ -320,15 +321,25 @@ async function fetchYahooCandles(
       throw new ChartDataError(
         timedOut ? "timeout" : "network",
         timedOut
-          ? `Yahoo Finance did not respond within ${timeoutMs} ms.`
-          : "The browser could not reach Yahoo Finance. Check the browser network and provider availability."
+          ? `SchCatWeb's data Worker did not respond within ${timeoutMs} ms.`
+          : "Could not reach the SchCatWeb data Worker. Check the site/API deployment and network."
       );
     }
 
     if (!response.ok) {
+      let detail = "";
+      try {
+        const body = await response.clone().json() as { message?: unknown; error?: unknown };
+        if (typeof body.message === "string") detail = body.message;
+        else if (typeof body.error === "string") detail = body.error;
+      } catch {
+        // Keep the HTTP status as the primary diagnostic.
+      }
       throw new ChartDataError(
         "http",
-        `Yahoo Finance returned HTTP ${response.status}.`,
+        detail
+          ? `Yahoo Finance via SchCatWeb returned HTTP ${response.status}: ${detail}`
+          : `Yahoo Finance via SchCatWeb returned HTTP ${response.status}.`,
         response.status
       );
     }
@@ -339,7 +350,7 @@ async function fetchYahooCandles(
     } catch {
       throw new ChartDataError(
         "invalid-response",
-        "Yahoo Finance returned a response that was not valid JSON."
+        "The SchCatWeb Worker returned a response that was not valid Yahoo Finance JSON."
       );
     }
     return parseYahooChartPayload(payload);
