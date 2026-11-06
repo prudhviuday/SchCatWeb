@@ -214,6 +214,27 @@ Legacy compatibility warnings:
 Tests: `frontend/tests/analysis/technicalIndicators.test.mjs`, command `npm run test:indicators`. They cover numeric SMA/EMA/RSI outputs, alignment/padding, the fixed RSI period, and the preserved ULTM/ATP quirks.
 
 
+### Step 12 — Browser stock screener
+
+Implemented under:
+- `frontend/src/features/screener/screener.ts`: pure search/category/numeric filtering, selected symbol-set query intersection and stable sorting.
+- `frontend/src/features/screener/StockScreener.tsx`: screen and state, loading the typed reference universe and industry data from same-origin static JSON.
+- `frontend/tests/screener/screener.test.mjs`: Node built-in tests, run with `npm run test:screener`.
+
+Feature behaviour:
+- 2,256 reference rows loaded from `marketUniverse.json`, with search over symbol, sector and industry.
+- Exact sector/industry filters and inclusive min/max for Market Cap, P/B, ROCE and NikScore.
+- Sortable columns; null values always remain last, including descending numeric sorts.
+- Page size 50, filtered CSV export, symbol selection showing the reference instrument ID, and double-click Industry filtering.
+- Selected named symbol lists intersect using AND semantics. These are user-entered current-session lists only; refresh clears them. This is not yet saved ChartInk query execution.
+
+Freshness/provider boundaries:
+- Market Cap, P/B, ROCE and NikScore are explicitly labelled as undated workbook snapshots in UI and CSV.
+- The live MarketSmith values in the old desktop screener (GroupRank, RS, EPS, MasterScore, AccDis, PE, PEG, FScore) are not available from the static workbook. They are not replaced with zeros, synthetic values or the desktop's exception defaults. Connect them only after Step 8 provider access/authentication is validated and the required response fields are verified.
+- ChartInk query codes have not been imported and actual ChartInk scans are not run. Keep the personal Watchlist and Portfolio sheets excluded from public assets. Watchlists and persistent query management remain later work.
+
+Run `npm run test:screener`; the CI verification workflow also runs the suite before the production build.
+
 ## 7. Industry Analysis
 
 Legacy workflow:
@@ -259,4 +280,4 @@ Holdings contain stock, quantity and buy price. Legacy chart calculates each hol
 
 ## 12. Migration sequence
 
-See `docs/PROJECT-STATUS.md` for the binding 20-step plan. Steps 7–11 cover core calculations, provider diagnostics, browser chart-data transformations, technical-indicator parity and static reference-data conversion. Next is Step 12 (browser stock screener), while live browser CORS checks for the required external providers remain open. The previous backend endpoint proposals are superseded; app-internal workflows should be TypeScript functions, not HTTP routes.
+See `docs/PROJECT-STATUS.md` for the binding 20-step plan. Steps 7–11 cover core calculations, provider diagnostics, browser chart-data transformations, technical-indicator parity and static reference-data conversion. Step 12 (browser stock screener) is implemented; see the Step 12 section above. Live browser CORS checks for the required external providers remain open. The previous backend endpoint proposals are superseded; app-internal workflows should be TypeScript functions, not HTTP routes.
