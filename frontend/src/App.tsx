@@ -84,7 +84,7 @@ function App() {
                 <div className="notice-title">SchCatWeb foundation is live</div>
                 <p>The static terminal now includes a stock screener and a multi-timeframe chart workspace. Provider-dependent fundamentals and remaining modules are being migrated in stages.</p>
               </div>
-              <span className="step-tag">STEP 17</span>
+              <span className="step-tag">STEP 18</span>
             </div>
 
             <div className="section-heading">
