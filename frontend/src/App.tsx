@@ -50,7 +50,7 @@ function App() {
         </nav>
         <div className="sidebar-footer">
           <span className="status-dot" />
-          {activePage === "screener" ? "SCREENER ONLINE" : activePage === "workspace" ? "WORKSPACE ONLINE" : activePage === "pulse" ? "MARKET PULSE ONLINE" : activePage === "portfolio" ? "PORTFOLIO ONLINE" : "MIGRATION IN PROGRESS"}
+          {activePage === "screener" ? "SCREENER ONLINE" : activePage === "workspace" ? "WORKSPACE ONLINE" : activePage === "pulse" ? "MARKET PULSE ONLINE" : activePage === "portfolio" ? "PORTFOLIO ONLINE" : activePage === "industry" ? "INDUSTRY ONLINE" : activePage === "research" ? "RESEARCH ONLINE" : "LOCAL WORKSPACE ONLINE"}
         </div>
       </aside>
 
@@ -75,16 +75,16 @@ function App() {
         ) : (
           <div className="content">
             <div className="eyebrow">PERSONAL MARKET WORKSPACE</div>
-            <h1>Good evening.</h1>
-            <p className="intro">Your research terminal is being prepared.</p>
+            <h1>Market workspace.</h1>
+            <p className="intro">Your research, screening, charts and portfolio tools are ready in one browser-based terminal.</p>
 
             <div className="notice-card">
               <div className="notice-icon">✳</div>
               <div>
                 <div className="notice-title">SchCatWeb foundation is live</div>
-                <p>The static terminal now includes a stock screener and a multi-timeframe chart workspace. Provider-dependent fundamentals and remaining modules are being migrated in stages.</p>
+                <p>All six workspace modules are integrated. Market data is fetched directly by your browser where providers permit it; personal watchlists and portfolio data stay in this browser.</p>
               </div>
-              <span className="step-tag">STEP 18</span>
+              <span className="step-tag">STEP 19</span>
             </div>
 
             <div className="section-heading">
@@ -103,27 +103,19 @@ function App() {
                 <span className="module-arrow">↗</span>
               </button>
               {[
-                ["03", "Industry Analysis", "Industry strength and participation"],
-                ["04", "Research", "Historical query performance"],
-                ["05", "Market Pulse", "Market breadth and signal dashboard"],
-                ["06", "Portfolio", "Holdings and P&L analytics"]
-              ].map(([number, title, description]) => (
-                number === "06" ? (
-                  <button type="button" className="module-card module-card-button" key={number} onClick={() => setActivePage("portfolio")}>
-                    <span className="module-number">{number}</span>
-                    <div><h3>{title}</h3><p>{description}</p></div>
-                    <span className="module-arrow">↗</span>
-                  </button>
-                ) : (
-                  <article className="module-card" key={number}>
-                    <span className="module-number">{number}</span>
-                    <div><h3>{title}</h3><p>{description}</p></div>
-                    <span className="module-arrow">↗</span>
-                  </article>
-                )
+                ["03", "Industry Analysis", "Industry strength and participation", "industry"],
+                ["04", "Research", "Historical query performance", "research"],
+                ["05", "Market Pulse", "Market breadth and signal dashboard", "pulse"],
+                ["06", "Portfolio", "Holdings and P&L analytics", "portfolio"]
+              ].map(([number, title, description, page]) => (
+                <button type="button" className="module-card module-card-button" key={number} onClick={() => setActivePage(page as Page)}>
+                  <span className="module-number">{number}</span>
+                  <div><h3>{title}</h3><p>{description}</p></div>
+                  <span className="module-arrow">↗</span>
+                </button>
               ))}
             </div>
-            <footer className="page-footer">SCHCATWEB <span>·</span> PERSONAL BUILD <span>·</span> FOUNDATION</footer>
+            <footer className="page-footer">SCHCATWEB <span>·</span> PERSONAL BUILD <span>·</span> STEP 19 INTEGRATION</footer>
           </div>
         )}
       </section>
