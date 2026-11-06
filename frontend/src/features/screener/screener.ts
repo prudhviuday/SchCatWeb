@@ -1,4 +1,4 @@
-import type { MarketUniverseRecord } from "../../data/reference/marketUniverse";
+import type { MarketUniverseRecord } from "../../data/reference/marketUniverse.js";
 
 export type ScreenerNumericField = "marketCap" | "pb" | "roce" | "nikScore";
 export type ScreenerSortField = keyof MarketUniverseRecord;
