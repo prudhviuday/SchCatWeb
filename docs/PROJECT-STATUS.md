@@ -67,6 +67,7 @@ The root `wrangler.toml` sets `main = "worker/index.js"`, binds `frontend/dist` 
 | 19 | Integration, parity, browser compatibility and end-to-end testing | Complete — all six modules linked from Overview; production preview smoke tests cover SPA fallback, bundle, reference data and static deployment config |
 | 20 | Cloudflare Worker API integration, production deployment and provider diagnostics | In progress — same-origin Worker routes are in place; user confirmed the browser-local MarketSmith session input and diagnostics flow work. Continue checking the actual live outcomes and deployment state |
 | 21 | Live MarketSmith Stock Screener data | Implemented on main; CI/parity tests pass. User still needs to run the full-universe refresh from the deployed screener to verify live results and provider limits |
+| 22 | Live MarketSmith fundamentals in Stock Workspace | Implemented on main; awaiting CI and user verification of symbol-details + financeDetails against their saved browser session |
 
 Steps 7–11 are ordered to establish calculations, provider access, chart behaviour and static data before completing the feature screens. The original desktop app remains the behavioural reference throughout.
 
@@ -312,3 +313,27 @@ User test instructions:
 2. Open the main site, select **Stock Screener**, and click **Fetch live MarketSmith**.
 3. Let the progress counter finish. Confirm RS, EPS Rank, MasterScore, PE, PEG and FScore populate, then try sorting by RS and filtering by FScore.
 4. Note the success/failure counts. If it reports many errors or takes too long, do not repeatedly trigger refreshes; record the first error and the final counts for the next step.
+
+## Step 22 — Live MarketSmith fundamentals in Stock Workspace (implemented; awaiting CI and live verification)
+
+Implemented on `main`:
+- The Stock Workspace now has an explicit **Fetch live fundamentals** action. It uses the same browser-local MarketSmith session stored in Step 20; no new configuration is needed.
+- It resolves the MarketSmith instrument ID from the selected stock's reference record or the static `marketSmithIds.json` map.
+- It calls the existing same-origin Worker routes in parallel: `/api/marketsmith/symbol` for current company/quarterly data and `/api/marketsmith/finance` for annual financial ratios. Both requests pass the saved session in the `x-marketsmith-auth` header.
+- The summary now displays live Group Rank, RS, EPS Rank, MasterScore, Acc/Dis, ROE, PE, PEG, FScore, EPS growth, earnings stability, MarketSmith book value and cash flow. Existing Market Cap, P/B, ROCE and NikScore workbook values remain visibly marked as undated references.
+- Quarterly EPS and sales growth are shown in chronological order, with the same -200..200 clamp as the desktop EPS/sales history functions. FScore continues to use the latest three provider observations in original provider order, preserving the desktop score.
+- Annual EPS is taken from `financeDetails.json` `ratiosAnnualData` fields `c0` (year) and `c20` (EPS), reversed to chronological order, and normalized with the exact legacy `normalizeSeries` formula. A constant/one-point EPS series displays actual EPS and leaves the normalized index blank rather than fabricating values.
+- Symbol details and annual EPS requests are independent: the page can show partial success if one endpoint works and the other fails. Data remains in page memory only.
+
+Tests:
+- `npm run test:marketsmith` now covers symbol-details field mapping, FScore, quarterly ordering, financeDetails annual EPS order/normalization, same-origin finance request/header, errors and the existing full-universe concurrency behaviour.
+- The full CI workflow also runs the Vite build and the existing screener/chart/provider suites. Record the final successful run after it completes.
+
+User verification:
+1. Open the deployed site and open any stock in **Stock Workspace**.
+2. Confirm the same browser has the MarketSmith session saved from Provider Diagnostics.
+3. Click **Fetch live fundamentals**.
+4. Confirm the live summary values, quarterly EPS/sales growth and annual EPS values appear. If one of the two MarketSmith endpoints fails, note whether the message says symbol-details or finance HTTP error so the next fix targets the correct endpoint.
+5. Do not repeatedly click refresh; the page makes two MarketSmith requests per stock.
+
+Cloudflare publication of this Step 22 commit and live provider success have not yet been independently confirmed.
