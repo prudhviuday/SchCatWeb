@@ -424,3 +424,22 @@ Implemented on main:
 
 Verification:
 - Full GitHub Actions verification is pending. Actual MarketSmith data and Cloudflare publication remain to be confirmed separately.
+
+
+## Step 30 — Multi-Stock Analysis (implemented; CI and user verification pending)
+
+Implemented on `main`:
+- Ported the legacy `Tabs/AnalysisTab.py` workflow as a browser-based **Multi-Stock Analysis** screen.
+- Searches the static market universe by industry or stock-symbol substring, provides industry autocomplete, and displays up to the legacy limit of 12 matching stocks.
+- Loads each selected stock's Weekly and Daily Yahoo candles through the existing same-origin Cloudflare Worker provider. Requests are bounded to four stocks at a time (eight chart requests), and each timeframe reports its own loading, empty or error state.
+- Adds the original Right Arrow / period-key industry cycling behaviour without intercepting keystrokes while the search input is focused.
+- Reuses the existing chart provider and keeps all stock data in page memory. No new API route, database, credential or persistent storage.
+- Added deterministic tests for substring matching, case-insensitivity, empty queries, result cap, industry suggestions and cycling.
+
+User verification:
+1. Open the deployed SchCatWeb and select **Multi-Stock Analysis**.
+2. Enter an industry substring such as `Electrical Equipment` and select **Go**; confirm matching stocks appear (maximum 12).
+3. Confirm Weekly and Daily charts load independently. A provider failure should appear on that card without blocking the other stocks.
+4. Press Right Arrow or `.` outside the search field to cycle to the next industry.
+
+CI must pass before considering Step 30 verified. Live Yahoo access and Cloudflare publication remain separate checks.

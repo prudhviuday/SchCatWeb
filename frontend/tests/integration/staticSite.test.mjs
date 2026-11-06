@@ -49,7 +49,7 @@ test("built application bundle contains every integrated workspace module", asyn
   const response = await fetch(new URL(scriptPath, origin));
   assert.equal(response.status, 200);
   const bundle = await response.text();
-  for (const label of ["Stock Screener", "Charts & Workspace", "Industry Analysis", "Research", "Market Pulse", "Portfolio"]) {
+  for (const label of ["Stock Screener", "Charts & Workspace", "Industry Analysis", "Research", "Market Pulse", "Portfolio", "Multi-Stock Analysis"]) {
     assert.ok(bundle.includes(label), "production bundle should include " + label);
   }
   assert.ok(bundle.includes("Provider connectivity diagnostics"), "provider diagnostics view should be bundled");

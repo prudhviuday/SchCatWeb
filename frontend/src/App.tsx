@@ -6,9 +6,10 @@ import IndustryAnalysis from "./features/industry/IndustryAnalysis";
 import Research from "./features/research/Research";
 import MarketPulse from "./features/marketPulse/MarketPulse";
 import Portfolio from "./features/portfolio/Portfolio";
+import MultiStockAnalysis from "./features/analysis/MultiStockAnalysis";
 import type { MarketUniverseRecord } from "./data/reference/marketUniverse";
 
-type Page = "overview" | "screener" | "workspace" | "industry" | "research" | "pulse" | "portfolio";
+type Page = "overview" | "screener" | "workspace" | "industry" | "research" | "pulse" | "portfolio" | "analysis";
 
 function App() {
   const [activePage, setActivePage] = useState<Page>("overview");
@@ -47,20 +48,23 @@ function App() {
           <button type="button" className={"nav-item " + (activePage === "research" ? "active" : "")} onClick={() => setActivePage("research")}><span className="nav-icon">⌁</span> Research</button>
           <button type="button" className={"nav-item " + (activePage === "pulse" ? "active" : "")} onClick={() => setActivePage("pulse")}><span className="nav-icon">◷</span> Market Pulse</button>
           <button type="button" className={"nav-item " + (activePage === "portfolio" ? "active" : "")} onClick={() => setActivePage("portfolio")}><span className="nav-icon">▣</span> Portfolio</button>
+          <button type="button" className={"nav-item " + (activePage === "analysis" ? "active" : "")} onClick={() => setActivePage("analysis")}><span className="nav-icon">▥</span> Multi-Stock Analysis</button>
         </nav>
         <div className="sidebar-footer">
           <span className="status-dot" />
-          {activePage === "screener" ? "SCREENER ONLINE" : activePage === "workspace" ? "WORKSPACE ONLINE" : activePage === "pulse" ? "MARKET PULSE ONLINE" : activePage === "portfolio" ? "PORTFOLIO ONLINE" : activePage === "industry" ? "INDUSTRY ONLINE" : activePage === "research" ? "RESEARCH ONLINE" : "LOCAL WORKSPACE ONLINE"}
+          {activePage === "screener" ? "SCREENER ONLINE" : activePage === "workspace" ? "WORKSPACE ONLINE" : activePage === "pulse" ? "MARKET PULSE ONLINE" : activePage === "portfolio" ? "PORTFOLIO ONLINE" : activePage === "analysis" ? "ANALYSIS ONLINE" : activePage === "industry" ? "INDUSTRY ONLINE" : activePage === "research" ? "RESEARCH ONLINE" : "LOCAL WORKSPACE ONLINE"}
         </div>
       </aside>
 
       <section className="main-panel">
         <header className="topbar">
-          <div className="breadcrumb">SCHCAT <span>/</span> {activePage === "screener" ? "STOCK SCREENER" : activePage === "workspace" ? "CHARTS & WORKSPACE" : activePage === "industry" ? "INDUSTRY ANALYSIS" : activePage === "research" ? "RESEARCH" : activePage === "pulse" ? "MARKET PULSE" : activePage === "portfolio" ? "PORTFOLIO" : "OVERVIEW"}</div>
+          <div className="breadcrumb">SCHCAT <span>/</span> {activePage === "screener" ? "STOCK SCREENER" : activePage === "workspace" ? "CHARTS & WORKSPACE" : activePage === "industry" ? "INDUSTRY ANALYSIS" : activePage === "research" ? "RESEARCH" : activePage === "pulse" ? "MARKET PULSE" : activePage === "portfolio" ? "PORTFOLIO" : activePage === "analysis" ? "MULTI-STOCK ANALYSIS" : "OVERVIEW"}</div>
           <div className="topbar-right"><span className="market-status"><i /> LOCAL WORKSPACE</span><div className="avatar">U</div></div>
         </header>
 
-        {activePage === "portfolio" ? (
+        {activePage === "analysis" ? (
+          <MultiStockAnalysis />
+        ) : activePage === "portfolio" ? (
           <Portfolio />
         ) : activePage === "pulse" ? (
           <MarketPulse />
@@ -106,7 +110,8 @@ function App() {
                 ["03", "Industry Analysis", "Industry strength and participation", "industry"],
                 ["04", "Research", "Historical query performance", "research"],
                 ["05", "Market Pulse", "Market breadth and signal dashboard", "pulse"],
-                ["06", "Portfolio", "Holdings and P&L analytics", "portfolio"]
+                ["06", "Portfolio", "Holdings and P&L analytics", "portfolio"],
+                ["07", "Multi-Stock Analysis", "Compare weekly and daily charts across an industry", "analysis"]
               ].map(([number, title, description, page]) => (
                 <button type="button" className="module-card module-card-button" key={number} onClick={() => setActivePage(page as Page)}>
                   <span className="module-number">{number}</span>
