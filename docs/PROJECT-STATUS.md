@@ -63,7 +63,7 @@ The single root `wrangler.toml` sets `name = "schcatweb"` and `assets.directory 
 | 16 | Market Pulse | Implemented; live ChartInk browser access must be confirmed from the deployed origin |
 | 17 | Portfolio using browser-local storage/import/export | Complete — holdings, P&L, legacy synthetic OHLC charts, CSV/JSON backup and parity tests |
 | 18 | Watchlists and query management using browser-local storage/import/export | Complete — browser-local watchlists and saved queries, desktop-format CSV migration, JSON/CSV backup and parity tests |
-| 19 | Integration, parity, browser compatibility and end-to-end testing | Not started |
+| 19 | Integration, parity, browser compatibility and end-to-end testing | Complete — all six modules linked from Overview; production preview smoke tests cover SPA fallback, bundle, reference data and static deployment config |
 | 20 | Cloudflare production deployment and final release verification | Not started |
 
 Steps 7–11 are ordered to establish calculations, provider access, chart behaviour and static data before completing the feature screens. The original desktop app remains the behavioural reference throughout.
@@ -248,7 +248,26 @@ Privacy and provider boundary:
 
 Verification: GitHub Actions run `42165899444` passed all existing suites, eight Watchlist/Query tests, the TypeScript/Vite production build and static deployment checks on commit `5ce7e0eca8dc0c6642b18c90a56d2f977eb3c022`. Run: https://github.com/prudhviuday/SchCatWeb/actions/runs/42165899444. Cloudflare publication of this latest commit has not been independently verified.
 
+
+## Step 19 — Integration, parity and production smoke testing (complete)
+
+Integration improvements:
+- frontend/src/App.tsx: all six modules are reachable from both the sidebar and Overview module cards. Industry Analysis, Research and Market Pulse cards were previously informational-only; they are now working navigation controls.
+- Overview messaging and status labels now describe the integrated workspace rather than the earlier foundation-only state.
+
+Production integration checks:
+- frontend/tests/integration/staticSite.test.mjs starts the Vite production preview and checks four areas: root/deep-link SPA fallback; production JS bundle includes all six modules and provider diagnostics; all four published reference datasets load and match manifest record counts; Wrangler remains static-only and points at frontend/dist.
+- frontend/package.json exposes npm run test:integration.
+- .github/workflows/verify.yml runs the integration smoke tests after the production build, in addition to all existing deterministic parity suites and static-output checks.
+
+Verification:
+- GitHub Actions run 42166528885 passed all calculation, provider request-shape, chart, indicator, reference, screener, watchlist, workspace, industry, Research, Market Pulse and Portfolio suites; the Vite production build; four production preview integration tests; and static deployment checks.
+- Verified commit at that run: 4f0a24d97615821e1536cc8d86e782dbfb6ebd73.
+- Run: https://github.com/prudhviuday/SchCatWeb/actions/runs/42166528885.
+- This is a local production-preview smoke test in CI, not a live browser session against Cloudflare. Live provider CORS/authentication and Cloudflare publication remain unverified and are deliberately left for Step 20.
+
 ## Next step
 
-Step 19 — Integration, parity, browser compatibility and end-to-end testing.
+Step 20 — Cloudflare production deployment and final release verification. Verify the actual deployed commit, production URL, static assets and browser-origin provider connectivity without exposing credentials or adding an unapproved backend.
+
 
