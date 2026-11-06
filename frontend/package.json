@@ -19,7 +19,8 @@
     "test:research": "tsc -p tsconfig.analysis-tests.json && node --test tests/research/*.test.mjs",
     "test:market-pulse": "tsc -p tsconfig.analysis-tests.json && node --test tests/marketPulse/*.test.mjs",
     "test:portfolio": "tsc -p tsconfig.analysis-tests.json && node --test tests/portfolio/*.test.mjs",
-    "test:integration": "node --test tests/integration/*.test.mjs"
+    "test:integration": "node --test tests/integration/*.test.mjs",
+    "test:marketsmith": "tsc -p tsconfig.analysis-tests.json && node --test tests/providers/marketSmithStockData.test.mjs"
   },
   "dependencies": {
     "react": "^19.1.0",
