@@ -145,10 +145,6 @@ export function buildIndustryReferenceSummaries(
     }));
 }
 
-function isObject(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-
 function parseNumericSeries(value: unknown, field: string, industry: string): number[] {
   if (!Array.isArray(value)) {
     throw new TypeError(`Industry result ${industry} ${field} must be an array`);
