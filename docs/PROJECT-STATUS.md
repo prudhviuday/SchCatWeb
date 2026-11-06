@@ -376,3 +376,14 @@ Implemented on main:
 - Reuses the existing on-demand symbol-details request and browser-local MarketSmith session; no extra API route or credential was added.
 - Added parser tests for ordering, normalization and the legacy holding-value calculation.
 - Live provider availability and Cloudflare publication remain to be verified separately.
+
+
+## Step 26 — Quarterly expansion history (implemented; CI pending)
+
+Implemented on main:
+- Ported desktop `util.getExpansionFromMs` using the existing MarketSmith `financeDetails.json` response and its `incQuarterData` rows.
+- Each observation uses the exact legacy formula `int((c25 / c32) × 100)`, labels the period as `01-` plus the provider's `c0` value, and reverses newest-first provider rows into chronological order.
+- Rows with missing/non-numeric inputs or a zero denominator are skipped instead of generating invalid values. The UI labels this as a legacy formula output rather than assuming it is a physical capacity percentage.
+- Stock Workspace displays the quarterly series inside MarketSmith Fundamentals. It reuses the existing on-demand finance request and browser-local MarketSmith session; no new endpoint, credential, backend or persistent storage is introduced.
+- Added parser regression coverage for formula parity, chronological ordering and invalid denominators.
+- Full CI and live MarketSmith response availability remain to be confirmed; Cloudflare publication is not assumed.
