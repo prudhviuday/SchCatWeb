@@ -60,7 +60,7 @@ The single root `wrangler.toml` sets `name = "schcatweb"` and `assets.directory 
 | 13 | Charts and Stock Workspace | Complete — responsive multi-timeframe chart workspace, stock detail panel, tests and production build pass |
 | 14 | Industry Analysis | Complete — industry explorer, legacy aggregation kernels, saved JSON import/export, tests and static build pass; fresh provider aggregation deferred until Steps 8–9 are validated |
 | 15 | Research module | Complete — browser CSV/JSON imports, desktop match calculations, results chart/export, tests and build pass; live ChartInk historical scans deferred until browser-origin access is verified |
-| 16 | Market Pulse | Not started |
+| 16 | Market Pulse | Implemented; live ChartInk browser access must be confirmed from the deployed origin |
 | 17 | Portfolio using browser-local storage/import/export | Not started |
 | 18 | Watchlists and query management using browser-local storage/import/export | Not started |
 | 19 | Integration, parity, browser compatibility and end-to-end testing | Not started |
