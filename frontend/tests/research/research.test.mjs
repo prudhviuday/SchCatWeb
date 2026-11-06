@@ -135,3 +135,14 @@ test("historical match JSON template is generated from imported query definition
     { "Query A": [], "Query B": [] }
   );
 });
+
+
+test("match percentage preserves Python round-to-even on exact half-cent values", () => {
+  const symbols = Array.from({ length: 32 }, (_, index) => index === 0 ? "MATCH" : `STOCK${index}`);
+  const result = evaluateResearch({
+    performanceSymbols: ["MATCH"],
+    queries: [{ name: "Half-cent", code: "sample query" }],
+    historyByQuery: new Map([["Half-cent", symbols]])
+  });
+  assert.equal(result[0].matchPercent, 3.12);
+});
