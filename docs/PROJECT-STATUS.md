@@ -61,7 +61,7 @@ The single root `wrangler.toml` sets `name = "schcatweb"` and `assets.directory 
 | 14 | Industry Analysis | Complete — industry explorer, legacy aggregation kernels, saved JSON import/export, tests and static build pass; fresh provider aggregation deferred until Steps 8–9 are validated |
 | 15 | Research module | Complete — browser CSV/JSON imports, desktop match calculations, results chart/export, tests and build pass; live ChartInk historical scans deferred until browser-origin access is verified |
 | 16 | Market Pulse | Implemented; live ChartInk browser access must be confirmed from the deployed origin |
-| 17 | Portfolio using browser-local storage/import/export | Not started |
+| 17 | Portfolio using browser-local storage/import/export | Complete — holdings, P&L, legacy synthetic OHLC charts, CSV/JSON backup and parity tests |
 | 18 | Watchlists and query management using browser-local storage/import/export | Not started |
 | 19 | Integration, parity, browser compatibility and end-to-end testing | Not started |
 | 20 | Cloudflare production deployment and final release verification | Not started |
