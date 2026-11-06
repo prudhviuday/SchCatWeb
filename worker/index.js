@@ -187,6 +187,39 @@ async function marketSmithSymbol(url, env, request) {
   }, 0);
 }
 
+async function marketSmithRelativeStrength(url, env, request) {
+  const stockId = url.searchParams.get("stockId") || "";
+  const symbol = (url.searchParams.get("symbol") || "").trim().toUpperCase();
+  if (!validStockId(stockId) || !validSymbol(symbol)) {
+    return json({ error: "invalid_stock_id_or_symbol" }, 400);
+  }
+  const dateRange = defaultMarketSmithDateRange();
+  const target = new URL(
+    `https://marketsmithindia.com/gateway/simple-api/ms-india/instr/0/${stockId}/details.json`
+  );
+  target.searchParams.set("symbol", symbol);
+  target.searchParams.set("p", "1");
+  target.searchParams.set("s", dateRange.start);
+  target.searchParams.set("e", dateRange.end);
+  target.searchParams.set("b", "0INNSE50");
+  target.searchParams.set("ie", "0");
+  target.searchParams.set("iq", "0");
+  target.searchParams.set("rs", "N");
+  target.searchParams.set("em", String(Date.now()));
+  if (!withMarketSmithAuth(target, env, "symbol", request)) {
+    return json({
+      error: "marketsmith_auth_not_configured",
+      message: "No MarketSmith ms-auth value was supplied. Enter the current value on Provider Diagnostics and save it in this browser."
+    }, 503);
+  }
+  return forwardJson(target.toString(), {
+    headers: upstreamHeaders({
+      "accept": "application/json,text/plain,*/*",
+      "referer": "https://marketsmithindia.com/"
+    })
+  }, 0);
+}
+
 async function yahooChart(url) {
   const symbol = (url.searchParams.get("symbol") || "").trim().toUpperCase();
   const interval = url.searchParams.get("interval") || "1d";
