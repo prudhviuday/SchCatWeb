@@ -200,6 +200,8 @@ function StockWorkspace({
   const [fundamentalMessage, setFundamentalMessage] = useState("");
   const [liveFundamentals, setLiveFundamentals] = useState<MarketSmithLiveMetrics | null>(null);
   const [annualEps, setAnnualEps] = useState<MarketSmithAnnualEpsPoint[]>([]);
+  const [annualRoce, setAnnualRoce] = useState<Array<{ year: number; value: number; normalized: number | null }>>([]);
+  const [annualRevenue, setAnnualRevenue] = useState<Array<{ year: number; value: number; normalized: number | null }>>([]);
   const [fundamentalsUpdatedAt, setFundamentalsUpdatedAt] = useState<string | null>(null);
 
   useEffect(() => {
@@ -280,6 +282,8 @@ function StockWorkspace({
     setFundamentalMessage("Loading MarketSmith company details and annual EPS history…");
     setLiveFundamentals(null);
     setAnnualEps([]);
+    setAnnualRoce([]);
+    setAnnualRevenue([]);
 
     try {
       const ids = await loadMarketSmithIds();
@@ -296,7 +300,11 @@ function StockWorkspace({
       const symbolOk = symbolResult.status === "fulfilled";
       const financeOk = financeResult.status === "fulfilled";
       if (symbolOk) setLiveFundamentals(symbolResult.value);
-      if (financeOk) setAnnualEps(financeResult.value.annualEps);
+      if (financeOk) {
+        setAnnualEps(financeResult.value.annualEps);
+        setAnnualRoce(financeResult.value.annualRoce);
+        setAnnualRevenue(financeResult.value.annualRevenue);
+      }
 
       if (!symbolOk && !financeOk) {
         const symbolError = symbolResult.status === "rejected" ? errorText(symbolResult.reason) : "";
@@ -330,6 +338,8 @@ function StockWorkspace({
     setRecord(next === initialRecord?.symbol ? initialRecord : null);
     setLiveFundamentals(null);
     setAnnualEps([]);
+    setAnnualRoce([]);
+    setAnnualRevenue([]);
     setFundamentalStatus("idle");
     setFundamentalMessage("");
     setFundamentalsUpdatedAt(null);
@@ -461,6 +471,18 @@ function StockWorkspace({
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+            {(annualRoce.length > 0 || annualRevenue.length > 0) && (
+              <div className="workspace-financial-history-grid">
+                {annualRoce.length > 0 && <div className="workspace-financial-history">
+                  <div className="eyebrow">ANNUAL ROCE · MARKETSMITH</div>
+                  <div className="workspace-financial-history-list">{annualRoce.map((point) => <div key={point.year}><span>{point.year}</span><strong>{point.value.toFixed(2)}%</strong><small>{point.normalized === null ? "—" : "Index " + point.normalized}</small></div>)}</div>
+                </div>}
+                {annualRevenue.length > 0 && <div className="workspace-financial-history">
+                  <div className="eyebrow">ANNUAL REVENUE · MARKETSMITH</div>
+                  <div className="workspace-financial-history-list">{annualRevenue.map((point) => <div key={point.year}><span>{point.year}</span><strong>{formatVolume(point.value)}</strong><small>{point.normalized === null ? "—" : "Index " + point.normalized}</small></div>)}</div>
+                </div>}
               </div>
             )}
             {fundamentalsUpdatedAt && <span className="workspace-chart-note">Last refreshed: {fundamentalsUpdatedAt} · MarketSmith India</span>}
