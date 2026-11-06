@@ -536,7 +536,7 @@ function StockWorkspace({
                   <article key={`${quarter.period}-${index}`}>
                     <strong>{quarter.period || `Quarter ${index + 1}`}</strong>
                     <span>EPS growth <b>{quarter.epsPct}%</b></span>
-                    <span>Sales growth <b>{quarter.salesPct}%</b></span>
+                    <span>Sales growth <b>{quarter.salesPct}%</b></span>\n                    <span>Reported sales <b>{quarter.salesValue === null ? "—" : quarter.salesValue.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</b></span>
                   </article>
                 ))}
               </div>
