@@ -81,26 +81,43 @@ export async function fetchMarketPulse(signal?: AbortSignal): Promise<{ rows: Ma
   const relayAbort = () => controller.abort();
   signal?.addEventListener("abort", relayAbort, { once: true });
   try {
-    const session = await fetch("https://chartink.com/screener/process", {
-      mode: "cors", credentials: "include", headers: { Accept: "text/html,application/xhtml+xml" }, signal: controller.signal
+    const response = await fetch("/api/chartink/scan", {
+      method: "POST",
+      mode: "same-origin",
+      credentials: "same-origin",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        mode: "widget",
+        query: MARKET_PULSE_QUERY,
+        use_live: true,
+        limit: 6,
+        size: 375
+      }),
+      signal: controller.signal
     });
-    if (!session.ok) throw new Error("ChartInk session request failed (HTTP " + session.status + ").");
-    const html = await session.text();
-    const meta = html.match(/<meta\b[^>]*\bname\s*=\s*["']csrf-token["'][^>]*>/i)?.[0];
-    const csrf = meta?.match(/\bcontent\s*=\s*["']([^"']+)["']/i)?.[1];
-    if (!csrf) throw new Error("ChartInk did not provide a readable CSRF token.");
-    const body = new URLSearchParams({ query: MARKET_PULSE_QUERY, use_live: "1", limit: "6", size: "375" });
-    const response = await fetch("https://chartink.com/widget/process", {
-      method: "POST", mode: "cors", credentials: "include",
-      headers: { Accept: "application/json", "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8", "x-csrf-token": csrf },
-      body, signal: controller.signal
-    });
-    if (!response.ok) throw new Error("ChartInk dashboard request failed (HTTP " + response.status + ").");
-    return { rows: parseMarketPulseResponse(await response.json()), fetchedAt: new Date().toISOString() };
+    if (!response.ok) {
+      let detail = "";
+      try {
+        const error = await response.json() as { error?: string; message?: string; upstreamStatus?: number };
+        detail = error.message || error.error || (error.upstreamStatus ? "upstream HTTP " + error.upstreamStatus : "");
+      } catch {
+        // Keep a useful HTTP status even if the Worker returned a non-JSON error.
+      }
+      throw new Error("ChartInk dashboard request failed through SchCatWeb API (HTTP " + response.status + (detail ? ": " + detail : "") + ").");
+    }
+    return {
+      rows: parseMarketPulseResponse(await response.json()),
+      fetchedAt: new Date().toISOString()
+    };
   } catch (error) {
     if (signal?.aborted) throw new Error("Market Pulse refresh was cancelled.");
-    if (error instanceof DOMException && error.name === "AbortError") throw new Error("ChartInk did not respond within 15 seconds.");
-    if (error instanceof TypeError && /fetch|network|load failed/i.test(error.message)) throw new Error("The browser could not access ChartInk. This may be CORS, network, or browser privacy policy; check DevTools Console.");
+    if (error instanceof DOMException && error.name === "AbortError") throw new Error("SchCatWeb API did not respond within 15 seconds.");
+    if (error instanceof TypeError && /fetch|network|load failed/i.test(error.message)) {
+      throw new Error("SchCatWeb API could not be reached. Check that the Cloudflare Worker deployment includes the server-side API.");
+    }
     throw error instanceof Error ? error : new Error("Market Pulse could not be loaded.");
   } finally {
     globalThis.clearTimeout(timeout);
