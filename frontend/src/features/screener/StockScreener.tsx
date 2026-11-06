@@ -390,6 +390,7 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
                     </button>
                   </th>
                 ))}
+                <th>Watchlist</th>
               </tr>
             </thead>
             <tbody>
@@ -402,10 +403,11 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
                   <td className="numeric">{numberValue(record.pb)}</td>
                   <td className="numeric">{numberValue(record.roce)}</td>
                   <td className="numeric">{numberValue(record.nikScore)}</td>
+                  <td><button type="button" className="screener-industry" disabled={!activeWatchlist} title={activeWatchlist ? "Add to selected watchlist" : "Select a watchlist above"} onClick={()=>{setLibrary(current=>addSymbolToWatchlist(current,activeWatchlist,record.symbol));setWatchlistNotice(record.symbol+" added to "+activeWatchlist);}}>+ Save</button></td>
                 </tr>
               ))}
               {!loading && pageRecords.length === 0 && (
-                <tr><td colSpan={7} className="screener-empty">No stocks match the current filters.</td></tr>
+                <tr><td colSpan={8} className="screener-empty">No stocks match the current filters.</td></tr>
               )}
             </tbody>
           </table>
