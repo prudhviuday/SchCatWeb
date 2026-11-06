@@ -86,9 +86,9 @@ function App() {
               <div className="notice-icon">✳</div>
               <div>
                 <div className="notice-title">SchCatWeb foundation is live</div>
-                <p>All six workspace modules are integrated. Market data is fetched directly by your browser where providers permit it; personal watchlists and portfolio data stay in this browser.</p>
+                <p>Seven workspace modules are integrated. Market data is fetched directly by your browser where providers permit it; personal watchlists and portfolio data stay in this browser.</p>
               </div>
-              <span className="step-tag">STEP 19</span>
+              <span className="step-tag">STEP 30</span>
             </div>
 
             <div className="section-heading">
@@ -120,7 +120,7 @@ function App() {
                 </button>
               ))}
             </div>
-            <footer className="page-footer">SCHCATWEB <span>·</span> PERSONAL BUILD <span>·</span> STEP 19 INTEGRATION</footer>
+            <footer className="page-footer">SCHCATWEB <span>·</span> PERSONAL BUILD <span>·</span> STEP 30 ANALYSIS</footer>
           </div>
         )}
       </section>
