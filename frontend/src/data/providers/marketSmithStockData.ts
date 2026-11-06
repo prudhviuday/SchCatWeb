@@ -440,3 +440,72 @@ export async function fetchMarketSmithUniverse(
     total: records.length
   };
 }
+
+
+export interface MarketSmithRelativeStrengthPoint {
+  index: number;
+  value: number;
+}
+
+/**
+ * Port of util.fetch_RS_graph_from_MS (marketcapNorm=false): take chart.prices
+ * rlst values, replace missing observations with the integer mean of available
+ * values, then reverse the provider's newest-first sequence.
+ */
+export function parseMarketSmithRelativeStrength(payload: unknown): MarketSmithRelativeStrengthPoint[] {
+  const root = asRecord(payload);
+  const chart = asRecord(root?.chart);
+  const prices = Array.isArray(chart?.prices)
+    ? chart.prices.map(asRecord).filter((row): row is Record<string, unknown> => row !== null)
+    : [];
+  const raw = prices.map((row) => finiteNumber(row.rlst));
+  const available = raw.filter((value): value is number => value !== null);
+  if (available.length === 0) return [];
+  const average = Math.trunc(available.reduce((sum, value) => sum + value, 0) / available.length);
+  return raw.reverse().map((value, index) => ({
+    index: index + 1,
+    value: value ?? average
+  }));
+}
+
+export async function fetchMarketSmithRelativeStrength(
+  stockId: number | string,
+  symbol: string,
+  authValue: string,
+  fetcher: typeof fetch = fetch
+): Promise<MarketSmithRelativeStrengthPoint[]> {
+  const id = String(stockId).trim();
+  const safeSymbol = symbol.trim().toUpperCase();
+  if (!/^\\d{1,12}$/.test(id)) throw new TypeError("MarketSmith instrument ID must contain digits only");
+  if (!/^[A-Z0-9&._-]{1,30}$/.test(safeSymbol)) throw new TypeError("MarketSmith symbol contains unsupported characters");
+  if (!authValue.trim()) throw new Error("MarketSmith session is not configured in this browser");
+  const params = new URLSearchParams({ stockId: id, symbol: safeSymbol });
+  const controller = new AbortController();
+  const timeout = globalThis.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    const response = await fetcher(`/api/marketsmith/relative-strength?${params.toString()}`, {
+      method: "GET",
+      mode: "same-origin",
+      credentials: "same-origin",
+      headers: { Accept: "application/json", "x-marketsmith-auth": authValue.trim() },
+      signal: controller.signal
+    });
+    const body = await response.text();
+    let payload: unknown;
+    try { payload = JSON.parse(body) as unknown; }
+    catch { throw new TypeError(`MarketSmith returned invalid relative-strength JSON for ${safeSymbol}`); }
+    if (!response.ok) {
+      const data = asRecord(payload);
+      const message = typeof data?.message === "string" ? data.message : typeof data?.error === "string" ? data.error : "Provider request failed";
+      throw new Error(`${safeSymbol}: MarketSmith RS HTTP ${response.status} — ${message}`);
+    }
+    const points = parseMarketSmithRelativeStrength(payload);
+    if (points.length === 0) throw new Error(`${safeSymbol}: MarketSmith returned no relative-strength observations`);
+    return points;
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") throw new Error(`${safeSymbol}: MarketSmith RS request timed out`);
+    throw error;
+  } finally {
+    globalThis.clearTimeout(timeout);
+  }
+}
