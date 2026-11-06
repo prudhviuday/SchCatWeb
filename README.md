@@ -100,6 +100,22 @@ The source `ChartInkQs.xlsx` Watchlist and Portfolio sheets, dated industry-anal
 
 The development-time converter is `tools/convert-source-reference-data.mjs`. Its GitHub Actions workflow reads the approved workbooks from the source `SchCat` repository and commits generated JSON; the XLSX reader is not part of the deployed application.
 
+## Stock Screener (Step 12)
+
+The Stock Screener is available from the left navigation and uses the same-origin static loaders in `src/data/reference/`. It currently loads the 2,256-row universe, with symbol/industry/sector search, sector and industry selection, numeric min/max filters, sortable columns, 50-row pagination and CSV export. Double-click an Industry value to filter that industry.
+
+The reference workbook has no as-of date. Market Cap, P/B, ROCE and NikScore are explicitly marked as undated snapshot values in the UI and CSV. Provider-only fields (RS, EPS rank, MasterScore, Acc/Dis, PE and PEG) are not fabricated or filled with desktop fallback values; they remain unavailable until provider access has been validated.
+
+The desktop multi-query AND intersection is ported as session-only symbol-set queries. Users can add named comma/space-separated stock lists and intersect selected lists. This is not yet saved ChartInk scan execution: the saved query workbook sheet has not been imported, provider browser access remains unverified, and these temporary lists reset on refresh. Persistent query/watchlist management remains a later step.
+
+Run the screener logic tests:
+
+```powershell
+npm run test:screener
+```
+
+The tests cover search/category filters, numeric ranges, AND query intersection, missing query keys, case normalization, stable text sorting and numeric sorting with null values last. GitHub Actions runs these tests as part of the normal verification workflow.
+
 ## Provider diagnostics (Steps 8–9)
 
 After the latest frontend commit is deployed, open `https://schcatweb.prudhvi123143.workers.dev/?diagnostics=providers` and select **Run browser diagnostics**. This executes requests in the actual website origin for both MarketSmith hosts, ChartInk's CSRF + scan flow, NSE historical delivery data, and a small Yahoo Finance chart sample. Use the MarketSmith ID/symbol fields for a known valid pair. The normal home page is unchanged.
