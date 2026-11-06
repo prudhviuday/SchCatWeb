@@ -6,6 +6,14 @@ import {
   type ChartTimeframe
 } from "../../data/providers/chartData";
 import type { MarketUniverseRecord } from "../../data/reference/marketUniverse";
+import { getMarketSmithId, loadMarketSmithIds } from "../../data/reference/marketSmithIds";
+import { readStoredMarketSmithAuth } from "../../data/providers/providerDiagnostics";
+import {
+  fetchMarketSmithFinanceData,
+  fetchMarketSmithStockMetrics,
+  type MarketSmithAnnualEpsPoint,
+  type MarketSmithLiveMetrics
+} from "../../data/providers/marketSmithStockData";
 import {
   prepareChartView,
   type ChartDisplayPoint
@@ -188,6 +196,11 @@ function StockWorkspace({
   const [requestError, setRequestError] = useState("");
   const [retry, setRetry] = useState(0);
   const [visiblePoints, setVisiblePoints] = useState(200);
+  const [fundamentalStatus, setFundamentalStatus] = useState<"idle" | "loading" | "ready" | "partial" | "error">("idle");
+  const [fundamentalMessage, setFundamentalMessage] = useState("");
+  const [liveFundamentals, setLiveFundamentals] = useState<MarketSmithLiveMetrics | null>(null);
+  const [annualEps, setAnnualEps] = useState<MarketSmithAnnualEpsPoint[]>([]);
+  const [fundamentalsUpdatedAt, setFundamentalsUpdatedAt] = useState<string | null>(null);
 
   useEffect(() => {
     if (!symbol) return;
@@ -254,6 +267,58 @@ function StockWorkspace({
       ? dailyChange / dailyView.previousClose * 100
       : null;
 
+  async function fetchLiveFundamentals() {
+    if (!symbol || fundamentalStatus === "loading") return;
+    const auth = readStoredMarketSmithAuth();
+    if (!auth) {
+      setFundamentalStatus("error");
+      setFundamentalMessage("Save your current MarketSmith session in Provider Diagnostics first.");
+      return;
+    }
+
+    setFundamentalStatus("loading");
+    setFundamentalMessage("Loading MarketSmith company details and annual EPS history…");
+    setLiveFundamentals(null);
+    setAnnualEps([]);
+
+    try {
+      const ids = await loadMarketSmithIds();
+      const stockId = record?.instrumentId ?? getMarketSmithId(ids, symbol);
+      if (stockId === null || stockId === undefined) {
+        throw new Error(`No MarketSmith instrument ID is available for ${symbol}.`);
+      }
+
+      const [symbolResult, financeResult] = await Promise.allSettled([
+        fetchMarketSmithStockMetrics(stockId, symbol, auth),
+        fetchMarketSmithFinanceData(stockId, auth)
+      ]);
+
+      const symbolOk = symbolResult.status === "fulfilled";
+      const financeOk = financeResult.status === "fulfilled";
+      if (symbolOk) setLiveFundamentals(symbolResult.value);
+      if (financeOk) setAnnualEps(financeResult.value.annualEps);
+
+      if (!symbolOk && !financeOk) {
+        const symbolError = symbolResult.status === "rejected" ? errorText(symbolResult.reason) : "";
+        const financeError = financeResult.status === "rejected" ? errorText(financeResult.reason) : "";
+        throw new Error([symbolError, financeError].filter(Boolean).join(" · "));
+      }
+
+      const updatedAt = new Date().toLocaleString("en-IN");
+      setFundamentalsUpdatedAt(updatedAt);
+      const symbolError = symbolResult.status === "rejected" ? errorText(symbolResult.reason) : "";
+      const financeError = financeResult.status === "rejected" ? errorText(financeResult.reason) : "";
+      const errors = [symbolError, financeError].filter(Boolean);
+      setFundamentalStatus(errors.length ? "partial" : "ready");
+      setFundamentalMessage(errors.length
+        ? `Partial data loaded. ${errors.join(" · ")}`
+        : `MarketSmith data updated at ${updatedAt}. Instrument ID: ${stockId}.`);
+    } catch (error) {
+      setFundamentalStatus("error");
+      setFundamentalMessage(errorText(error));
+    }
+  }
+
   function submitSymbol(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const next = draftSymbol.trim().toUpperCase();
@@ -263,6 +328,11 @@ function StockWorkspace({
     }
     setRequestError("");
     setRecord(next === initialRecord?.symbol ? initialRecord : null);
+    setLiveFundamentals(null);
+    setAnnualEps([]);
+    setFundamentalStatus("idle");
+    setFundamentalMessage("");
+    setFundamentalsUpdatedAt(null);
     setSymbol(next);
   }
 
@@ -294,6 +364,12 @@ function StockWorkspace({
           onClick={() => setRetry((value) => value + 1)}
           disabled={!symbol}
         >Retry data</button>
+        <button
+          type="button"
+          className="screener-button"
+          onClick={() => void fetchLiveFundamentals()}
+          disabled={!symbol || fundamentalStatus === "loading"}
+        >{fundamentalStatus === "loading" ? "Fetching fundamentals…" : "Fetch live fundamentals"}</button>
         <span className="workspace-load-status" aria-live="polite">
           {loading ? "Fetching chart data…" : symbol ? "Provider request finished" : "Choose a stock to begin"}
         </span>
@@ -339,11 +415,56 @@ function StockWorkspace({
                 <div><span>P/B*</span><strong>{record?.pb ?? "—"}</strong></div>
                 <div><span>ROCE*</span><strong>{record?.roce === null || record?.roce === undefined ? "—" : `${record.roce}%`}</strong></div>
                 <div><span>NikScore*</span><strong>{record?.nikScore ?? "—"}</strong></div>
-                <div><span>MarketSmith ID</span><strong>{record?.instrumentId ?? "—"}</strong></div>
-                <div><span>RS / EPS / PE / PEG</span><strong>Provider pending</strong></div>
+                <div><span>MarketSmith ID</span><strong>{record?.instrumentId ?? "Reference lookup"}</strong></div>
+                <div><span>RS</span><strong>{liveFundamentals?.rs ?? "—"}</strong></div>
+                <div><span>EPS Rank</span><strong>{liveFundamentals?.epsRank ?? "—"}</strong></div>
+                <div><span>Group Rank</span><strong>{liveFundamentals?.groupRank ?? "—"}</strong></div>
+                <div><span>MasterScore</span><strong>{liveFundamentals?.masterScore ?? "—"}</strong></div>
+                <div><span>Acc/Dis</span><strong>{liveFundamentals?.accDis ?? "—"}</strong></div>
+                <div><span>ROE</span><strong>{liveFundamentals?.roe == null ? "—" : `${liveFundamentals.roe}%`}</strong></div>
+                <div><span>PE / PEG</span><strong>{liveFundamentals ? `${liveFundamentals.pe} / ${liveFundamentals.peg ?? "—"}` : "—"}</strong></div>
+                <div><span>FScore</span><strong>{liveFundamentals?.fScore ?? "—"}</strong></div>
+                <div><span>EPS Growth</span><strong>{liveFundamentals?.epsGrowth == null ? "—" : `${liveFundamentals.epsGrowth}%`}</strong></div>
+                <div><span>Earnings Stability</span><strong>{liveFundamentals?.stability ?? "—"}</strong></div>
+                <div><span>Live P/B</span><strong>{liveFundamentals?.livePb ?? "—"}</strong></div>
+                <div><span>Cash Flow</span><strong>{liveFundamentals?.cashFlow ?? "—"}</strong></div>
               </div>
             </section>
           </div>
+
+          <section className="workspace-live-fundamentals" aria-live="polite">
+            <div className="workspace-chart-section-heading">
+              <div><div className="eyebrow">MARKETSMITH FUNDAMENTALS</div><h2>Quarterly growth & annual EPS</h2></div>
+              <span className={fundamentalStatus === "error" ? "workspace-chart-status error" : fundamentalStatus === "ready" ? "workspace-chart-status ready" : "workspace-chart-status"}>{fundamentalStatus === "idle" ? "Not loaded" : fundamentalStatus === "loading" ? "Loading" : fundamentalStatus === "partial" ? "Partial" : fundamentalStatus === "error" ? "Unavailable" : "Live"}</span>
+            </div>
+            <p className="workspace-chart-note">{fundamentalMessage || "Use Fetch live fundamentals to retrieve MarketSmith symbol details and finance history. The saved browser session is sent only with the request."}</p>
+            {liveFundamentals && (
+              <div className="workspace-quarter-grid">
+                {liveFundamentals.quarterlyGrowth.map((quarter, index) => (
+                  <article key={`${quarter.period}-${index}`}>
+                    <strong>{quarter.period || `Quarter ${index + 1}`}</strong>
+                    <span>EPS growth <b>{quarter.epsPct}%</b></span>
+                    <span>Sales growth <b>{quarter.salesPct}%</b></span>
+                  </article>
+                ))}
+              </div>
+            )}
+            {annualEps.length > 0 && (
+              <div className="workspace-annual-eps">
+                <div className="eyebrow">ANNUAL EPS · CHRONOLOGICAL</div>
+                <div className="workspace-annual-eps-list">
+                  {annualEps.map((point) => (
+                    <div key={point.year}>
+                      <span>{point.year}</span>
+                      <strong>{point.eps.toFixed(2)}</strong>
+                      <small>{point.normalized === null ? "—" : `Index ${point.normalized}`}</small>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {fundamentalsUpdatedAt && <span className="workspace-chart-note">Last refreshed: {fundamentalsUpdatedAt} · MarketSmith India</span>}
+          </section>
 
           <section className="workspace-chart-section">
             <div className="workspace-chart-section-heading">
@@ -360,7 +481,7 @@ function StockWorkspace({
               </div>
             </div>
             <p className="workspace-chart-note">
-              Yahoo Finance direct browser data · Last {visiblePoints} candles where available · Time labels use IST · EMA 20/50 overlays and volume
+              Yahoo Finance via same-origin Worker · Last {visiblePoints} candles where available · Time labels use IST · EMA 20/50 overlays and volume
             </p>
             <div className="workspace-chart-grid">
               {TIMEFRAMES.map((timeframe) => {
@@ -397,7 +518,7 @@ function StockWorkspace({
           </footer>
         </>
       )}
-      <footer className="page-footer">SCHCATWEB <span>·</span> STOCK WORKSPACE <span>·</span> STEP 13</footer>
+      <footer className="page-footer">SCHCATWEB <span>·</span> STOCK WORKSPACE <span>·</span> STEP 22</footer>
     </div>
   );
 }
