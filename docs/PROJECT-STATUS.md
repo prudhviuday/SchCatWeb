@@ -204,6 +204,28 @@ The original widget request is preserved (`use_live=1`, `limit=6`, `size=375`). 
 
 Live browser-origin access is not yet verified. CORS, authentication or browser privacy policy may block the provider; in that case the page shows the error and never substitutes fabricated readings. Run `npm run test:market-pulse` and `npm run build`; after Cloudflare publishes the latest `main` commit, verify the live request from the deployed site.
 
+## Step 17 — Portfolio (complete; live Yahoo access pending browser-origin validation)
+
+Implemented on `main`:
+- `frontend/src/features/portfolio/portfolio.ts`: holding validation, invested/current value/unrealised P&L calculations, CSV/JSON import/export, merge/replace import behaviour, and synthetic portfolio OHLC aggregation.
+- `frontend/src/features/portfolio/Portfolio.tsx`: add/edit/remove holdings, latest-price table, four synthetic P&L timeframe charts, browser-local persistence, backup/restore and privacy messaging.
+- `frontend/tests/portfolio/portfolio.test.mjs`: seven tests for validation, P&L math, legacy three-column holdings, timestamp alignment/forward-fill, max history, CSV/JSON round trips and merge behaviour.
+- Sidebar and overview navigation integrated; CI runs `npm run test:portfolio`.
+
+Desktop parity:
+- Source reference: `prudhviuday/SchCat/Tabs/portfolioTab.py` and `util.getPortfolio()`.
+- Holdings are symbol, quantity and buy price. The desktop chart formula is preserved for each OHLC field: `quantity × (price − buy price)`.
+- The timestamp union is sorted; each holding's OHLC contribution and volume are forward-filled independently; leading gaps are zero; then all holdings are summed. The chart is capped at 800 points, matching the desktop default.
+- Four timeframes are shown: weekly, daily, hourly and 5-minute. Current value and unrealised P&L use the latest available daily close and remain blank until a user requests a refresh.
+- This chart is aggregate unrealised P&L contribution, not market value or a time-weighted return.
+
+Privacy and provider boundary:
+- Holdings are saved under a versioned localStorage key in the current browser only. They are not uploaded, placed in public JSON assets or synced across devices.
+- CSV and versioned JSON import/export are entirely browser-local. Import can merge by symbol or explicitly replace all holdings. Legacy three-column JSON rows are accepted.
+- Price/history requests reuse the existing browser-side Yahoo chart adapter. No backend, proxy, database or private credentials were added. Actual Yahoo CORS/provider access from the deployed origin remains unverified; failed symbols/timeframes are reported and excluded rather than filled with fabricated prices.
+
+Verification: GitHub Actions run `42161800139` passed all existing suites, all seven Portfolio tests, the TypeScript/Vite production build and static output checks. Run: https://github.com/prudhviuday/SchCatWeb/actions/runs/42161800139. This run preceded the final small overview-card and local-import recovery edits; a fresh CI run is required for the final commit. Cloudflare publication is not confirmed.
+
 ## Next step
 
-Step 17 — Portfolio (browser-local holdings, import/export and P&L analytics).
+Step 18 — Watchlists and query management using browser-local storage/import/export.
