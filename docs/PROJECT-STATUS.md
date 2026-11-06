@@ -12,20 +12,20 @@ This is the durable source of truth for continuing the SchCat migration. In a ne
 - The target is a simple static website, similar in deployment simplicity to Honeycomb's frontend.
 - The user wants a live Cloudflare URL. Do not claim a deployment is live until a successful deploy and smoke test are confirmed.
 
-## Binding architecture decision (updated 2026-11-05)
+## Binding architecture decision (updated 2026-11-06)
 
-**SchCatWeb is static-first and has no runtime backend or database.**
+**SchCatWeb is a React frontend plus a same-origin Cloudflare Worker API.**
 
-- UI: React + TypeScript + Vite in `frontend/`.
-- Hosting: Cloudflare Workers Static Assets, deployed using the root `wrangler.toml`.
-- The Wrangler config has no `main`, no Worker script, no API routes and no bindings. It serves only `frontend/dist`.
-- All analysis logic runs in browser TypeScript.
-- Provider APIs are called directly from browser TypeScript only where the provider permits browser access (CORS) and does not require protected credentials.
-- Static JSON assets may hold non-sensitive reference datasets. Personal settings/watchlists/portfolio can use localStorage or IndexedDB; this is device/browser-local, not cloud sync.
-- Node/npm are development/build tools only. No Node server runs after deployment. SchCatWeb must not require Python.
-- No database, R2, Hono, FastAPI, server-side API or proxy is to be introduced by default.
-- If a specific provider is proven to require server-side access due to CORS/auth/security, document that exact exception and obtain user approval before introducing any proxy. Never expose private API keys, cookies or session tokens in browser code.
-- The previous Hono/R2 implementation was exploratory and is superseded. It must not be treated as a required feature.
+- UI and analysis: React + TypeScript + Vite in `frontend/`.
+- Runtime API: `worker/index.js` handles fixed, validated provider routes under `/api/*`.
+- Hosting: one Cloudflare Worker serves both the API and the Vite production assets through the `ASSETS` binding configured in root `wrangler.toml`.
+- The Worker routes Yahoo Finance, MarketSmith, ChartInk and NSE requests server-side. Browser calls are same-origin, so browser CORS enforcement is removed from the provider request path.
+- The Worker uses upstream timeouts and short edge caching for successful read-only GET data. ChartInk scan POSTs are not cached.
+- Static JSON assets hold non-sensitive reference datasets. Personal holdings, settings and watchlists remain browser-local unless a sync feature is separately approved.
+- Node/npm are development/build tools only. No always-on Node server or Python runtime is required for the current Cloudflare deployment.
+- This is not a VPN. No VPN/proxy configuration was found in the inspected legacy Node service; it used server-side `got` and Python `requests` calls. Cloudflare Workers can still be blocked by provider-side IP, authentication or anti-bot controls. If that happens, assess a separately hosted Node service with an approved network route.
+- No database or R2 bucket is required. The earlier Hono/R2 implementation was exploratory and superseded.
+- Never expose private API keys, session cookies or MarketSmith authentication values in frontend code or committed source. An optional `MARKETSMITH_AUTH` Worker secret is supported; configure only a valid value the user is authorized to use.
 
 ## Deployment configuration
 
@@ -37,9 +37,9 @@ Cloudflare Workers Builds settings:
 - Root directory: blank/repository root.
 - Build command: `cd frontend && npm install && npm run build`
 - Deploy command: `npx wrangler deploy --config ./wrangler.toml`
-- Watch paths: `frontend/**` and `wrangler.toml`
+- Watch paths: `frontend/**`, `worker/**` and `wrangler.toml`
 
-The single root `wrangler.toml` sets `name = "schcatweb"` and `assets.directory = "./frontend/dist"`, with SPA fallback. No R2 bucket is required. Cloudflare's current Wrangler documentation confirms that static asset deployment uses `assets.directory` and supports SPA fallback: https://developers.cloudflare.com/workers/wrangler/configuration/ .
+The root `wrangler.toml` sets `main = "worker/index.js"`, binds `frontend/dist` as `ASSETS`, enables SPA fallback and sends `/api/*` through the Worker first. No R2 bucket is required. Cloudflare documents the Worker script + static asset binding and route selection here: https://developers.cloudflare.com/workers/static-assets/binding/ .
 
 ## Revised migration plan
 
@@ -52,8 +52,8 @@ The single root `wrangler.toml` sets `name = "schcatweb"` and `assets.directory 
 | 5 | Exploratory R2 data integration/importer | Superseded; no production data import performed |
 | 6 | Convert project to static-only Cloudflare deployment; remove backend/R2; update docs and CI | Complete — user confirmed the live Cloudflare site works; GitHub CI passes |
 | 7 | Port core provider-independent fundamental calculation kernels to browser TypeScript with parity tests | Complete — six pure calculation functions and deterministic tests; PEG field mapping deferred until provider field semantics are verified |
-| 8 | Audit and implement direct browser provider API access (MarketSmith, ChartInk, NSE); record CORS/auth limitations | In progress — browser diagnostic page and request-shape tests implemented; live-origin provider results pending |
-| 9 | Port chart data workflows and existing CRIP4 Node chart behaviour to browser-compatible TypeScript | In progress — implementation and CI pass; live Yahoo CORS test pending |
+| 8 | Audit and implement provider API access (MarketSmith, ChartInk, NSE) | In progress — same-origin Worker routes and server-side CSRF flow implemented; live Cloudflare egress/authentication results pending |
+| 9 | Port chart data workflows and existing CRIP4 Node chart behaviour to TypeScript | In progress — chart shaping is in frontend TypeScript and Yahoo fetch now uses the Worker API; live Cloudflare provider access pending |
 | 10 | Port technical indicators with numerical parity tests | Complete — exact fast-technical-indicators 1.1.4 SMA/EMA/RSI kernels, CRIP4 wrappers, ULTM/ATP ports and CI parity tests |
 | 11 | Convert/import non-sensitive reference workbooks and JSON to static browser-readable data | Complete — 2,256-row stock universe, 107-industry list and 1,256-symbol CRIP4 MarketSmith ID map converted to static JSON; provenance, freshness and duplicate-ID warnings captured |
 | 12 | Stock screener: universe, filters, queries and sorting | Complete — browser screener, tests and production build pass |
@@ -64,7 +64,7 @@ The single root `wrangler.toml` sets `name = "schcatweb"` and `assets.directory 
 | 17 | Portfolio using browser-local storage/import/export | Complete — holdings, P&L, legacy synthetic OHLC charts, CSV/JSON backup and parity tests |
 | 18 | Watchlists and query management using browser-local storage/import/export | Complete — browser-local watchlists and saved queries, desktop-format CSV migration, JSON/CSV backup and parity tests |
 | 19 | Integration, parity, browser compatibility and end-to-end testing | Complete — all six modules linked from Overview; production preview smoke tests cover SPA fallback, bundle, reference data and static deployment config |
-| 20 | Cloudflare production deployment and final release verification | Not started |
+| 20 | Cloudflare Worker API integration, production deployment and final release verification | In progress — Worker/API foundation implemented; live deployment and provider reachability verification pending |
 
 Steps 7–11 are ordered to establish calculations, provider access, chart behaviour and static data before completing the feature screens. The original desktop app remains the behavioural reference throughout.
 
@@ -266,8 +266,30 @@ Verification:
 - Run: https://github.com/prudhviuday/SchCatWeb/actions/runs/42166528885.
 - This is a local production-preview smoke test in CI, not a live browser session against Cloudflare. Live provider CORS/authentication and Cloudflare publication remain unverified and are deliberately left for Step 20.
 
-## Next step
+## Step 20 — Server-side provider API and Cloudflare release (in progress)
 
-Step 20 — Cloudflare production deployment and final release verification. Verify the actual deployed commit, production URL, static assets and browser-origin provider connectivity without exposing credentials or adding an unapproved backend.
+Implemented on `main`:
+- `worker/index.js` is the Cloudflare Worker entry point. It serves `/api/health`, Yahoo chart data, MarketSmith finance/symbol data, ChartInk scan/history/widget requests and NSE historical delivery data.
+- `wrangler.toml` now binds `frontend/dist` as `ASSETS` and routes `/api/*` through the Worker before static asset handling. SPA fallback remains enabled.
+- Yahoo chart requests in `frontend/src/data/providers/chartData.ts` now use the same-origin Worker API.
+- Provider diagnostics now call same-origin Worker routes instead of contacting third-party domains directly from the browser.
+- Market Pulse's ChartInk widget request now runs through the Worker, including CSRF bootstrap and short-lived session-cookie forwarding server-side.
+- The Worker validates symbols, stock IDs, intervals, ranges and NSE dates; applies 12-second upstream timeouts; uses short edge caching for successful read-only GETs; and does not cache ChartInk POSTs.
+- No arbitrary URL proxy, database, R2 bucket, committed credential or frontend cookie access has been introduced. An optional `MARKETSMITH_AUTH` Cloudflare secret can be configured if a valid authorized value is available.
+- Integration tests cover health, Yahoo routing and validation, MarketSmith URL construction, ChartInk CSRF/session flow, static asset forwarding, unknown API routes and Wrangler configuration.
+
+Important limitations:
+- A Cloudflare Worker removes browser CORS restrictions but is not a VPN. Cloudflare outbound IPs may still be blocked by providers, and MarketSmith may require a valid auth value. No live provider result is claimed until the Worker is deployed and checked.
+- Market Pulse is now wired to the Worker API. Other future features that need fresh MarketSmith/NSE/ChartInk data still need to be connected to these routes before their live calculations can be enabled.
+- Configure Cloudflare WAF/rate limiting for `/api/*` before significant public use.
+- Cloudflare Workers Builds should watch `frontend/**`, `worker/**` and `wrangler.toml`; the existing deploy command remains `npx wrangler deploy --config ./wrangler.toml`.
+
+Next verification:
+1. Confirm Cloudflare Workers Builds deploys the latest `main` commit using the new Worker entrypoint.
+2. Open `https://schcatweb.prudhvi123143.workers.dev/api/health` and verify the JSON health response.
+3. Run provider diagnostics from `https://schcatweb.prudhvi123143.workers.dev/?diagnostics=providers`.
+4. Test chart loading and Market Pulse. Record exact upstream HTTP/auth/network outcomes. If Cloudflare egress is blocked, evaluate a separate Node host/VPN route rather than claiming a Worker proxy fixed it.
+
+
 
 
