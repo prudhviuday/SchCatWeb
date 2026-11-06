@@ -639,6 +639,50 @@ h2 { font-size: 17px; letter-spacing: -.3px; font-weight: 600; margin: 7px 0 0; 
 .workspace-reference-grid > div { display: grid; gap: 5px; min-width: 0; }
 .workspace-reference-grid span { color: #8190a4; font-size: 9px; }
 .workspace-reference-grid strong { color: #dce4ef; font-size: 11px; font-weight: 650; overflow-wrap: anywhere; }
+.workspace-live-fundamentals {
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: rgba(13, 20, 30, .72);
+  padding: 16px;
+  margin-bottom: 17px;
+}
+.workspace-quarter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  gap: 9px;
+  margin: 13px 0;
+}
+.workspace-quarter-grid article {
+  display: grid;
+  gap: 7px;
+  padding: 11px;
+  border: 1px solid #293646;
+  border-radius: 7px;
+  background: #101925;
+  min-width: 0;
+}
+.workspace-quarter-grid article > strong { color: #e8b77e; font-size: 11px; }
+.workspace-quarter-grid article > span { display: flex; justify-content: space-between; gap: 8px; color: #8998ac; font-size: 10px; }
+.workspace-quarter-grid b { color: #dce4ef; font-weight: 650; }
+.workspace-annual-eps { margin-top: 15px; }
+.workspace-annual-eps-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+  gap: 8px;
+  margin-top: 9px;
+}
+.workspace-annual-eps-list > div {
+  display: grid;
+  gap: 4px;
+  padding: 9px;
+  border: 1px solid #293646;
+  border-radius: 6px;
+  background: #101925;
+}
+.workspace-annual-eps-list span { color: #8998ac; font-size: 9px; }
+.workspace-annual-eps-list strong { color: #dce4ef; font-size: 13px; font-variant-numeric: tabular-nums; }
+.workspace-annual-eps-list small { color: #d5a56f; font-size: 9px; }
+
 .workspace-chart-section {
   border: 1px solid var(--border);
   border-radius: 9px;
