@@ -21,7 +21,8 @@
     "src/features/charts/chartPresentation.ts",
     "src/features/industry/industryAnalysis.ts",
     "src/features/research/research.ts",
-    "src/features/marketPulse/marketPulse.ts",\n    "src/features/portfolio/portfolio.ts"
+    "src/features/marketPulse/marketPulse.ts",
+    "src/features/portfolio/portfolio.ts"
   ],
   "include": []
 }
