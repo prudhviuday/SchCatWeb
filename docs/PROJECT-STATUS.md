@@ -358,7 +358,7 @@ Tests:
 Implemented on main:
 - Added an on-demand NSE delivery-history provider using the existing same-origin /api/nse/delivery Worker route. No MarketSmith session or other credential is required.
 - Retrieves approximately 300 calendar days for the selected NSE symbol.
-- Ports desktop util.fetch_DeliveryPerc_from_NSE: daily delivery value in crore = traded value × delivery percentage / 10,000,000; traded value in crore = traded value / 100,000; both values use a five-session rolling mean. As in the desktop, the first five rows are excluded after the rolling calculation. Daily delivery percentage remains the reported percentage for the latest observation in each rolling window.
+- Ports desktop util.fetch_DeliveryPerc_from_NSE: daily delivery value = int(traded value × delivery percentage / 10,000,000); traded value = int(traded value / 100,000); both values use a five-session rolling mean. The web version preserves the desktop formulas and does not assign a currency unit not defined by the original code. As in the desktop, the first five rows are excluded after the rolling calculation. Daily delivery percentage remains the reported percentage for the latest observation in each rolling window.
 - Stock Workspace now shows latest delivery percentage, rolling delivery value, rolling traded value, change versus the previous session, and the latest 12 observations in a table.
 - Fetch is user-triggered, keeps results in page memory, and reports provider errors without fabricating data.
 
