@@ -50,7 +50,7 @@ function App() {
         </nav>
         <div className="sidebar-footer">
           <span className="status-dot" />
-          {activePage === "screener" ? "SCREENER ONLINE" : activePage === "workspace" ? "WORKSPACE ONLINE" : activePage === "pulse" ? "MARKET PULSE ONLINE" : "MIGRATION IN PROGRESS"}
+          {activePage === "screener" ? "SCREENER ONLINE" : activePage === "workspace" ? "WORKSPACE ONLINE" : activePage === "pulse" ? "MARKET PULSE ONLINE" : activePage === "portfolio" ? "PORTFOLIO ONLINE" : "MIGRATION IN PROGRESS"}
         </div>
       </aside>
 
@@ -60,7 +60,7 @@ function App() {
           <div className="topbar-right"><span className="market-status"><i /> LOCAL WORKSPACE</span><div className="avatar">U</div></div>
         </header>
 
-        {activePage === "pulse" ? (
+        {activePage === "portfolio" ? (\n          <Portfolio />\n        ) : activePage === "pulse" ? (
           <MarketPulse />
         ) : activePage === "research" ? (
           <Research />
