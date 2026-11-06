@@ -146,3 +146,10 @@ test("match percentage preserves Python round-to-even on exact half-cent values"
   });
   assert.equal(result[0].matchPercent, 3.12);
 });
+
+test("query rows fall back from blank QueryName/QueryCode cells to Name/Query aliases", () => {
+  assert.deepEqual(
+    parseQueriesCsv("QueryName,Name,QueryCode,Query\n,High Growth,,close > 100\n"),
+    [{ name: "High Growth", code: "close > 100" }]
+  );
+});
