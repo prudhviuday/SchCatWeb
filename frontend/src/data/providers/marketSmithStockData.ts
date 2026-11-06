@@ -49,10 +49,16 @@ export interface MarketSmithAnnualValuePoint {
   normalized: number | null;
 }
 
+export interface MarketSmithQuarterlyExpansionPoint {
+  period: string;
+  value: number;
+}
+
 export interface MarketSmithFinanceData {
   annualEps: MarketSmithAnnualEpsPoint[];
   annualRoce: MarketSmithAnnualValuePoint[];
   annualRevenue: MarketSmithAnnualValuePoint[];
+  quarterlyExpansion: MarketSmithQuarterlyExpansionPoint[];
 }
 
 export interface MarketSmithFetchFailure {
@@ -299,7 +305,22 @@ export function parseMarketSmithFinanceData(payload: unknown): MarketSmithFinanc
       normalized: normalized[index] ?? null
     })),
     annualRoce: annualValues(root?.ratiosAnnualData, "c0", "c4"),
-    annualRevenue: annualValues(root?.incAnnualData, "c0", "c3", true)
+    annualRevenue: annualValues(root?.incAnnualData, "c0", "c3", true),
+    quarterlyExpansion: (Array.isArray(root?.incQuarterData) ? root.incQuarterData : [])
+      .map(asRecord)
+      .filter((row): row is Record<string, unknown> => row !== null)
+      .map((row) => {
+        const numerator = finiteNumber(row.c25);
+        const denominator = finiteNumber(row.c32);
+        return {
+          period: "01-" + (textValue(row.c0) ?? ""),
+          value: numerator === null || denominator === null || denominator === 0
+            ? null
+            : Math.trunc(numerator / denominator * 100)
+        };
+      })
+      .filter((point): point is { period: string; value: number } => point.value !== null && point.period !== "")
+      .reverse()
   };
 }
 
