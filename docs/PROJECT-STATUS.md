@@ -276,7 +276,8 @@ Implemented on `main`:
 - Market Pulse's ChartInk widget request now runs through the Worker, including CSRF bootstrap and short-lived session-cookie forwarding server-side.
 - The Worker validates symbols, stock IDs, intervals, ranges and NSE dates; applies 12-second upstream timeouts; uses short edge caching for successful read-only GETs; and does not cache ChartInk POSTs.
 - No arbitrary URL proxy, database, R2 bucket, committed credential or frontend cookie access has been introduced. An optional `MARKETSMITH_AUTH` Cloudflare secret can be configured if a valid authorized value is available.
-- Integration tests cover health, Yahoo routing and validation, MarketSmith URL construction, ChartInk CSRF/session flow, static asset forwarding, unknown API routes and Wrangler configuration.
+- Integration tests cover health, Yahoo routing and validation, MarketSmith URL construction, ChartInk CSRF/session flow, safe redirect handling, invalid request bodies, static asset forwarding, unknown API routes and Wrangler configuration.
+- CI now runs `npx --yes wrangler deploy --dry-run --config ./wrangler.toml` after the frontend build to verify that Cloudflare can bundle the Worker and static assets before a real deployment.
 
 Important limitations:
 - A Cloudflare Worker removes browser CORS restrictions but is not a VPN. Cloudflare outbound IPs may still be blocked by providers, and MarketSmith may require a valid auth value. No live provider result is claimed until the Worker is deployed and checked.
