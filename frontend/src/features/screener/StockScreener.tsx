@@ -4,6 +4,12 @@ import {
   type MarketUniverseRecord
 } from "../../data/reference/marketUniverse";
 import { loadIndustryList } from "../../data/reference/industries";
+import { loadMarketSmithIds } from "../../data/reference/marketSmithIds";
+import { readStoredMarketSmithAuth } from "../../data/providers/providerDiagnostics";
+import {
+  fetchMarketSmithUniverse,
+  type MarketSmithLiveMetrics
+} from "../../data/providers/marketSmithStockData";
 import { addSymbolToWatchlist, loadScreenerLibrary, mergeScreenerLibraries, parseScreenerLibraryJson, parseSavedQueriesCsv, parseWatchlistsCsv, removeSavedQuery, removeSymbolFromWatchlist, saveScreenerLibrary, serializeScreenerLibrary, serializeSavedQueriesCsv, serializeWatchlistsCsv, upsertSavedQuery, type ScreenerLibrary } from "./watchlists";
 import {
   applyScreenerFilters,
@@ -11,7 +17,8 @@ import {
   SCREENER_COLUMNS,
   sortScreenerRecords,
   type ScreenerNumericField,
-  type ScreenerSortField
+  type ScreenerSortField,
+  type ScreenerRow
 } from "./screener";
 
 type RangeInput = { min: string; max: string };
@@ -21,14 +28,28 @@ const EMPTY_RANGES: RangeInputs = {
   marketCap: { min: "", max: "" },
   pb: { min: "", max: "" },
   roce: { min: "", max: "" },
-  nikScore: { min: "", max: "" }
+  nikScore: { min: "", max: "" },
+  groupRank: { min: "", max: "" },
+  rs: { min: "", max: "" },
+  epsRank: { min: "", max: "" },
+  masterScore: { min: "", max: "" },
+  pe: { min: "", max: "" },
+  peg: { min: "", max: "" },
+  fScore: { min: "", max: "" }
 };
 
 const RANGE_LABELS: Record<ScreenerNumericField, string> = {
   marketCap: "Market Cap*",
   pb: "P/B*",
   roce: "ROCE*",
-  nikScore: "NikScore*"
+  nikScore: "NikScore*",
+  groupRank: "Group Rank",
+  rs: "RS",
+  epsRank: "EPS Rank",
+  masterScore: "MasterScore",
+  pe: "PE",
+  peg: "PEG",
+  fScore: "FScore"
 };
 
 function numberValue(value: number | null): string {
@@ -43,22 +64,28 @@ function compactNumber(value: number | null): string {
     : new Intl.NumberFormat("en-IN", { notation: "compact", maximumFractionDigits: 2 }).format(value);
 }
 
-function csvCell(value: string | number | null): string {
-  const raw = value === null ? "" : String(value);
+function csvCell(value: string | number | null | undefined): string {
+  const raw = value == null ? "" : String(value);
   return '"' + raw.replaceAll('"', '""') + '"';
 }
 
-function downloadCsv(records: readonly MarketUniverseRecord[]) {
-  const columns = [
+function downloadCsv(records: readonly ScreenerRow[]) {
+  const columns: Array<[string, keyof ScreenerRow]> = [
     ["Symbol", "symbol"],
-    ["Instrument ID", "instrumentId"],
-    ["Sector", "sector"],
     ["Industry", "industry"],
+    ["Group Rank (MarketSmith)", "groupRank"],
+    ["RS (MarketSmith)", "rs"],
+    ["EPS Rank (MarketSmith)", "epsRank"],
+    ["MasterScore (MarketSmith)", "masterScore"],
+    ["Acc/Dis (MarketSmith)", "accDis"],
+    ["PE (MarketSmith)", "pe"],
+    ["PEG (MarketSmith)", "peg"],
+    ["FScore (MarketSmith)", "fScore"],
     ["Market Cap (undated source)", "marketCap"],
     ["P/B (undated source)", "pb"],
     ["ROCE (undated source)", "roce"],
     ["NikScore (undated source)", "nikScore"]
-  ] as const;
+  ];
   const lines = [
     columns.map(([label]) => csvCell(label)).join(","),
     ...records.map((record) =>
@@ -74,6 +101,11 @@ function downloadCsv(records: readonly MarketUniverseRecord[]) {
   URL.revokeObjectURL(url);
 }
 
+function displayScreenerValue(value: string | number | null | undefined): string {
+  if (value == null || value === "") return "—";
+  return typeof value === "number" ? numberValue(value) : value;
+}
+
 function toNumber(value: string): number | undefined {
   if (!value.trim()) return undefined;
   const parsed = Number(value);
@@ -81,7 +113,26 @@ function toNumber(value: string): number | undefined {
 }
 
 function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRecord) => void }) {
-  const [records, setRecords] = useState<MarketUniverseRecord[]>([]);
+  const [records, setRecords] = useState<ScreenerRow[]>([]);
+  const [liveMetrics, setLiveMetrics] = useState<Record<string, MarketSmithLiveMetrics>>({});
+  const [marketSmithRefresh, setMarketSmithRefresh] = useState<{
+    status: "idle" | "loading" | "complete" | "error";
+    completed: number;
+    total: number;
+    succeeded: number;
+    failed: number;
+    skipped: number;
+    message: string;
+  }>({
+    status: "idle",
+    completed: 0,
+    total: 0,
+    succeeded: 0,
+    failed: 0,
+    skipped: 0,
+    message: ""
+  });
+  const [liveUpdatedAt, setLiveUpdatedAt] = useState<string | null>(null);
   const [industries, setIndustries] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -131,6 +182,11 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
     [queries]
   );
 
+  const enrichedRecords = useMemo(
+    () => records.map((record) => ({ ...record, ...(liveMetrics[record.symbol] ?? {}) })),
+    [records, liveMetrics]
+  );
+
   const filters = useMemo(() => ({
     search,
     sector,
@@ -150,15 +206,79 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
   }), [search, sector, industry, ranges]);
 
   const filteredRecords = useMemo(() => {
-    let source = records;
+    let source = enrichedRecords;
     if (activeWatchlist) { const selected = library.watchlists.find(item => item.name === activeWatchlist); const symbols = new Set(selected?.symbols ?? []); source = source.filter(record => symbols.has(record.symbol)); }
     const filtered = applyScreenerFilters(source, filters, selectedQueries, queryMatches);
     return sortScreenerRecords(filtered, sortField, ascending);
-  }, [records, filters, selectedQueries, queryMatches, sortField, ascending, activeWatchlist, library.watchlists]);
+  }, [enrichedRecords, filters, selectedQueries, queryMatches, sortField, ascending, activeWatchlist, library.watchlists]);
 
   const pageSize = 50;
   const pageCount = Math.max(1, Math.ceil(filteredRecords.length / pageSize));
   const pageRecords = filteredRecords.slice(page * pageSize, (page + 1) * pageSize);
+
+  async function refreshMarketSmithData() {
+    if (marketSmithRefresh.status === "loading" || records.length === 0) return;
+    const auth = readStoredMarketSmithAuth();
+    if (!auth) {
+      setMarketSmithRefresh({
+        status: "error",
+        completed: 0,
+        total: records.length,
+        succeeded: 0,
+        failed: 0,
+        skipped: 0,
+        message: "No MarketSmith session saved in this browser. Open Provider Diagnostics, paste your working ms-auth value and save it first."
+      });
+      return;
+    }
+
+    setMarketSmithRefresh({
+      status: "loading",
+      completed: 0,
+      total: records.length,
+      succeeded: 0,
+      failed: 0,
+      skipped: 0,
+      message: "Starting MarketSmith requests with eight concurrent workers (same as the desktop app)…"
+    });
+
+    try {
+      const ids = await loadMarketSmithIds();
+      const result = await fetchMarketSmithUniverse(records, ids, auth, {
+        concurrency: 8,
+        onProgress: (completed, total) => {
+          setMarketSmithRefresh((current) => ({
+            ...current,
+            status: "loading",
+            completed,
+            total,
+            message: `Fetched ${completed.toLocaleString("en-IN")} of ${total.toLocaleString("en-IN")} stocks…`
+          }));
+        }
+      });
+      setLiveMetrics(Object.fromEntries(result.metrics.entries()));
+      const updatedAt = new Date().toLocaleString("en-IN");
+      setLiveUpdatedAt(updatedAt);
+      const message = `${result.metrics.size.toLocaleString("en-IN")} stocks updated; ${result.failures.length.toLocaleString("en-IN")} requests failed; ${result.skippedWithoutId.toLocaleString("en-IN")} stocks had no MarketSmith ID.`;
+      setMarketSmithRefresh({
+        status: "complete",
+        completed: result.completed,
+        total: result.total,
+        succeeded: result.metrics.size,
+        failed: result.failures.length,
+        skipped: result.skippedWithoutId,
+        message: result.failures.length > 0
+          ? message + ` First error: ${result.failures[0].message}`
+          : message
+      });
+    } catch (error) {
+      setMarketSmithRefresh((current) => ({
+        ...current,
+        status: "error",
+        message: error instanceof Error ? error.message : "MarketSmith refresh failed."
+      }));
+    }
+  }
 
   function updateRange(field: ScreenerNumericField, side: "min" | "max", value: string) {
     setRanges((current) => ({
@@ -235,18 +355,31 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
         </div>
         <div className="screener-heading-actions">
           <span className="screener-count">{loading ? "Loading universe…" : `${filteredRecords.length.toLocaleString("en-IN")} / ${records.length.toLocaleString("en-IN")} stocks`}</span>
-          <button type="button" className="screener-button" onClick={() => downloadCsv(filteredRecords)} disabled={loading || filteredRecords.length === 0}>
+          <button type="button" className="screener-button" onClick={() => void refreshMarketSmithData()} disabled={loading || marketSmithRefresh.status === "loading" || records.length === 0}>
+            {marketSmithRefresh.status === "loading" ? `Fetching ${marketSmithRefresh.completed.toLocaleString("en-IN")}/${marketSmithRefresh.total.toLocaleString("en-IN")}…` : "Fetch live MarketSmith"}
+          </button>
+          <button type="button" className="screener-button secondary" onClick={() => downloadCsv(filteredRecords)} disabled={loading || filteredRecords.length === 0}>
             Export CSV
           </button>
         </div>
       </div>
 
       <section className="screener-warning">
-        <strong>Reference data only</strong>
+        <strong>Static + live data</strong>
         <span>
-          Market Cap, P/B, ROCE and NikScore come from an undated workbook snapshot. They are not live market values.
-          MarketSmith fields such as RS, EPS rank, PE, PEG and MasterScore are withheld until browser provider access is validated.
+          Market Cap, P/B, ROCE and NikScore remain undated workbook reference values. Use Fetch live MarketSmith to load Group Rank, RS, EPS Rank, MasterScore, Acc/Dis, PE, PEG and FScore for the full 2,256-stock universe. Data is fetched only when requested and is held in page memory; it is not uploaded or saved.
         </span>
+      </section>
+
+      <section className="screener-live-status" aria-live="polite">
+        <div>
+          <strong>{marketSmithRefresh.status === "idle" ? "MarketSmith data not loaded" : marketSmithRefresh.status === "loading" ? "Fetching MarketSmith data" : marketSmithRefresh.status === "error" ? "MarketSmith refresh needs attention" : `MarketSmith updated ${liveUpdatedAt ? "· " + liveUpdatedAt : ""}`}</strong>
+          <span>{marketSmithRefresh.status === "idle" ? "Save the current session once in Provider Diagnostics, then fetch live metrics when needed." : marketSmithRefresh.message}</span>
+        </div>
+        {marketSmithRefresh.status === "loading" && (
+          <progress value={marketSmithRefresh.completed} max={Math.max(1, marketSmithRefresh.total)} />
+        )}
+        <a href="/?diagnostics=providers">Provider Diagnostics ↗</a>
       </section>
 
       {loadError && <div className="screener-error" role="alert">{loadError}</div>}
@@ -394,25 +527,31 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
             <tbody>
               {pageRecords.map((record) => (
                 <tr key={record.symbol} className={selectedStock?.symbol === record.symbol ? "selected" : ""}>
-                  <td><button type="button" className="screener-symbol" onClick={() => { setSelectedStock(record); onOpenStock(record); }}>{record.symbol}</button></td>
-                  <td><button type="button" className="screener-industry" onDoubleClick={() => { setIndustry(record.industry ?? ""); setPage(0); }} title="Double-click to filter this industry">{record.industry ?? "—"}</button></td>
-                  <td>{record.sector ?? "—"}</td>
-                  <td className="numeric">{compactNumber(record.marketCap)}</td>
-                  <td className="numeric">{numberValue(record.pb)}</td>
-                  <td className="numeric">{numberValue(record.roce)}</td>
-                  <td className="numeric">{numberValue(record.nikScore)}</td>
+                  {SCREENER_COLUMNS.map((column) => (
+                    <td className={column.numeric ? "numeric" : undefined} key={column.key}>
+                      {column.key === "symbol" ? (
+                        <button type="button" className="screener-symbol" onClick={() => { setSelectedStock(record); onOpenStock(record); }}>{record.symbol}</button>
+                      ) : column.key === "industry" ? (
+                        <button type="button" className="screener-industry" onDoubleClick={() => { setIndustry(record.industry ?? ""); setPage(0); }} title="Double-click to filter this industry">{record.industry ?? "—"}</button>
+                      ) : column.key === "marketCap" ? (
+                        compactNumber(record.marketCap)
+                      ) : (
+                        displayScreenerValue(record[column.key])
+                      )}
+                    </td>
+                  ))}
                   <td><button type="button" className="screener-industry" disabled={!watchlistTarget} title={watchlistTarget ? "Add to selected watchlist" : "Select a target watchlist above"} onClick={()=>{setLibrary(current=>addSymbolToWatchlist(current,watchlistTarget,record.symbol));setWatchlistNotice(record.symbol+" added to "+watchlistTarget);}}>+ Save</button></td>
                 </tr>
               ))}
               {!loading && pageRecords.length === 0 && (
-                <tr><td colSpan={8} className="screener-empty">No stocks match the current filters.</td></tr>
+                <tr><td colSpan={SCREENER_COLUMNS.length + 1} className="screener-empty">No stocks match the current filters.</td></tr>
               )}
             </tbody>
           </table>
         </div>
         <div className="screener-table-footer">
           <span>Showing {filteredRecords.length === 0 ? 0 : page * pageSize + 1}–{Math.min((page + 1) * pageSize, filteredRecords.length)} of {filteredRecords.length}</span>
-          <span>Click a symbol for its reference ID. Double-click an industry to filter.</span>
+          <span>MarketSmith metrics are live only after refresh; * fields remain static reference values.</span>
         </div>
       </section>
 
