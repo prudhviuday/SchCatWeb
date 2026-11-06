@@ -4,10 +4,12 @@ import test from "node:test";
 import { fetchNseDeliveryHistory, parseNseDeliveryHistory } from "../../.test-dist/data/providers/nseDelivery.js";
 
 import {
-  fetchMarketSmithFinanceData,\n  fetchMarketSmithRelativeStrength,
+  fetchMarketSmithFinanceData,
+  fetchMarketSmithRelativeStrength,
   fetchMarketSmithStockMetrics,
   fetchMarketSmithUniverse,
-  parseMarketSmithFinanceData,\n  parseMarketSmithRelativeStrength,
+  parseMarketSmithFinanceData,
+  parseMarketSmithRelativeStrength,
   parseMarketSmithStockMetrics
 } from "../../.test-dist/data/providers/marketSmithStockData.js";
 
