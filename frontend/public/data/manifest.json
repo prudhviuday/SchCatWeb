@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "datasets": [
+    {
+      "id": "marketSmithIds",
+      "path": "/data/marketSmithIds.json",
+      "format": "symbol-to-id map",
+      "records": 1256,
+      "sourceRepository": "prudhviuday/SchCat",
+      "sourcePath": "CRIP4/public/Tools/marketsmithids.json",
+      "sourceBlobSha": "4b9ea033614a3c6289b075278b76b697311dfef6",
+      "purpose": "MarketSmith instrument ID lookup used by the legacy CRIP4 chart provider adapter",
+      "limitations": [
+        "This is a chart-provider lookup, not the full screener stock universe.",
+        "It contains no market-cap or industry fields.",
+        "Do not treat it as interchangeable with data/marketsmithidsall.txt or data/marketsmithidsall4.xlsx."
+      ]
+    }
+  ]
+}
