@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
   loadMarketUniverse,
   type MarketUniverseRecord
@@ -13,11 +13,6 @@ import {
   type ScreenerNumericField,
   type ScreenerSortField
 } from "./screener";
-
-interface LocalSymbolQuery {
-  name: string;
-  symbols: string[];
-}
 
 type RangeInput = { min: string; max: string };
 type RangeInputs = Record<ScreenerNumericField, RangeInput>;
@@ -219,7 +214,7 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
   }
 
   function removeQuery(name: string) {
-    setLibrary(current => ({...current, queries: current.queries.filter(query => query.name !== name)}));
+    setLibrary(current => removeSavedQuery(current, name));
     setSelectedQueries((current) => current.filter((item) => item !== name));
     setPage(0);
   }
