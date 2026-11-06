@@ -1,7 +1,7 @@
 /**
- * Chart data shaping remains in the frontend, while the Yahoo request is sent
- * through the same-origin Cloudflare Worker API. Provider access is therefore
- * server-side and is not subject to browser CORS enforcement.
+ * Chart data shaping and Yahoo requests run directly in the user's browser.
+ * Yahoo's public chart endpoint was verified to return readable JSON from the
+ * deployed browser origin; the Worker route remains available as a fallback.
  *
  * The old Node stockUrlmaker contains "else if (key = 1000)", an assignment
  * that routes most requests to daily candles. This module implements the
@@ -85,8 +85,7 @@ function normalizeYahooSymbol(symbol: string): string {
 }
 
 /**
- * Build Yahoo Finance's upstream chart URL. Kept public for request-shape tests;
- * the live application uses buildYahooProxyUrl so the browser calls our Worker.
+ * Build Yahoo Finance's public chart URL for direct browser requests.
  */
 export function buildYahooChartUrl(
   symbol: string,
@@ -297,7 +296,7 @@ async function fetchYahooCandles(
   timeframe: Exclude<ChartTimeframe, "15m" | "4H">,
   options: ChartRequestOptions
 ): Promise<ChartCandle[]> {
-  const url = buildYahooProxyUrl(symbol, timeframe);
+  const url = buildYahooChartUrl(symbol, timeframe);
   const controller = new AbortController();
   const timeoutMs = options.timeoutMs ?? 15_000;
   const timeoutId = globalThis.setTimeout(
@@ -310,8 +309,8 @@ async function fetchYahooCandles(
     try {
       response = await fetch(url, {
         method: "GET",
-        mode: "same-origin",
-        credentials: "same-origin",
+        mode: "cors",
+        credentials: "omit",
         headers: { Accept: "application/json" },
         signal: controller.signal
       });
@@ -322,7 +321,7 @@ async function fetchYahooCandles(
         timedOut ? "timeout" : "network",
         timedOut
           ? `Yahoo Finance did not respond within ${timeoutMs} ms.`
-          : "The SchCatWeb API could not fetch Yahoo Finance. Check the API status and provider/network diagnostics."
+          : "The browser could not reach Yahoo Finance. Check the browser network and provider availability."
       );
     }
 
