@@ -1,0 +1,28 @@
+{
+  "recordCount": 2256,
+  "industryCount": 107,
+  "sectorCount": 25,
+  "industriesNotInWorkbookList": [],
+  "workbookIndustriesNotInUniverse": [],
+  "invalidInstrumentIdCount": 0,
+  "invalidNumericFieldCount": 0,
+  "duplicateInstrumentIdCount": 2,
+  "duplicateInstrumentIdWarnings": [
+    {
+      "instrumentId": 3022514,
+      "symbols": [
+        "M&M",
+        "M&MFIN"
+      ]
+    },
+    {
+      "instrumentId": 3098076,
+      "symbols": [
+        "IL&FSENGG",
+        "IL&FSTRANS"
+      ]
+    }
+  ],
+  "invalidInstrumentIdExamples": [],
+  "invalidNumericExamples": []
+}

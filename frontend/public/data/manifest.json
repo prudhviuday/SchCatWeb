@@ -15,6 +15,54 @@
         "It contains no market-cap or industry fields.",
         "Do not treat it as interchangeable with data/marketsmithidsall.txt or data/marketsmithidsall4.xlsx."
       ]
+    },
+    {
+      "id": "marketUniverse",
+      "path": "/data/marketUniverse.json",
+      "format": "array of stock reference records",
+      "records": 2256,
+      "sourceRepository": "prudhviuday/SchCat",
+      "sourcePath": "data/marketsmithidsall4.xlsx",
+      "sourceBlobSha": "162c0728380c98cee43bafaece8d06af78bab9bd",
+      "sourceAsOfDate": null,
+      "fields": [
+        "symbol",
+        "instrumentId",
+        "marketCap",
+        "sector",
+        "industry",
+        "pb",
+        "roce",
+        "nikScore"
+      ],
+      "freshnessWarning": "This is a static snapshot with no recorded as-of date. MarketCap, P/B, ROCE and NikScore may be stale and must not be presented as live metrics.",
+      "duplicateInstrumentIdCount": 2,
+      "duplicateInstrumentIdWarnings": [
+        {
+          "instrumentId": 3022514,
+          "symbols": [
+            "M&M",
+            "M&MFIN"
+          ]
+        },
+        {
+          "instrumentId": 3098076,
+          "symbols": [
+            "IL&FSENGG",
+            "IL&FSTRANS"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "industries",
+      "path": "/data/industries.json",
+      "format": "unique industry-name list",
+      "records": 107,
+      "sourceRepository": "prudhviuday/SchCat",
+      "sourcePath": "data/Industrydata.xlsx",
+      "sourceBlobSha": "55d8fe19cd83105e8cc632c97de3e5bc345288b5",
+      "freshnessWarning": "Reference classification only; labels may be stale or differ from provider labels."
     }
   ]
 }
