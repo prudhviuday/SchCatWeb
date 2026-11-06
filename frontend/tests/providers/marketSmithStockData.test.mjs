@@ -4,10 +4,10 @@ import test from "node:test";
 import { fetchNseDeliveryHistory, parseNseDeliveryHistory } from "../../.test-dist/data/providers/nseDelivery.js";
 
 import {
-  fetchMarketSmithFinanceData,
+  fetchMarketSmithFinanceData,\n  fetchMarketSmithRelativeStrength,
   fetchMarketSmithStockMetrics,
   fetchMarketSmithUniverse,
-  parseMarketSmithFinanceData,
+  parseMarketSmithFinanceData,\n  parseMarketSmithRelativeStrength,
   parseMarketSmithStockMetrics
 } from "../../.test-dist/data/providers/marketSmithStockData.js";
 
@@ -347,4 +347,33 @@ test("NSE delivery request uses the same-origin Worker and date-scoped query", a
 test("NSE delivery request validates symbol and history window", async () => {
   await assert.rejects(() => fetchNseDeliveryHistory("bad symbol"), /unsupported characters/);
   await assert.rejects(() => fetchNseDeliveryHistory("TEST", 10), /between 30 and 730/);
+});
+
+
+test("MarketSmith RS history fills nulls with the legacy integer mean and reverses newest-first data", () => {
+  assert.deepEqual(parseMarketSmithRelativeStrength({ chart: { prices: [
+    { rlst: 80 }, { rlst: null }, { rlst: 100 }, { rlst: 90 }
+  ] } }), [
+    { index: 1, value: 90 },
+    { index: 2, value: 100 },
+    { index: 3, value: 90 },
+    { index: 4, value: 80 }
+  ]);
+  assert.deepEqual(parseMarketSmithRelativeStrength({ chart: { prices: [{ rlst: null }] } }), []);
+});
+
+test("MarketSmith RS request uses same-origin Worker and browser-local auth", async () => {
+  let requestUrl = "";
+  let requestInit = {};
+  const points = await fetchMarketSmithRelativeStrength(12345, "RELIANCE", "browser session", async (input, init = {}) => {
+    requestUrl = String(input);
+    requestInit = init;
+    return new Response(JSON.stringify({ chart: { prices: [{ rlst: 80 }, { rlst: 100 }] } }), { status: 200 });
+  });
+  const parsed = new URL(requestUrl, "https://schcatweb.test");
+  assert.equal(parsed.pathname, "/api/marketsmith/relative-strength");
+  assert.equal(parsed.searchParams.get("stockId"), "12345");
+  assert.equal(parsed.searchParams.get("symbol"), "RELIANCE");
+  assert.equal(requestInit.headers["x-marketsmith-auth"], "browser session");
+  assert.deepEqual(points.map((point) => point.value), [100, 80]);
 });
