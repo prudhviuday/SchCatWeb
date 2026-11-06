@@ -537,7 +537,7 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
                       ) : column.key === "marketCap" ? (
                         compactNumber(record.marketCap)
                       ) : (
-                        displayScreenerValue(typeof record[column.key] === "string" || typeof record[column.key] === "number" ? record[column.key] : null)
+                        displayScreenerRecordValue(record, column.key)
                       )}
                     </td>
                   ))}
