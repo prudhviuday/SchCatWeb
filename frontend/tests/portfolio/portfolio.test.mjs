@@ -77,6 +77,6 @@ test("CSV parser handles quoted fields and merge replaces by symbol", () => {
 });
 
 test("stored portfolio validation accepts legacy three-column rows", () => {
-  const result = validatePortfolioHoldings([{ Stock: "RVNL", Qty: 12, "Buy price": 320 }]);
+  const result = validatePortfolioHoldings([["RVNL", 12, 320]]);
   assert.deepEqual(result.map(({ symbol, quantity, buyPrice }) => ({ symbol, quantity, buyPrice })), [{ symbol: "RVNL", quantity: 12, buyPrice: 320 }]);
 });
