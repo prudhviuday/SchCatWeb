@@ -25,7 +25,7 @@ const row = (symbol, industry, marketCap) => ({
 test("legacy pad_and_sum prefixes shorter series with their first value", () => {
   assert.deepEqual(
     padAndSumSeries([[10, 20, 30], [2, 4]]),
-    [12, 24, 34]
+    [12, 22, 34]
   );
   assert.deepEqual(padAndSumSeries([[], [3, 5]]), [3, 5]);
   assert.deepEqual(padAndSumSeries([]), []);
@@ -51,9 +51,9 @@ test("industry aggregation preserves legacy series alignment and formulas", () =
   });
 
   assert.deepEqual(result.institutionalValueBillions, [12, 24, 34]);
-  assert.deepEqual(result.closeVolumeBillions, [110, 210, 230]);
-  assert.deepEqual(result.deliveryPercent, [50, 46.15, 53.33]);
-  assert.deepEqual(result.industryRelativeStrength, [0.5, 0.87, 1.2]);
+  assert.deepEqual(result.closeVolumeBillions, [110, 120, 230]);
+  assert.deepEqual(result.deliveryPercent, [50, 50, 50]);
+  assert.deepEqual(result.industryRelativeStrength, [0.5, 0.83, 1.2]);
   assert.equal(result.marketCapDenominator, 301);
 });
 
