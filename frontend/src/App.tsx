@@ -3,9 +3,10 @@ import ProviderDiagnostics from "./features/diagnostics/ProviderDiagnostics";
 import StockScreener from "./features/screener/StockScreener";
 import StockWorkspace from "./features/charts/StockWorkspace";
 import IndustryAnalysis from "./features/industry/IndustryAnalysis";
+import Research from "./features/research/Research";
 import type { MarketUniverseRecord } from "./data/reference/marketUniverse";
 
-type Page = "overview" | "screener" | "workspace" | "industry";
+type Page = "overview" | "screener" | "workspace" | "industry" | "research";
 
 function App() {
   const [activePage, setActivePage] = useState<Page>("overview");
@@ -41,7 +42,7 @@ function App() {
             <span className="nav-icon">◫</span> Charts & Workspace
           </button>
           <button type="button" className={"nav-item " + (activePage === "industry" ? "active" : "")} onClick={() => setActivePage("industry")}><span className="nav-icon">▤</span> Industry Analysis</button>
-          <div className="nav-item nav-coming-soon"><span className="nav-icon">⌁</span> Research</div>
+          <button type="button" className={"nav-item " + (activePage === "research" ? "active" : "")} onClick={() => setActivePage("research")}><span className="nav-icon">⌁</span> Research</button>
           <div className="nav-item nav-coming-soon"><span className="nav-icon">◷</span> Market Pulse</div>
           <div className="nav-item nav-coming-soon"><span className="nav-icon">▣</span> Portfolio</div>
         </nav>
@@ -53,11 +54,13 @@ function App() {
 
       <section className="main-panel">
         <header className="topbar">
-          <div className="breadcrumb">SCHCAT <span>/</span> {activePage === "screener" ? "STOCK SCREENER" : activePage === "workspace" ? "CHARTS & WORKSPACE" : activePage === "industry" ? "INDUSTRY ANALYSIS" : "OVERVIEW"}</div>
+          <div className="breadcrumb">SCHCAT <span>/</span> {activePage === "screener" ? "STOCK SCREENER" : activePage === "workspace" ? "CHARTS & WORKSPACE" : activePage === "industry" ? "INDUSTRY ANALYSIS" : activePage === "research" ? "RESEARCH" : "OVERVIEW"}</div>
           <div className="topbar-right"><span className="market-status"><i /> LOCAL WORKSPACE</span><div className="avatar">U</div></div>
         </header>
 
-        {activePage === "industry" ? (
+        {activePage === "research" ? (
+          <Research />
+        ) : activePage === "industry" ? (
           <IndustryAnalysis onOpenStock={openStock} />
         ) : activePage === "screener" ? (
           <StockScreener onOpenStock={openStock} />
