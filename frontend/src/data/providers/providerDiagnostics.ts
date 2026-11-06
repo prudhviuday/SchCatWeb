@@ -75,13 +75,15 @@ export function buildMarketSmithSymbolDetailsUrl(
   }
 
   const url = new URL(
-    `https://msi-gcloud-prod.appspot.com/gateway/simple-api/ms-india/instr/0/${safeId}/symboldetails.json`
+    `https://marketsmithindia.com/gateway/simple-api/ms-india/instr/0/${safeId}/symboldetails.json`
   );
-  url.searchParams.set("s", "20190810");
-  url.searchParams.set("e", "20250810");
+  // Example window from the current working MarketSmith request shared by
+  // the user. Production requests use the Worker-generated rolling 5-year range.
+  url.searchParams.set("s", "20211106");
+  url.searchParams.set("e", "20261106");
   url.searchParams.set("text", safeSymbol);
   url.searchParams.set("lang", "en");
-  url.searchParams.set("isConsolidated", "0");
+  url.searchParams.set("isConsolidated", "1");
   return url.toString();
 }
 
