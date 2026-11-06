@@ -1,6 +1,7 @@
 /**
- * Browser-side replacement for chartengine.py + the data-shaping portion of
- * CRIP4. No Node service, local port, API key, or session cookie is required.
+ * Chart data shaping remains in the frontend, while the Yahoo request is sent
+ * through the same-origin Cloudflare Worker API. Provider access is therefore
+ * server-side and is not subject to browser CORS enforcement.
  *
  * The old Node stockUrlmaker contains "else if (key = 1000)", an assignment
  * that routes most requests to daily candles. This module implements the
@@ -84,8 +85,8 @@ function normalizeYahooSymbol(symbol: string): string {
 }
 
 /**
- * Build Yahoo Finance's public chart URL. This endpoint is only usable from
- * the website when Yahoo's current CORS policy allows the browser origin.
+ * Build Yahoo Finance's upstream chart URL. Kept public for request-shape tests;
+ * the live application uses buildYahooProxyUrl so the browser calls our Worker.
  */
 export function buildYahooChartUrl(
   symbol: string,
@@ -102,6 +103,22 @@ export function buildYahooChartUrl(
   url.searchParams.set("events", "div,splits");
   url.searchParams.set("includeAdjustedClose", "true");
   return url.toString();
+}
+
+/** Same-origin endpoint handled by worker/index.js. */
+export function buildYahooProxyUrl(
+  symbol: string,
+  timeframe: Exclude<ChartTimeframe, "15m" | "4H">,
+  options: { range?: string } = {}
+): string {
+  const safeSymbol = normalizeYahooSymbol(symbol);
+  const config = TIMEFRAME_CONFIG[timeframe];
+  const params = new URLSearchParams({
+    symbol: safeSymbol,
+    interval: config.interval,
+    range: options.range ?? config.range
+  });
+  return `/api/yahoo/chart?${params.toString()}`;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -280,7 +297,7 @@ async function fetchYahooCandles(
   timeframe: Exclude<ChartTimeframe, "15m" | "4H">,
   options: ChartRequestOptions
 ): Promise<ChartCandle[]> {
-  const url = buildYahooChartUrl(symbol, timeframe);
+  const url = buildYahooProxyUrl(symbol, timeframe);
   const controller = new AbortController();
   const timeoutMs = options.timeoutMs ?? 15_000;
   const timeoutId = globalThis.setTimeout(
@@ -293,8 +310,8 @@ async function fetchYahooCandles(
     try {
       response = await fetch(url, {
         method: "GET",
-        mode: "cors",
-        credentials: "omit",
+        mode: "same-origin",
+        credentials: "same-origin",
         headers: { Accept: "application/json" },
         signal: controller.signal
       });
@@ -305,7 +322,7 @@ async function fetchYahooCandles(
         timedOut ? "timeout" : "network",
         timedOut
           ? `Yahoo Finance did not respond within ${timeoutMs} ms.`
-          : "The browser could not fetch Yahoo Finance. This may be a CORS, network, or provider restriction; inspect the browser Console."
+          : "The SchCatWeb API could not fetch Yahoo Finance. Check the API status and provider/network diagnostics."
       );
     }
 
