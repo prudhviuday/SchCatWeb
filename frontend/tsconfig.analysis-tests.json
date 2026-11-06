@@ -16,7 +16,8 @@
     "src/data/providers/chartData.ts",
     "src/data/reference/marketSmithIds.ts",
     "src/data/reference/marketUniverse.ts",
-    "src/data/reference/industries.ts"
+    "src/data/reference/industries.ts",
+    "src/features/screener/screener.ts"
   ],
   "include": []
 }
