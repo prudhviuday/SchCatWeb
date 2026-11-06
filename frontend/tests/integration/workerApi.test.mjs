@@ -65,11 +65,10 @@ test("MarketSmith finance endpoint builds a fixed provider URL", async () => {
     });
   };
   const response = await worker.fetch(
-    new Request("https://schcatweb.test/api/marketsmith/finance?stockId=3159563"),
-    {
-      ASSETS: { fetch: async () => new Response("asset") },
-      MARKETSMITH_AUTH: "test auth token"
-    }
+    new Request("https://schcatweb.test/api/marketsmith/finance?stockId=3159563", {
+      headers: { "x-marketsmith-auth": "test auth token" }
+    }),
+    { ASSETS: { fetch: async () => new Response("asset") } }
   );
   assert.equal(response.status, 200);
   assert.match(requestedUrl, /^https:\/\/marketsmithindia\.com\/gateway\/simple-api/);
@@ -155,7 +154,7 @@ test("ChartInk rejects a non-object body without making an upstream request", as
 });
 
 
-test("MarketSmith endpoints fail clearly when no Worker secret is configured", async () => {
+test("MarketSmith endpoints fail clearly when no browser value or legacy fallback is supplied", async () => {
   let called = false;
   globalThis.fetch = async () => {
     called = true;
@@ -210,12 +209,10 @@ test("MarketSmith symbol endpoint matches the current working MarketSmith India 
 
   const response = await worker.fetch(
     new Request(
-      "https://schcatweb.test/api/marketsmith/symbol?stockId=3159563&symbol=RVNL&s=20211106&e=20261106"
+      "https://schcatweb.test/api/marketsmith/symbol?stockId=3159563&symbol=RVNL&s=20211106&e=20261106",
+      { headers: { "x-marketsmith-auth": "sample-auth-token" } }
     ),
-    {
-      ASSETS: { fetch: async () => new Response("asset") },
-      MARKETSMITH_SYMBOL_AUTH: "sample-auth-token"
-    }
+    { ASSETS: { fetch: async () => new Response("asset") } }
   );
   assert.equal(response.status, 200);
   const upstream = new URL(requestedUrl);
@@ -239,11 +236,10 @@ test("MarketSmith symbol endpoint defaults to a rolling five-year date range", a
     return new Response(JSON.stringify({ response: {} }), { status: 200 });
   };
   const response = await worker.fetch(
-    new Request("https://schcatweb.test/api/marketsmith/symbol?stockId=3159563&symbol=RVNL"),
-    {
-      ASSETS: { fetch: async () => new Response("asset") },
-      MARKETSMITH_AUTH: "sample-auth-token"
-    }
+    new Request("https://schcatweb.test/api/marketsmith/symbol?stockId=3159563&symbol=RVNL", {
+      headers: { "x-marketsmith-auth": "sample-auth-token" }
+    }),
+    { ASSETS: { fetch: async () => new Response("asset") } }
   );
   assert.equal(response.status, 200);
   const upstream = new URL(requestedUrl);
