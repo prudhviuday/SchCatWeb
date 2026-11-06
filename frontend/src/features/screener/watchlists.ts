@@ -64,10 +64,18 @@ function parseCsv(csv:string):string[][] {
   row.push(cell);if(row.some(x=>x.trim()))rows.push(row);if(quoted)throw new Error("CSV has an unterminated quoted field.");return rows;
 }
 export function parseWatchlistsCsv(csv:string):Watchlist[] {
-  const rows=parseCsv(csv);if(rows.length<2)throw new Error("CSV needs a header and data rows.");const h=rows[0].map(x=>x.trim().toLowerCase());const ni=h.indexOf("watchlist"),si=h.indexOf("symbol");
-  if(ni<0||si<0)throw new Error("CSV needs Watchlist and Symbol columns.");
-  const grouped=new Map<string,string[]>();for(const r of rows.slice(1)){const n=r[ni]?.trim(),s=r[si]?.trim().toUpperCase();if(n&&s)grouped.set(n,[...(grouped.get(n)??[]),s]);}
-  return uniqueNames([...grouped].map(([name,symbols])=>({name,symbols:[...new Set(symbols)]})),"watchlist");
+  const rows=parseCsv(csv);
+  if(rows.length<2)throw new Error("CSV needs a header and data rows.");
+  const headers=rows[0].map(x=>x.trim());
+  const normalized=headers.map(x=>x.toLowerCase());
+  const ni=normalized.indexOf("watchlist"),si=normalized.indexOf("symbol");
+  if(ni>=0&&si>=0){
+    const grouped=new Map<string,string[]>();
+    for(const row of rows.slice(1)){const name=row[ni]?.trim(),stock=row[si]?.trim().toUpperCase();if(name&&stock)grouped.set(name,[...(grouped.get(name)??[]),stock]);}
+    return uniqueNames([...grouped].map(([name,symbols])=>({name,symbols:[...new Set(symbols)]})),"watchlist");
+  }
+  if(headers.some(name=>!name))throw new Error("Legacy watchlist CSV has a blank column name.");
+  return uniqueNames(headers.map((name,index)=>({name:cleanName(name,"Watchlist"),symbols:[...new Set(rows.slice(1).map(row=>(row[index]??"").trim().toUpperCase()).filter(Boolean))]})),"watchlist");
 }
 
 export function parseSavedQueriesCsv(csv:string):SavedQuery[] {
