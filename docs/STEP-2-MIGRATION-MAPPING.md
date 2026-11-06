@@ -307,6 +307,38 @@ Legacy workflow:
 
 The close×volume series is not annual revenue. Institutional-cost series is not necessarily the same as institutional ownership. Preserve calculations while accurately labelling after verification.
 
+### Step 15 — Research (complete; live scans deferred)
+
+Implemented under:
+- `frontend/src/features/research/research.ts`: CSV parsing, symbol/query import, historical set validation, parity calculation and result CSV serializer.
+- `frontend/src/features/research/Research.tsx`: browser-local imports, downloadable historical-match template, result table, visual comparison chart and CSV export.
+- `frontend/tests/research/research.test.mjs`: tests run by `npm run test:research`.
+
+Legacy logic from `Tabs/ResearchTab.py` and `util.getHistoryfromQuery`:
+1. Accept a performance sheet with `symbol` or `Stock` column.
+2. Trim and uppercase performance symbols, then deduplicate them into a set.
+3. Read each query's name from QueryName, falling back to Name or “Unnamed”.
+4. Read query text from QueryCode, falling back to Query.
+5. `chartinkHistory` returns the unique union of symbols from all returned historical dates for that query.
+6. Matches = intersection size of the performance-symbol set and that query's historical-symbol set.
+7. Displayed Total = number of performance symbols.
+8. Match % = round((matches / historical query symbol count) × 100, 2).
+
+Important denominator detail: desktop's displayed Total is the performance-set size, but Match % is divided by the historical query-set size. These are different denominators; the web table exposes both values to make the formula clear. Python half-to-even rounding is reproduced, including exact halfway values.
+
+Supported browser inputs:
+- Performance CSV: `symbol` or `Stock` header.
+- Query CSV: `QueryName,QueryCode` or `Name,Query`. Per-row blank primary columns fall back to their aliases.
+- Historical match JSON: object mapping query names to arrays of historical unique symbols, or an array of `{queryName, symbols}` objects. A blank template is downloadable after query import.
+- Results are downloadable as CSV with query name, matches, performance total, query universe count, percentage and status.
+- CSV and JSON are processed with browser File APIs only; nothing is uploaded. Excel must be saved as CSV. The private `Watchlist` and `Portfolio` sheets in the source query workbook are not used.
+
+Live provider limit:
+- The desktop calls ChartInk's CSRF/bootstrap + `backtest/process` flow and unions stock codes across all returned dates. Browser-origin CORS/session access is still unverified. The Research UI therefore evaluates imported historical match sets only; it does not run live scans, and does not substitute current scan results.
+- Continue to exclude private query workbook sheets and never embed provider session values.
+
+Run `npm run test:research`. Full CI passed on final implementation commit `295a55a9de170615e1c04ed8c7679ba484dd5c34`: https://github.com/prudhviuday/SchCatWeb/actions/runs/42155185358. All prior parity suites, the Research suite, production TypeScript/Vite build and static deployment checks passed. Cloudflare publication of the latest main commit is not independently confirmed.
+
 ## 8. Research
 
 Inputs: performance CSV/Excel with `symbol` or `Stock`; query file with `QueryName`/`Name` and `QueryCode`/`Query`.
@@ -338,4 +370,4 @@ Holdings contain stock, quantity and buy price. Legacy chart calculates each hol
 
 ## 12. Migration sequence
 
-See `docs/PROJECT-STATUS.md` for the binding 20-step plan. Steps 7–11 cover core calculations, provider diagnostics, browser chart-data transformations, technical-indicator parity and static reference-data conversion. Steps 12 (Stock Screener), 13 (Charts & Stock Workspace) and 14 (Industry Analysis) are implemented; see their sections above. Live browser CORS checks for the required external providers remain open. The previous backend endpoint proposals are superseded; app-internal workflows should be TypeScript functions, not HTTP routes.
+See `docs/PROJECT-STATUS.md` for the binding 20-step plan. Steps 7–11 cover core calculations, provider diagnostics, browser chart-data transformations, technical-indicator parity and static reference-data conversion. Steps 12 (Stock Screener), 13 (Charts & Stock Workspace), 14 (Industry Analysis) and 15 (Research) are implemented; see their sections above. Live browser CORS checks for the required external providers remain open. The previous backend endpoint proposals are superseded; app-internal workflows should be TypeScript functions, not HTTP routes.
