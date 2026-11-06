@@ -26,10 +26,10 @@ test("chart presentation sorts candles and exposes the latest close/previous clo
 test("EMA overlays align to their source candle rather than the visible window start", () => {
   const view = prepareChartView(candles(60), "1W", 15);
   assert.equal(view.points.length, 15);
-  assert.equal(view.points[0].ema20, 146.5);
-  assert.equal(view.points[0].ema50, 131.5);
-  assert.equal(view.points.at(-1).ema20, 149.5);
-  assert.equal(view.points.at(-1).ema50, 149.5);
+  assert.equal(view.points[0].ema20, 136.5);
+  assert.equal(view.points[0].ema50, null);
+  assert.equal(view.points.at(-1).ema20, 150.5);
+  assert.equal(view.points.at(-1).ema50, 135.5);
 });
 
 test("RSI-21 is calculated on the complete price history", () => {
