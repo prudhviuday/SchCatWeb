@@ -266,9 +266,9 @@ test("MarketSmith quarterly expansion history matches desktop c25/c32 formula an
     ]
   });
   assert.deepEqual(result.quarterlyExpansion, [
-    { period: "01-2026 Q2", value: 35 },
+    { period: "01-2025 Q4", value: 25 },
     { period: "01-2026 Q1", value: 25 },
-    { period: "01-2025 Q4", value: 25 }
+    { period: "01-2026 Q2", value: 35 }
   ]);
 });
 
