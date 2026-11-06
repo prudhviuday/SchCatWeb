@@ -15,6 +15,7 @@ on:
   pull_request:
     paths:
       - "frontend/**"
+      - "worker/**"
       - "wrangler.toml"
       - ".github/workflows/verify.yml"
 
