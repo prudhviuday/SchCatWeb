@@ -374,6 +374,14 @@ Browser port:
 - CSV import accepts both the desktop's wide-column watchlist sheet and normalized Watchlist,Symbol rows. Query CSV accepts QueryName,QueryCode or Name,Query headers.
 - Imported ChartInk clauses are preserved but not executed. Live scan access remains gated on the provider-origin diagnostics; no server proxy, session cookie or secret was introduced.
 
+
+### Step 19 — Integration and production smoke tests
+
+- The Overview dashboard now links all six migrated modules. All are also available from the sidebar.
+- The integration test starts the built Vite preview and verifies root and deep-link SPA fallback, the compiled bundle's module/diagnostics content, all public reference datasets against manifest counts, and the static-only Wrangler asset configuration.
+- CI runs this suite after the production build. This verifies the production artifact and static hosting contract without making external provider calls.
+- This does not prove Cloudflare has deployed the current commit, nor does it prove Yahoo, MarketSmith, ChartInk or NSE browser-origin access. Those checks are part of Step 20 and must be performed on the actual production origin.
+
 ## 11. Known issues to verify
 
 1. MarketSmith `ms-auth` query values may be session credentials; do not copy into public frontend code.
