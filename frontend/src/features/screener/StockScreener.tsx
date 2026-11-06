@@ -4,6 +4,7 @@ import {
   type MarketUniverseRecord
 } from "../../data/reference/marketUniverse";
 import { loadIndustryList } from "../../data/reference/industries";
+import { addSymbolToWatchlist, loadScreenerLibrary, mergeScreenerLibraries, parseScreenerLibraryJson, parseWatchlistsCsv, removeSavedQuery, saveScreenerLibrary, serializeScreenerLibrary, serializeWatchlistsCsv, upsertSavedQuery, type ScreenerLibrary } from "./watchlists";
 import {
   applyScreenerFilters,
   parseSymbolList,
@@ -96,12 +97,21 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
   const [sortField, setSortField] = useState<ScreenerSortField>("symbol");
   const [ascending, setAscending] = useState(true);
   const [page, setPage] = useState(0);
-  const [queries, setQueries] = useState<LocalSymbolQuery[]>([]);
+  const [library, setLibrary] = useState<ScreenerLibrary>(() => loadScreenerLibrary());
+  const queries = library.queries;
+  const [activeWatchlist, setActiveWatchlist] = useState("");
+  const [newWatchlist, setNewWatchlist] = useState("");
+  const [watchlistNotice, setWatchlistNotice] = useState("");
+  const [queryCode, setQueryCode] = useState("");
+  const [libraryMode, setLibraryMode] = useState<"merge" | "replace">("merge");
+  const libraryInput = useRef<HTMLInputElement>(null);
   const [selectedQueries, setSelectedQueries] = useState<string[]>([]);
   const [queryName, setQueryName] = useState("");
   const [querySymbols, setQuerySymbols] = useState("");
   const [queryError, setQueryError] = useState("");
   const [selectedStock, setSelectedStock] = useState<MarketUniverseRecord | null>(null);
+
+  useEffect(() => { try { saveScreenerLibrary(library); } catch (error) { setWatchlistNotice(error instanceof Error ? error.message : "Unable to save local library."); } }, [library]);
 
   useEffect(() => {
     let cancelled = false;
@@ -144,9 +154,11 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
   }), [search, sector, industry, ranges]);
 
   const filteredRecords = useMemo(() => {
-    const filtered = applyScreenerFilters(records, filters, selectedQueries, queryMatches);
+    let source = records;
+    if (activeWatchlist) { const selected = library.watchlists.find(item => item.name === activeWatchlist); const symbols = new Set(selected?.symbols ?? []); source = source.filter(record => symbols.has(record.symbol)); }
+    const filtered = applyScreenerFilters(source, filters, selectedQueries, queryMatches);
     return sortScreenerRecords(filtered, sortField, ascending);
-  }, [records, filters, selectedQueries, queryMatches, sortField, ascending]);
+  }, [records, filters, selectedQueries, queryMatches, sortField, ascending, activeWatchlist, library.watchlists]);
 
   const pageSize = 50;
   const pageCount = Math.max(1, Math.ceil(filteredRecords.length / pageSize));
@@ -166,6 +178,7 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
     setIndustry("");
     setRanges(EMPTY_RANGES);
     setSelectedQueries([]);
+    setActiveWatchlist("");
     setPage(0);
   }
 
@@ -196,16 +209,17 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
       setQueryError("None of those symbols are in the loaded reference universe.");
       return;
     }
-    setQueries((current) => [...current, { name, symbols: matchedSymbols }]);
+    setLibrary(current => upsertSavedQuery(current, { name, queryCode: queryCode.trim(), symbols: matchedSymbols }));
     setSelectedQueries((current) => [...current, name]);
     setQueryName("");
     setQuerySymbols("");
+    setQueryCode("");
     setQueryError("");
     setPage(0);
   }
 
   function removeQuery(name: string) {
-    setQueries((current) => current.filter((query) => query.name !== name));
+    setLibrary(current => ({...current, queries: current.queries.filter(query => query.name !== name)}));
     setSelectedQueries((current) => current.filter((item) => item !== name));
     setPage(0);
   }
@@ -282,12 +296,32 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
 
       <section className="screener-panel screener-query-panel">
         <div className="screener-section-title">
+          <div><span className="eyebrow">PERSONAL LIBRARY</span><h2>Watchlists & saved queries</h2></div>
+          <div className="screener-heading-actions">
+            <button type="button" className="screener-button secondary" onClick={() => { const blob=new Blob([serializeScreenerLibrary(library)],{type:"application/json"}); const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download="schcat-screener-backup.json"; a.click(); URL.revokeObjectURL(url); }}>Export JSON</button>
+            <button type="button" className="screener-button secondary" onClick={() => { const blob=new Blob([serializeWatchlistsCsv(library.watchlists)],{type:"text/csv"}); const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download="schcat-watchlists.csv"; a.click(); URL.revokeObjectURL(url); }}>Export CSV</button>
+            <button type="button" className="screener-button secondary" onClick={() => libraryInput.current?.click()}>Import</button>
+            <input ref={libraryInput} type="file" accept=".json,.csv,application/json,text/csv" className="research-file-input" onChange={async event=>{const file=event.target.files?.[0];event.currentTarget.value="";if(!file)return;try{if(file.name.toLowerCase().endsWith(".csv")){const imported=parseWatchlistsCsv(await file.text());setLibrary(current=>mergeScreenerLibraries(current,{version:1,watchlists:imported,queries:[]}));}else{const imported=parseScreenerLibraryJson(await file.text());setLibrary(current=>libraryMode==="replace"?imported:mergeScreenerLibraries(current,imported));}setWatchlistNotice("Library imported successfully.");}catch(error){setWatchlistNotice(error instanceof Error?error.message:"Unable to import library.");}}}/>
+          </div>
+        </div>
+        <div className="screener-filter-grid">
+          <label className="screener-field"><span>Filter by watchlist</span><select value={activeWatchlist} onChange={event=>{setActiveWatchlist(event.target.value);setPage(0);}}><option value="">All stocks</option>{library.watchlists.map(item=><option key={item.name} value={item.name}>{item.name} ({item.symbols.length})</option>)}</select></label>
+          <label className="screener-field"><span>New watchlist name</span><input value={newWatchlist} onChange={event=>setNewWatchlist(event.target.value)} placeholder="e.g. Breakout candidates"/></label>
+          <button type="button" className="screener-button" onClick={()=>{const name=newWatchlist.trim();if(!name){setWatchlistNotice("Enter a watchlist name first.");return;}if(library.watchlists.some(x=>x.name.toLowerCase()===name.toLowerCase())){setWatchlistNotice("That watchlist already exists.");return;}setLibrary(current=>({...current,watchlists:[...current.watchlists,{name,symbols:[]}]}));setNewWatchlist("");setWatchlistNotice("Watchlist created.");}}>Create watchlist</button>
+          <label className="screener-field"><span>JSON import mode</span><select value={libraryMode} onChange={event=>setLibraryMode(event.target.value as "merge"|"replace")}><option value="merge">Merge / update matching names</option><option value="replace">Replace local library</option></select></label>
+        </div>
+        {watchlistNotice && <p className="screener-help" role="status">{watchlistNotice}</p>}
+        {library.watchlists.map(item=><div className="screener-query-chip" key={item.name}><strong>{item.name}</strong><small>{item.symbols.length} stocks</small><span>{item.symbols.slice(0,8).join(", ")}{item.symbols.length>8?" …":""}</span><button type="button" onClick={()=>{setLibrary(current=>({...current,watchlists:current.watchlists.filter(x=>x.name!==item.name)}));if(activeWatchlist===item.name)setActiveWatchlist("");}}>Delete</button></div>)}
+      </section>
+
+      <section className="screener-panel screener-query-panel">
+        <div className="screener-section-title">
           <div><span className="eyebrow">QUERY INTERSECTION</span><h2>Combine symbol sets</h2></div>
-          <span className="screener-muted">AND logic · current session only</span>
+          <span className="screener-muted">AND logic · saved in this browser</span>
         </div>
         <p className="screener-help">
           Add named lists of symbols and select multiple lists to show only stocks present in every selected list.
-          This ports the desktop intersection behaviour; it does not run saved ChartInk scans yet.
+          Select multiple saved symbol sets to show only stocks present in every selected set. ChartInk query text is preserved for backup, but live scans remain disabled until browser-origin access is verified.
         </p>
         <form className="screener-query-form" onSubmit={createQuery}>
           <label className="screener-field">
@@ -298,7 +332,8 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
             <span>Symbols (comma / space separated)</span>
             <input value={querySymbols} onChange={(event) => setQuerySymbols(event.target.value)} placeholder="RELIANCE, TCS, INFY" />
           </label>
-          <button className="screener-button" type="submit">Add symbol set</button>
+          <label className="screener-field screener-query-symbols"><span>ChartInk query code (saved only; live scan pending)</span><input value={queryCode} onChange={event=>setQueryCode(event.target.value)} placeholder="Paste ChartInk scan clause (optional)"/></label>
+          <button className="screener-button" type="submit">Save query</button>
         </form>
         {queryError && <p className="screener-query-error" role="alert">{queryError}</p>}
         {queries.length > 0 ? (
@@ -316,13 +351,13 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
                   }}
                 />
                 <span>{query.name}</span>
-                <small>{query.symbols.length}</small>
+                <small>{query.symbols.length} symbols{query.queryCode ? " · code saved" : ""}</small>
                 <button type="button" aria-label={`Remove ${query.name}`} onClick={(event) => { event.preventDefault(); removeQuery(query.name); }}>×</button>
               </label>
             ))}
           </div>
         ) : (
-          <p className="screener-muted">No symbol sets added. This temporary query area resets when the page is refreshed.</p>
+          <p className="screener-muted">No saved queries yet. Add a symbol set or import your library backup.</p>
         )}
       </section>
 
@@ -379,7 +414,7 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
         </div>
       </section>
 
-      <footer className="page-footer">SCHCATWEB <span>·</span> STOCK SCREENER <span>·</span> STEP 12</footer>
+      <footer className="page-footer">SCHCATWEB <span>·</span> STOCK SCREENER <span>·</span> STEP 18</footer>
     </div>
   );
 }
