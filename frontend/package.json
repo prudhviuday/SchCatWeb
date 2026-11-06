@@ -16,7 +16,8 @@
     "test:workspace": "tsc -p tsconfig.analysis-tests.json && node --test tests/charts/*.test.mjs",
     "test:industry": "tsc -p tsconfig.analysis-tests.json && node --test tests/industry/*.test.mjs",
     "test:research": "tsc -p tsconfig.analysis-tests.json && node --test tests/research/*.test.mjs",
-    "test:market-pulse": "tsc -p tsconfig.analysis-tests.json && node --test tests/marketPulse/*.test.mjs",\n    "test:portfolio": "tsc -p tsconfig.analysis-tests.json && node --test tests/portfolio/*.test.mjs"
+    "test:market-pulse": "tsc -p tsconfig.analysis-tests.json && node --test tests/marketPulse/*.test.mjs",
+    "test:portfolio": "tsc -p tsconfig.analysis-tests.json && node --test tests/portfolio/*.test.mjs"
   },
   "dependencies": {
     "react": "^19.1.0",
