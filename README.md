@@ -138,6 +138,29 @@ npm run test:workspace
 
 Tests cover chronological ordering, indicator alignment after viewport slicing, RSI-21 calculation, insufficient indicator history, invalid viewport limits and IST time labels. GitHub Actions runs this suite alongside all previous parity tests and the production build.
 
+## Industry Analysis (Step 14)
+
+The **Industry Analysis** screen is available from the left navigation. It groups the static stock universe by industry (excluding labels beginning with `BSE`, matching the desktop worker), shows each industry's stock count and undated source Market Cap sum, and opens individual stocks in the Charts & Workspace.
+
+The screen can import a saved JSON file from the desktop application's `data/IndustryAnalysis` folder and render the four legacy series: institutional value, delivery percentage, close×volume, and market-cap-weighted industry RS. The old five-array structure is preserved on export. The import is done locally in the browser; the file is not uploaded to the website.
+
+**Live industry analysis is intentionally disabled** until the direct browser provider checks are completed. The desktop worker requires MarketSmith institutional value and RS data, Yahoo weekly OHLCV for close×volume, and NSE delivery/traded values. Do not treat request-shape tests as evidence of live CORS/authentication access.
+
+The exact desktop aggregation kernels are in `src/features/industry/industryAnalysis.ts`:
+- Institutional value, close×volume and weighted RS use first-value left padding, then sum.
+- NSE delivery and traded values use zero left padding, then delivery percentage is calculated as aggregate delivery value × 100 / aggregate traded value.
+- The industry RS denominator preserves the desktop's initial +1 and missing-market-cap +1 fallback.
+
+The old chart titles were misleading: institutional value is shares held by funds × current stock price / 1bn, not ownership percentage; the “revenue” series is close × volume / 1bn, not revenue. The web screen labels the measures accurately. Saved legacy arrays do not contain dates, so imported charts use observation indexes and must not be read as calendar-aligned series.
+
+Run industry aggregation and saved-file compatibility tests:
+
+```powershell
+npm run test:industry
+```
+
+GitHub Actions runs these tests with all other parity suites and the static production build.
+
 ## Provider diagnostics (Steps 8–9)
 
 After the latest frontend commit is deployed, open `https://schcatweb.prudhvi123143.workers.dev/?diagnostics=providers` and select **Run browser diagnostics**. This executes requests in the actual website origin for both MarketSmith hosts, ChartInk's CSRF + scan flow, NSE historical delivery data, and a small Yahoo Finance chart sample. Use the MarketSmith ID/symbol fields for a known valid pair. The normal home page is unchanged.
