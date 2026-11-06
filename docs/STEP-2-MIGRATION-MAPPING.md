@@ -255,6 +255,44 @@ Not yet ported / intentionally withheld:
 
 Run `npm run test:workspace`. Full CI including all parity suites, this chart workspace suite, production TypeScript/Vite build and static output checks passed on commit `a195a3b8690b4cb93873371e6e72cf4eb551eb26`: https://github.com/prudhviuday/SchCatWeb/actions/runs/42151901859. Cloudflare publication of this commit remains unverified.
 
+### Step 14 — Industry Analysis (complete; live aggregation deferred)
+
+Implemented under:
+- `frontend/src/features/industry/industryAnalysis.ts`: pure aggregation kernels, static industry membership grouping, industry filtering, legacy result parser and serializer.
+- `frontend/src/features/industry/IndustryAnalysis.tsx`: browser UI for industry selection, constituent lookup, local JSON import/export and the four legacy chart panels.
+- `frontend/tests/industry/industryAnalysis.test.mjs`: Node tests run by `npm run test:industry`.
+
+Reference explorer:
+- Group the static market universe by non-null Industry, sort labels, and exclude names beginning with `BSE`, exactly matching `IndustryWorker.run`.
+- Show each industry's constituent symbols and reference instrument IDs.
+- Market Cap sum and missing count are based on the undated workbook values; no current market-cap claim is made.
+- A symbol click opens Charts & Stock Workspace.
+
+Formula port:
+- `padAndSumSeries`: for institutional value, close×volume and per-stock market-cap-weighted RS arrays, prefix the shorter arrays using the first value of each array, then sum element-wise.
+- `zeroPadAndSumSeries`: for delivery and traded values, prefix shorter arrays with zeros, then sum.
+- `deliveryPercent[i] = round2(totalDeliveryValue[i] * 100 / totalTradedValue[i])`.
+- `marketCapDenominator = 1 + sum(stock market cap)`; null/missing source market caps retain the legacy +1 fallback.
+- `industryRS[i] = round2(sum(padded weighted stock RS)[i] / marketCapDenominator)`.
+- As in the desktop worker, the incoming per-stock RS array is assumed already weighted by the stock's market cap by `fetch_RS_graph_from_MS(stock_info, True)`.
+
+Saved-result compatibility:
+- Import and export the desktop five-array JSON format: `[industry, institutional, closeVolume, deliveryPercent, industryRS]`.
+- Validate every series as a finite numeric array and reject malformed/duplicate industry entries.
+- The desktop result arrays contain no timestamps. Browser charts therefore use observation indexes, not fabricated dates.
+- These results are loaded locally with `File.text()` and exported as a browser download; no upload endpoint or storage backend is used.
+
+Important semantic corrections:
+- Institutional series is built by desktop `getInstitutionCostFromMs(stock_info, False)`: fund shares × current stock price / 1 billion. It is an institutional value measure, not a percentage of ownership.
+- “Sales” data is taken from `fetch_closexvol_for_stock`, which is weekly close × volume / 1 billion. It is a turnover proxy, not revenue.
+- UI labels were corrected to reflect those formulas.
+
+Live provider boundary:
+- Running a new live analysis is not enabled yet. It needs MarketSmith institution data and RS, Yahoo Finance weekly OHLCV, and NSE historical delivery/traded data. Browser CORS/authentication results from Step 8–9 remain unverified.
+- Keep legacy `ms-auth` values out of public JS and do not create a server proxy without explicit user approval.
+
+Run `npm run test:industry`. Full GitHub Actions verification, including prior parity tests, nine industry tests, production TypeScript/Vite build and static output checks passed on commit `af6d7402024c9a997fd3cb011c3d5cd1e49a75ed`: https://github.com/prudhviuday/SchCatWeb/actions/runs/42153154031. Cloudflare deployment of this latest commit is not independently confirmed.
+
 ## 7. Industry Analysis
 
 Legacy workflow:
@@ -300,4 +338,4 @@ Holdings contain stock, quantity and buy price. Legacy chart calculates each hol
 
 ## 12. Migration sequence
 
-See `docs/PROJECT-STATUS.md` for the binding 20-step plan. Steps 7–11 cover core calculations, provider diagnostics, browser chart-data transformations, technical-indicator parity and static reference-data conversion. Steps 12 (Stock Screener) and 13 (Charts & Stock Workspace) are implemented; see their sections above. Live browser CORS checks for the required external providers remain open. The previous backend endpoint proposals are superseded; app-internal workflows should be TypeScript functions, not HTTP routes.
+See `docs/PROJECT-STATUS.md` for the binding 20-step plan. Steps 7–11 cover core calculations, provider diagnostics, browser chart-data transformations, technical-indicator parity and static reference-data conversion. Steps 12 (Stock Screener), 13 (Charts & Stock Workspace) and 14 (Industry Analysis) are implemented; see their sections above. Live browser CORS checks for the required external providers remain open. The previous backend endpoint proposals are superseded; app-internal workflows should be TypeScript functions, not HTTP routes.
