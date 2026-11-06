@@ -84,7 +84,7 @@ function toNumber(value: string): number | undefined {
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
-function StockScreener() {
+function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRecord) => void }) {
   const [records, setRecords] = useState<MarketUniverseRecord[]>([]);
   const [industries, setIndustries] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -358,7 +358,7 @@ function StockScreener() {
             <tbody>
               {pageRecords.map((record) => (
                 <tr key={record.symbol} className={selectedStock?.symbol === record.symbol ? "selected" : ""}>
-                  <td><button type="button" className="screener-symbol" onClick={() => setSelectedStock(record)}>{record.symbol}</button></td>
+                  <td><button type="button" className="screener-symbol" onClick={() => { setSelectedStock(record); onOpenStock(record); }}>{record.symbol}</button></td>
                   <td><button type="button" className="screener-industry" onDoubleClick={() => { setIndustry(record.industry ?? ""); setPage(0); }} title="Double-click to filter this industry">{record.industry ?? "—"}</button></td>
                   <td>{record.sector ?? "—"}</td>
                   <td className="numeric">{compactNumber(record.marketCap)}</td>
