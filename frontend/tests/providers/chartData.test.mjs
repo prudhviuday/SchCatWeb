@@ -8,6 +8,7 @@ import {
   buildCloseVolumeHistory,
   buildYahooChartUrl,
   buildYahooProxyUrl,
+  fetchChartData,
   makeStockGoldSeries,
   mergeStockWithGold,
   parseYahooChartPayload
@@ -73,8 +74,7 @@ test("chart fetches use the same-origin Worker rather than calling Yahoo from th
   };
 
   try {
-    const rows = await (await import("../../.test-dist/data/providers/chartData.js"))
-      .fetchChartData("RELIANCE", "1D");
+    const rows = await fetchChartData("RELIANCE", "1D");
     assert.equal(rows.length, 1);
     assert.equal(calls.length, 1);
     assert.equal(calls[0].url.startsWith("/api/yahoo/chart?"), true);
