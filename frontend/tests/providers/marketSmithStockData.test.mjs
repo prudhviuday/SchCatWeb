@@ -70,7 +70,7 @@ test("MarketSmith parser handles absent optional sections without inventing valu
   assert.equal(result.fScore, 0);
   assert.equal(result.rs, null);
   assert.equal(result.roe, null);
-  assert.equal(result.livePb, null);
+  assert.equal(result.livePb, null);\n  assert.deepEqual(result.institutionalOwnership, []);
 });
 
 test("MarketSmith parser rejects a response without the legacy response object", () => {
@@ -80,7 +80,44 @@ test("MarketSmith parser rejects a response without the legacy response object",
   );
 });
 
-test("single-stock request uses the same-origin Worker and browser-saved auth header", async () => {
+
+test("MarketSmith institutional ownership and cost histories match desktop formulas", () => {
+  const payload = {
+    response: {
+      detailsGeneralInformationHeader: { currentPrice: "125" },
+      quarterlySalesAndEarningsInternational: {
+        quarterlySalesAndEarningsOrigin: [
+          { prdYear: "2026 Q2", totSharesHeldByFunds: 3000000 },
+          { prdYear: "2026 Q1", totSharesHeldByFunds: 2000000 },
+          { prdYear: "2025 Q4", totSharesHeldByFunds: 1000000 }
+        ]
+      }
+    }
+  };
+  const result = parseMarketSmithStockMetrics(payload);
+  assert.deepEqual(result.institutionalOwnership, [
+    { period: "01-2025 Q4", value: 1000000, normalized: 0 },
+    { period: "01-2026 Q1", value: 2000000, normalized: 50 },
+    { period: "01-2026 Q2", value: 3000000, normalized: 100 }
+  ]);
+  assert.deepEqual(result.institutionalCost, [
+    { period: "01-2025 Q4", value: 0, normalized: null },
+    { period: "01-2026 Q1", value: 0, normalized: null },
+    { period: "01-2026 Q2", value: 0, normalized: null }
+  ]);
+});
+
+test("MarketSmith institutional ownership leaves normalized index blank for a constant series", () => {
+  const result = parseMarketSmithStockMetrics({ response: {
+    detailsGeneralInformationHeader: { currentPrice: "100" },
+    quarterlySalesAndEarningsInternational: { quarterlySalesAndEarningsOrigin: [
+      { prdYear: "2025", totSharesHeldByFunds: 5 },
+      { prdYear: "2024", totSharesHeldByFunds: 5 }
+    ] }
+  }});
+  assert.deepEqual(result.institutionalOwnership.map(point => point.normalized), [null, null]);
+});
+\ntest("single-stock request uses the same-origin Worker and browser-saved auth header", async () => {
   let requestUrl = "";
   let requestInit = {};
   const result = await fetchMarketSmithStockMetrics(
