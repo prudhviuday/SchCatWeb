@@ -6,7 +6,11 @@ on:
     paths:
       - "frontend/**"
       - "wrangler.toml"
+      - "README.md"
+      - "docs/**"
+      - "tools/**"
       - ".github/workflows/verify.yml"
+      - ".github/workflows/convert-source-reference-data.yml"
   pull_request:
     paths:
       - "frontend/**"
