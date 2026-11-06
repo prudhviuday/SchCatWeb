@@ -2,9 +2,10 @@ import { useState } from "react";
 import ProviderDiagnostics from "./features/diagnostics/ProviderDiagnostics";
 import StockScreener from "./features/screener/StockScreener";
 import StockWorkspace from "./features/charts/StockWorkspace";
+import IndustryAnalysis from "./features/industry/IndustryAnalysis";
 import type { MarketUniverseRecord } from "./data/reference/marketUniverse";
 
-type Page = "overview" | "screener" | "workspace";
+type Page = "overview" | "screener" | "workspace" | "industry";
 
 function App() {
   const [activePage, setActivePage] = useState<Page>("overview");
@@ -39,7 +40,7 @@ function App() {
           <button type="button" className={"nav-item " + (activePage === "workspace" ? "active" : "")} onClick={() => setActivePage("workspace")}>
             <span className="nav-icon">◫</span> Charts & Workspace
           </button>
-          <div className="nav-item nav-coming-soon"><span className="nav-icon">▤</span> Industry Analysis</div>
+          <button type="button" className={"nav-item " + (activePage === "industry" ? "active" : "")} onClick={() => setActivePage("industry")}><span className="nav-icon">▤</span> Industry Analysis</button>
           <div className="nav-item nav-coming-soon"><span className="nav-icon">⌁</span> Research</div>
           <div className="nav-item nav-coming-soon"><span className="nav-icon">◷</span> Market Pulse</div>
           <div className="nav-item nav-coming-soon"><span className="nav-icon">▣</span> Portfolio</div>
@@ -52,11 +53,13 @@ function App() {
 
       <section className="main-panel">
         <header className="topbar">
-          <div className="breadcrumb">SCHCAT <span>/</span> {activePage === "screener" ? "STOCK SCREENER" : activePage === "workspace" ? "CHARTS & WORKSPACE" : "OVERVIEW"}</div>
+          <div className="breadcrumb">SCHCAT <span>/</span> {activePage === "screener" ? "STOCK SCREENER" : activePage === "workspace" ? "CHARTS & WORKSPACE" : activePage === "industry" ? "INDUSTRY ANALYSIS" : "OVERVIEW"}</div>
           <div className="topbar-right"><span className="market-status"><i /> LOCAL WORKSPACE</span><div className="avatar">U</div></div>
         </header>
 
-        {activePage === "screener" ? (
+        {activePage === "industry" ? (
+          <IndustryAnalysis onOpenStock={openStock} />
+        ) : activePage === "screener" ? (
           <StockScreener onOpenStock={openStock} />
         ) : activePage === "workspace" ? (
           <StockWorkspace initialRecord={selectedStock} onBack={() => setActivePage("screener")} />
