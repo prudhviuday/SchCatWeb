@@ -59,9 +59,10 @@ function ProviderDiagnostics() {
           The browser only talks to SchCatWeb; provider cookies and upstream requests stay inside the Worker.
         </p>
         <p>
-          The legacy desktop code contains hard-coded <code>ms-auth</code> query values. They are deliberately not copied
-          into public JavaScript. An authentication failure therefore means the provider requires a supported sign-in/session
-          flow or a protected credential that must not be embedded in the website.
+          MarketSmith needs a current <code>ms-auth</code> value. Configure Cloudflare Worker secrets
+          <code> MARKETSMITH_FINANCE_AUTH</code> and <code> MARKETSMITH_SYMBOL_AUTH</code>, or use the shared
+          <code> MARKETSMITH_AUTH</code> secret. The old values in the desktop source may be expired.
+          Never place these values in frontend code or paste them into chat.
         </p>
         <p>
           The results now include the upstream HTTP response returned by the Worker. This separates provider restrictions (401/403/520) from a failure to reach SchCatWeb itself.
