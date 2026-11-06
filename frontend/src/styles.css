@@ -125,6 +125,52 @@ h2 { font-size: 17px; letter-spacing: -.3px; font-weight: 600; margin: 7px 0 0; 
   border-radius: 4px;
   padding: 2px 4px;
 }
+.diagnostics-auth-panel {
+  border: 1px solid var(--border);
+  background: linear-gradient(130deg, #111a26, #0e141e);
+  border-radius: 9px;
+  padding: 17px 19px;
+  margin-bottom: 14px;
+}
+.diagnostics-auth-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-bottom: 12px;
+}
+.diagnostics-auth-heading h2 { margin: 0 0 5px; font-size: 13px; }
+.diagnostics-auth-heading p { margin: 0; color: #92a0b3; font-size: 10px; line-height: 1.55; }
+.diagnostics-auth-heading code { color: #efbd80; background: #25201a; padding: 2px 4px; border-radius: 4px; }
+.diagnostics-auth-saved, .diagnostics-auth-unsaved { font-size: 9px; color: #8bc5a5; white-space: nowrap; }
+.diagnostics-auth-unsaved { color: #d9ad77; }
+.diagnostics-auth-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.diagnostics-auth-row input {
+  flex: 1 1 360px;
+  min-width: 180px;
+  height: 37px;
+  border: 1px solid #303d4e;
+  border-radius: 6px;
+  background: #0a1018;
+  color: #e8edf5;
+  padding: 0 10px;
+  outline: none;
+}
+.diagnostics-auth-row input:focus { border-color: #c68a4b; }
+.diagnostics-auth-row button {
+  min-height: 37px;
+  border: 1px solid #b87935;
+  border-radius: 6px;
+  padding: 0 13px;
+  background: #3a2919;
+  color: #f2c18c;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.diagnostics-auth-row button.secondary { border-color: #344256; background: #172231; color: #b4c1d1; }
+.diagnostics-auth-message { margin: 8px 0 0; color: #8796aa; font-size: 9px; }
 .diagnostics-controls {
   display: flex;
   flex-wrap: wrap;
@@ -230,6 +276,8 @@ h2 { font-size: 17px; letter-spacing: -.3px; font-weight: 600; margin: 7px 0 0; 
   .diagnostics-controls { align-items: stretch; flex-direction: column; }
   .diagnostics-input, .diagnostics-input input { width: 100%; }
   .diagnostics-controls button { width: 100%; }
+  .diagnostics-auth-row { flex-direction: column; }
+  .diagnostics-auth-row input, .diagnostics-auth-row button { width: 100%; }
   .diagnostic-result-top { flex-direction: column; gap: 10px; }
 }
 
