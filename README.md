@@ -161,6 +161,31 @@ npm run test:industry
 
 GitHub Actions runs these tests with all other parity suites and the static production build.
 
+## Research (Step 15)
+
+The **Research** screen compares a performance-file stock universe with the historical symbol universe returned by each ChartInk query. It supports three browser-local imports:
+
+1. Performance CSV with a `symbol` or `Stock` column.
+2. Query-definition CSV with `QueryName,QueryCode` or `Name,Query` columns.
+3. Historical match JSON mapping each query name to the unique stock symbols returned across its backtest dates. The screen can download a blank JSON template from the imported query definitions.
+
+The browser calculates:
+- Matches = size of the intersection between the unique performance symbols and the unique historical symbols for that query.
+- Displayed Total = number of unique performance symbols, preserving the desktop's table value.
+- Match % = Matches / number of unique historical query symbols × 100, rounded to two decimals using Python-compatible half-to-even rounding.
+
+The desktop deliberately uses different denominators for the displayed Total and Match %. Both are displayed separately in SchCatWeb so the percentage calculation is transparent. Results can be exported as CSV. Files are read in the browser and are not uploaded. Excel workbooks should be saved as CSV for import; the personal Watchlist and Portfolio sheets in the original workbook are not required.
+
+**Live ChartInk historical scans are not connected yet.** The desktop uses ChartInk's `backtest/process` endpoint and combines symbols across its returned dates. Browser-origin CORS/session access has not yet been verified. This screen therefore evaluates imported historical match sets only; it does not run live scans or substitute current scan data.
+
+Run Research tests:
+
+```powershell
+npm run test:research
+```
+
+Tests cover CSV quoting/BOM/CRLF parsing, supported column aliases and per-row fallback, symbol normalisation, historical JSON validation, exact match/intersection counts, denominator semantics, Python rounding and result export. GitHub Actions runs these with the existing parity suites and production build.
+
 ## Provider diagnostics (Steps 8–9)
 
 After the latest frontend commit is deployed, open `https://schcatweb.prudhvi123143.workers.dev/?diagnostics=providers` and select **Run browser diagnostics**. This executes requests in the actual website origin for both MarketSmith hosts, ChartInk's CSRF + scan flow, NSE historical delivery data, and a small Yahoo Finance chart sample. Use the MarketSmith ID/symbol fields for a known valid pair. The normal home page is unchanged.
