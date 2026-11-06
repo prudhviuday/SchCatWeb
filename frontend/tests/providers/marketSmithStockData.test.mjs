@@ -254,6 +254,24 @@ test("MarketSmith finance parser adds chronological annual ROCE and revenue hist
   ]);
 });
 
+
+test("MarketSmith quarterly expansion history matches desktop c25/c32 formula and chronology", () => {
+  const result = parseMarketSmithFinanceData({
+    incQuarterData: [
+      { c0: "2026 Q2", c25: "35", c32: "100" },
+      { c0: "2026 Q1", c25: "10", c32: "40" },
+      { c0: "2025 Q4", c25: "25", c32: "100" },
+      { c0: "2025 Q3", c25: "10", c32: "0" },
+      { c0: "2025 Q2", c25: null, c32: "100" }
+    ]
+  });
+  assert.deepEqual(result.quarterlyExpansion, [
+    { period: "01-2026 Q2", value: 35 },
+    { period: "01-2026 Q1", value: 25 },
+    { period: "01-2025 Q4", value: 25 }
+  ]);
+});
+
 test("MarketSmith annual EPS handles a constant series without fabricating normalized values", () => {
   const result = parseMarketSmithFinanceData({
     ratiosAnnualData: [
