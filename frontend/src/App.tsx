@@ -120,7 +120,7 @@ function App() {
                     <div><h3>{title}</h3><p>{description}</p></div>
                     <span className="module-arrow">↗</span>
                   </article>
-                )}
+                )
               ))}
             </div>
             <footer className="page-footer">SCHCATWEB <span>·</span> PERSONAL BUILD <span>·</span> FOUNDATION</footer>
