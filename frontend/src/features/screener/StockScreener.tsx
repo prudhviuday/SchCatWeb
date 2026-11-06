@@ -374,6 +374,8 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
           <div className="screener-selected">
             <div><strong>{selectedStock.symbol}</strong><span>{selectedStock.industry ?? "Industry unavailable"} · {selectedStock.sector ?? "Sector unavailable"}</span></div>
             <span>MarketSmith ID: {selectedStock.instrumentId ?? "—"}</span>
+            <select aria-label="Select watchlist" value={activeWatchlist} onChange={event=>setActiveWatchlist(event.target.value)}><option value="">Select watchlist</option>{library.watchlists.map(item=><option key={item.name} value={item.name}>{item.name}</option>)}</select>
+            <button type="button" onClick={()=>{if(!activeWatchlist){setWatchlistNotice("Create or select a watchlist first.");return;}setLibrary(current=>addSymbolToWatchlist(current,activeWatchlist,selectedStock.symbol));setWatchlistNotice(selectedStock.symbol+" added to "+activeWatchlist);}}>Add to watchlist</button>
             <button type="button" onClick={() => setSelectedStock(null)}>Close</button>
           </div>
         )}
