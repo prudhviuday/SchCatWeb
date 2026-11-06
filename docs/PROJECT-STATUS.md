@@ -224,7 +224,7 @@ Privacy and provider boundary:
 - CSV and versioned JSON import/export are entirely browser-local. Import can merge by symbol or explicitly replace all holdings. Legacy three-column JSON rows are accepted.
 - Price/history requests reuse the existing browser-side Yahoo chart adapter. No backend, proxy, database or private credentials were added. Actual Yahoo CORS/provider access from the deployed origin remains unverified; failed symbols/timeframes are reported and excluded rather than filled with fabricated prices.
 
-Verification: GitHub Actions run `42161800139` passed all existing suites, all seven Portfolio tests, the TypeScript/Vite production build and static output checks. Run: https://github.com/prudhviuday/SchCatWeb/actions/runs/42161800139. This run preceded the final small overview-card and local-import recovery edits; a fresh CI run is required for the final commit. Cloudflare publication is not confirmed.
+Verification: GitHub Actions run `42162429809` passed all existing suites, all seven Portfolio tests, the TypeScript/Vite production build and static output checks on commit `b913238445c3a1b6a2a5517a752ef9dfd7e62c84`. Run: https://github.com/prudhviuday/SchCatWeb/actions/runs/42162429809. Cloudflare publication and live Yahoo browser-origin access are not confirmed.
 
 ## Next step
 
