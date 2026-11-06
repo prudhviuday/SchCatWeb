@@ -320,6 +320,10 @@ function StockWorkspace({
                   ? "Daily change unavailable"
                   : `${dailyChange >= 0 ? "+" : ""}${dailyChange.toFixed(2)} (${dailyChangePct >= 0 ? "+" : ""}${dailyChangePct.toFixed(2)}%) vs previous daily candle`}
               </div>
+              <div className="workspace-rsi">
+                <span>Daily RSI (21)</span>
+                <strong>{dailyView?.latestRsi21 === null || dailyView?.latestRsi21 === undefined ? "—" : dailyView.latestRsi21.toFixed(2)}</strong>
+              </div>
             </section>
 
             <section className="workspace-reference">
