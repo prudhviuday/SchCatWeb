@@ -337,3 +337,17 @@ User verification:
 5. Do not repeatedly click refresh; the page makes two MarketSmith requests per stock.
 
 Cloudflare publication of this Step 22 commit and live provider success have not yet been independently confirmed.
+
+
+## Step 23 — Live annual ROCE and revenue history (implemented; CI and deployed-site verification pending)
+
+Implemented on main:
+- Extended the existing MarketSmith financeDetails.json parser to read annual ROCE from ratiosAnnualData.c4 and annual revenue from incAnnualData.c3, alongside the annual EPS history already added in Step 22.
+- Both histories are reversed into chronological order. Revenue fiscal years are interpreted from the provider's YY-MM style year label; ROCE uses its annual year field.
+- Each series includes its original reported value and a normalized 0–100 index using the same desktop normalization formula. Constant or one-point histories keep the normalized index blank rather than inventing a value.
+- Stock Workspace displays the annual ROCE and annual revenue histories when returned by MarketSmith. These values come from the live finance endpoint, not the workbook snapshot.
+- Uses the existing browser-local MarketSmith session and same-origin Worker route; no new credentials, secrets, database or storage were introduced.
+
+Tests:
+- Added parser coverage for chronological annual ROCE/revenue ordering and normalized values.
+- The full CI workflow must pass before treating this step as verified. Actual provider response availability and Cloudflare publication remain to be confirmed in the deployed site.
