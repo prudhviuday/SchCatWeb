@@ -196,3 +196,62 @@ test("NSE delivery route bootstraps an anonymous session before requesting histo
   assert.match(calls[1].init.headers.cookie, /nse_session=sample/);
   assert.equal((await response.json()).data.length, 1);
 });
+
+
+test("MarketSmith symbol endpoint matches the current working MarketSmith India URL", async () => {
+  let requestedUrl = "";
+  globalThis.fetch = async (input) => {
+    requestedUrl = String(input);
+    return new Response(JSON.stringify({ response: { detailsGeneralInformationHeader: {} } }), {
+      status: 200,
+      headers: { "content-type": "application/json" }
+    });
+  };
+
+  const response = await worker.fetch(
+    new Request(
+      "https://schcatweb.test/api/marketsmith/symbol?stockId=3159563&symbol=RVNL&s=20211106&e=20261106"
+    ),
+    {
+      ASSETS: { fetch: async () => new Response("asset") },
+      MARKETSMITH_SYMBOL_AUTH: "sample-auth-token"
+    }
+  );
+  assert.equal(response.status, 200);
+  const upstream = new URL(requestedUrl);
+  assert.equal(upstream.origin, "https://marketsmithindia.com");
+  assert.equal(
+    upstream.pathname,
+    "/gateway/simple-api/ms-india/instr/0/3159563/symboldetails.json"
+  );
+  assert.equal(upstream.searchParams.get("s"), "20211106");
+  assert.equal(upstream.searchParams.get("e"), "20261106");
+  assert.equal(upstream.searchParams.get("text"), "RVNL");
+  assert.equal(upstream.searchParams.get("lang"), "en");
+  assert.equal(upstream.searchParams.get("isConsolidated"), "1");
+  assert.equal(upstream.searchParams.get("ms-auth"), "sample-auth-token");
+});
+
+test("MarketSmith symbol endpoint defaults to a rolling five-year date range", async () => {
+  let requestedUrl = "";
+  globalThis.fetch = async (input) => {
+    requestedUrl = String(input);
+    return new Response(JSON.stringify({ response: {} }), { status: 200 });
+  };
+  const response = await worker.fetch(
+    new Request("https://schcatweb.test/api/marketsmith/symbol?stockId=3159563&symbol=RVNL"),
+    {
+      ASSETS: { fetch: async () => new Response("asset") },
+      MARKETSMITH_AUTH: "sample-auth-token"
+    }
+  );
+  assert.equal(response.status, 200);
+  const upstream = new URL(requestedUrl);
+  const start = upstream.searchParams.get("s");
+  const end = upstream.searchParams.get("e");
+  assert.match(start, /^\\d{8}$/);
+  assert.match(end, /^\\d{8}$/);
+  const startDate = new Date(Date.UTC(+start.slice(0, 4), +start.slice(4, 6) - 1, +start.slice(6, 8)));
+  const endDate = new Date(Date.UTC(+end.slice(0, 4), +end.slice(4, 6) - 1, +end.slice(6, 8)));
+  assert.equal(endDate.getUTCFullYear() - startDate.getUTCFullYear(), 5);
+});
