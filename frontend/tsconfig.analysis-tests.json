@@ -23,7 +23,8 @@
     "src/features/industry/industryAnalysis.ts",
     "src/features/research/research.ts",
     "src/features/marketPulse/marketPulse.ts",
-    "src/features/portfolio/portfolio.ts"
+    "src/features/portfolio/portfolio.ts",
+    "src/data/providers/marketSmithStockData.ts"
   ],
   "include": []
 }
