@@ -247,6 +247,7 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
       const result = await fetchMarketSmithUniverse(records, ids, auth, {
         concurrency: 8,
         onProgress: (completed, total) => {
+          if (completed % 5 !== 0 && completed !== total) return;
           setMarketSmithRefresh((current) => ({
             ...current,
             status: "loading",
