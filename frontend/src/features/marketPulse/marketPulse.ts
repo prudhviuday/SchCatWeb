@@ -82,8 +82,8 @@ export async function fetchMarketPulse(signal?: AbortSignal): Promise<{ rows: Ma
     });
     if (!session.ok) throw new Error("ChartInk session request failed (HTTP " + session.status + ").");
     const html = await session.text();
-    const meta = html.match(/<meta\\b[^>]*\\bname\\s*=\\s*["']csrf-token["'][^>]*>/i)?.[0];
-    const csrf = meta?.match(/\\bcontent\\s*=\\s*["']([^"']+)["']/i)?.[1];
+    const meta = html.match(/<meta\b[^>]*\bname\s*=\s*["']csrf-token["'][^>]*>/i)?.[0];
+    const csrf = meta?.match(/\bcontent\s*=\s*["']([^"']+)["']/i)?.[1];
     if (!csrf) throw new Error("ChartInk did not provide a readable CSRF token.");
     const body = new URLSearchParams({ query: MARKET_PULSE_QUERY, use_live: "1", limit: "6", size: "375" });
     const response = await fetch("https://chartink.com/widget/process", {
