@@ -7,7 +7,7 @@ A static React + TypeScript web migration of the existing SchCat desktop stock-a
 SchCatWeb uses a **React frontend plus a same-origin Cloudflare Worker API**.
 
 - `frontend/`: React + TypeScript + Vite. UI, calculations, chart shaping and analysis run here.
-- `worker/index.js`: server-side API gateway for Yahoo Finance, MarketSmith, ChartInk and NSE. Provider requests originate from Cloudflare, not the visitor's browser, so browser CORS enforcement no longer blocks those requests.
+- `worker/index.js`: fallback/server-side API gateway for Yahoo Finance, MarketSmith, ChartInk and NSE. The frontend now calls Yahoo, MarketSmith, NSE and ChartInk directly from the user's browser in diagnostics; the production chart path uses direct Yahoo. Market Pulse retains the proven Worker-backed ChartInk flow until direct browser access is confirmed.
 - Root `wrangler.toml`: deploys the Worker script and `frontend/dist` as one Cloudflare Worker. The Worker handles `/api/*`; the static asset binding serves the website and SPA routes.
 - Local data: non-sensitive reference JSON remains static. Personal holdings, watchlists and settings remain browser-local unless a later sync feature is explicitly approved.
 - Node.js/npm are used for development and builds. The deployed API runs on the Cloudflare Workers runtime; no always-on Node server or Python process is required.
@@ -24,7 +24,7 @@ The browser calls same-origin `/api/*` endpoints. The Worker exposes fixed, vali
 - NSE historical delivery: `GET /api/nse/delivery`.
 - Health: `GET /api/health`.
 
-The Worker validates symbols, instrument IDs, intervals, ranges and dates; applies upstream timeouts; returns provider HTTP status; and caches successful read-only GET responses briefly. ChartInk scans are not cached. Provider access is still subject to each provider's own authentication, anti-bot and network policies. Cloudflare Worker requests bypass browser CORS, but do not bypass provider-side IP blocks or login requirements.
+The Worker validates symbols, instrument IDs, intervals, ranges and dates; applies upstream timeouts; returns provider HTTP status; and caches successful read-only GET responses briefly. ChartInk scans are not cached. Provider access is still subject to each provider's own authentication, anti-bot and network policies. Direct browser calls additionally depend on provider CORS headers and browser cookie policy. The Worker remains a fallback where direct browser access is unavailable.
 
 **Secrets:** no session cookie, password or MarketSmith auth value is hard-coded in the frontend or committed to the Worker source. The Worker can read an optional Cloudflare secret named `MARKETSMITH_AUTH`; only configure it if you have a valid value you are authorized to use. Set it with `npx wrangler secret put MARKETSMITH_AUTH` from the repository root. Never paste it into chat or commit it.
 
@@ -138,7 +138,7 @@ The screen requests the desktop app's four chart periods independently:
 
 Charts render candlesticks and volume, with EMA 20/50 overlays calculated on the full returned series and aligned to their candle positions. The daily panel shows last close, change against the previous daily candle, and RSI(21). Visible chart history can be set to 100, 200 or 500 candles. Time labels use Asia/Kolkata.
 
-The selected-stock reference panel displays only the existing workbook fields (Market Cap, P/B, ROCE and NikScore) with the same explicit undated-snapshot warning as the screener. Provider-only fundamentals and the legacy ROCE, institutional ownership, quarterly sales and EPS charts have not been fabricated; they remain pending validated MarketSmith/NSE connectivity through the Worker API. Yahoo chart requests now use the server-side Worker route, but Cloudflare-to-Yahoo connectivity must still be checked after deployment. Individual chart cards show their own provider error and retry control when access fails.
+The selected-stock reference panel displays only the existing workbook fields (Market Cap, P/B, ROCE and NikScore) with the same explicit undated-snapshot warning as the screener. Provider-only fundamentals and the legacy ROCE, institutional ownership, quarterly sales and EPS charts have not been fabricated; they remain pending validated MarketSmith/NSE connectivity. Yahoo chart requests now use the direct browser endpoint, which returned HTTP 200 in the deployed-origin diagnostic. Individual chart cards show their own provider error and retry control when access fails.
 
 Run chart view tests with:
 
@@ -154,7 +154,7 @@ The **Industry Analysis** screen is available from the left navigation. It group
 
 The screen can import a saved JSON file from the desktop application's `data/IndustryAnalysis` folder and render the four legacy series: institutional value, delivery percentage, close×volume, and market-cap-weighted industry RS. The old five-array structure is preserved on export. The import is done locally in the browser; the file is not uploaded to the website.
 
-**Live industry analysis is intentionally disabled** until MarketSmith, Yahoo and NSE connectivity through the Worker API is verified. The desktop worker requires MarketSmith institutional value and RS data, Yahoo weekly OHLCV for close×volume, and NSE delivery/traded values. Do not treat request-shape tests as evidence of live provider connectivity.
+**Live industry analysis is intentionally disabled** until MarketSmith and NSE connectivity is verified. The desktop worker requires MarketSmith institutional value and RS data, Yahoo weekly OHLCV for close×volume, and NSE delivery/traded values. Yahoo direct browser access has returned HTTP 200; MarketSmith currently returns 403 and NSE returned 520 from the Worker. Do not treat request-shape tests as evidence of live provider connectivity.
 
 The exact desktop aggregation kernels are in `src/features/industry/industryAnalysis.ts`:
 - Institutional value, close×volume and weighted RS use first-value left padding, then sum.
@@ -198,9 +198,9 @@ Tests cover CSV quoting/BOM/CRLF parsing, supported column aliases and per-row f
 
 ## Provider diagnostics (Steps 8–9)
 
-After the latest frontend commit is deployed, open `https://schcatweb.prudhvi123143.workers.dev/?diagnostics=providers` and select **Run browser diagnostics**. This executes requests in the actual website origin for both MarketSmith hosts, ChartInk's CSRF + scan flow, NSE historical delivery data, and a small Yahoo Finance chart sample. Use the MarketSmith ID/symbol fields for a known valid pair. The normal home page is unchanged.
+After the latest frontend commit is deployed, open `https://schcatweb.prudhvi123143.workers.dev/?diagnostics=providers` and select **Run browser diagnostics**. This now tests direct browser access to Yahoo Finance, both MarketSmith hosts, NSE historical delivery and ChartInk's CSRF + scan flow. Use the MarketSmith ID/symbol fields for a known valid pair. The normal home page is unchanged.
 
-The browser calls same-origin Worker routes. The Worker performs upstream requests, including ChartInk's CSRF/session flow, and keeps any short-lived provider cookies server-side. This removes browser CORS enforcement but cannot bypass provider authentication, anti-bot controls or Cloudflare outbound-IP restrictions.
+The diagnostic tests direct cross-origin browser fetches using normal browser CORS and cookie rules. Yahoo direct access has already returned HTTP 200. ChartInk's production Market Pulse flow still uses the Worker because its server-side CSRF/session flow is confirmed working (3,000 rows). If the direct ChartInk probe succeeds, we can switch that feature too. MarketSmith 403 requires provider-approved authentication/access; NSE 520 needs a separate connectivity check.
 
 
 ## Production integration smoke tests (Step 19)
