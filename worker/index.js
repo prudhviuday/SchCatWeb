@@ -112,30 +112,33 @@ function validMarketSmithDate(value) {
   return typeof value === "string" && /^\d{8}$/.test(value);
 }
 
-function withMarketSmithAuth(url, env, endpoint) {
+function withMarketSmithAuth(url, env, endpoint, request) {
+  // Preferred path: the user saves the session value in this browser and the
+  // diagnostics page supplies it per request. Worker secrets remain optional
+  // for backward compatibility with older deployments.
+  const supplied = request?.headers?.get("x-marketsmith-auth") || "";
   const configured = endpoint === "finance"
     ? (env.MARKETSMITH_FINANCE_AUTH || env.MARKETSMITH_AUTH)
     : (env.MARKETSMITH_SYMBOL_AUTH || env.MARKETSMITH_AUTH);
-  if (typeof configured !== "string" || !configured.trim()) return false;
+  const authValue = supplied.trim() || (typeof configured === "string" ? configured.trim() : "");
+  if (!authValue || authValue.length > 4096) return false;
 
-  // A raw URL copied from DevTools may display spaces as '+'. Store the decoded
-  // ms-auth value as a Worker secret; never place it in browser JavaScript.
-  const authValue = configured.trim().replace(/\+/g, " ");
-  url.searchParams.set("ms-auth", authValue);
+  // MarketSmith's ms-auth query parameter uses form-style '+' separators.
+  url.searchParams.set("ms-auth", authValue.replace(/\+/g, " "));
   return true;
 }
 
-async function marketSmithFinance(url, env) {
+async function marketSmithFinance(url, env, request) {
   const stockId = url.searchParams.get("stockId") || "";
   if (!validStockId(stockId)) return json({ error: "invalid_stock_id" }, 400);
   const target = new URL(
     `https://marketsmithindia.com/gateway/simple-api/ms-india/instr/0/${stockId}/financeDetails.json`
   );
   target.searchParams.set("isConsolidated", "false");
-  if (!withMarketSmithAuth(target, env, "finance")) {
+  if (!withMarketSmithAuth(target, env, "finance", request)) {
     return json({
       error: "marketsmith_auth_not_configured",
-      message: "Set the Cloudflare Worker secret MARKETSMITH_FINANCE_AUTH (or MARKETSMITH_AUTH) to a currently valid MarketSmith ms-auth value."
+      message: "No MarketSmith ms-auth value was supplied. Enter it on the provider diagnostics page and save it in this browser."
     }, 503);
   }
   return forwardJson(target.toString(), {
@@ -146,7 +149,7 @@ async function marketSmithFinance(url, env) {
   }, 0);
 }
 
-async function marketSmithSymbol(url, env) {
+async function marketSmithSymbol(url, env, request) {
   const stockId = url.searchParams.get("stockId") || "";
   const symbol = (url.searchParams.get("symbol") || "").trim().toUpperCase();
   if (!validStockId(stockId) || !validSymbol(symbol)) {
@@ -170,10 +173,10 @@ async function marketSmithSymbol(url, env) {
   target.searchParams.set("text", symbol);
   target.searchParams.set("lang", "en");
   target.searchParams.set("isConsolidated", "1");
-  if (!withMarketSmithAuth(target, env, "symbol")) {
+  if (!withMarketSmithAuth(target, env, "symbol", request)) {
     return json({
       error: "marketsmith_auth_not_configured",
-      message: "Set the Cloudflare Worker secret MARKETSMITH_SYMBOL_AUTH (or MARKETSMITH_AUTH) to a currently valid MarketSmith ms-auth value."
+      message: "No MarketSmith ms-auth value was supplied. Enter it on the provider diagnostics page and save it in this browser."
     }, 503);
   }
   return forwardJson(target.toString(), {
@@ -370,10 +373,10 @@ async function handleApi(request, env) {
     return yahooChart(url);
   }
   if (request.method === "GET" && url.pathname === "/api/marketsmith/finance") {
-    return marketSmithFinance(url, env);
+    return marketSmithFinance(url, env, request);
   }
   if (request.method === "GET" && url.pathname === "/api/marketsmith/symbol") {
-    return marketSmithSymbol(url, env);
+    return marketSmithSymbol(url, env, request);
   }
   if (request.method === "GET" && url.pathname === "/api/nse/delivery") {
     return nseDelivery(url);
