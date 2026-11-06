@@ -7,6 +7,9 @@ import { loadIndustryList } from "../../data/reference/industries";
 import { loadMarketSmithIds } from "../../data/reference/marketSmithIds";
 import { readStoredMarketSmithAuth } from "../../data/providers/providerDiagnostics";
 import { fetchChartInkScan } from "../../data/providers/chartInk";
+import { fetchMarketSmithFinanceData, fetchMarketSmithStockMetrics } from "../../data/providers/marketSmithStockData";
+import { getMarketSmithId } from "../../data/reference/marketSmithIds";
+import { calculateNikScoreFromMarketSmith } from "./nikScore";
 import {
   fetchMarketSmithUniverse,
   type MarketSmithLiveMetrics
@@ -139,6 +142,7 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
     message: ""
   });
   const [liveUpdatedAt, setLiveUpdatedAt] = useState<string | null>(null);
+  const [nikRefresh, setNikRefresh] = useState({ status: "idle" as "idle" | "loading" | "complete" | "error", completed: 0, total: 0, succeeded: 0, failed: 0, message: "" });
   const [industries, setIndustries] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -288,6 +292,58 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
     }
   }
 
+  async function refreshNikScores() {
+    if (nikRefresh.status === "loading" || records.length === 0) return;
+    const auth = readStoredMarketSmithAuth();
+    if (!auth) {
+      setNikRefresh({ status: "error", completed: 0, total: records.length, succeeded: 0, failed: 0, message: "No MarketSmith session saved. Configure it in Provider Diagnostics first." });
+      return;
+    }
+    setNikRefresh({ status: "loading", completed: 0, total: records.length, succeeded: 0, failed: 0, message: "Preparing NikScore refresh…" });
+    try {
+      const ids = await loadMarketSmithIds();
+      const updated = [...records];
+      let cursor = 0;
+      let completed = 0;
+      let succeeded = 0;
+      let failed = 0;
+      const workers = Array.from({ length: 6 }, async () => {
+        while (cursor < records.length) {
+          const index = cursor++;
+          const record = records[index];
+          const id = record.instrumentId ?? getMarketSmithId(ids, record.symbol);
+          try {
+            if (!id) throw new Error("No MarketSmith instrument ID");
+            const [metrics, finance] = await Promise.all([
+              fetchMarketSmithStockMetrics(id, record.symbol, auth),
+              fetchMarketSmithFinanceData(id, auth)
+            ]);
+            const score = calculateNikScoreFromMarketSmith(metrics, finance);
+            updated[index] = { ...record, pb: metrics.livePb, roce: finance.annualRoce.at(-1)!.value, nikScore: score.finalScore };
+            succeeded++;
+          } catch {
+            // Legacy Listupdater writes PB=100, ROCE=0 and NikScore=0 for a failed stock.
+            updated[index] = { ...record, pb: 100, roce: 0, nikScore: 0 };
+            failed++;
+          } finally {
+            completed++;
+            if (completed % 5 === 0 || completed === records.length) {
+              setNikRefresh({ status: "loading", completed, total: records.length, succeeded, failed, message: `Updated ${completed.toLocaleString("en-IN")} of ${records.length.toLocaleString("en-IN")} stocks…` });
+            }
+          }
+        }
+      });
+      await Promise.all(workers);
+      setRecords(updated);
+      setNikRefresh({
+        status: "complete", completed, total: records.length, succeeded, failed,
+        message: `NikScore updated for ${succeeded.toLocaleString("en-IN")} stocks; ${failed.toLocaleString("en-IN")} used the legacy failure fallback (P/B 100, ROCE 0, NikScore 0). Export CSV to save the refreshed values.`
+      });
+    } catch (error) {
+      setNikRefresh(current => ({ ...current, status: "error", message: error instanceof Error ? error.message : "NikScore refresh failed." }));
+    }
+  }
+
   function updateRange(field: ScreenerNumericField, side: "min" | "max", value: string) {
     setRanges((current) => ({
       ...current,
@@ -391,6 +447,9 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
           <button type="button" className="screener-button" onClick={() => void refreshMarketSmithData()} disabled={loading || marketSmithRefresh.status === "loading" || records.length === 0}>
             {marketSmithRefresh.status === "loading" ? `Fetching ${marketSmithRefresh.completed.toLocaleString("en-IN")}/${marketSmithRefresh.total.toLocaleString("en-IN")}…` : "Fetch live MarketSmith"}
           </button>
+          <button type="button" className="screener-button" onClick={() => void refreshNikScores()} disabled={loading || nikRefresh.status === "loading" || records.length === 0}>
+            {nikRefresh.status === "loading" ? `NikScore ${nikRefresh.completed.toLocaleString("en-IN")}/${nikRefresh.total.toLocaleString("en-IN")}…` : "Update NikScore"}
+          </button>
           <button type="button" className="screener-button secondary" onClick={() => downloadCsv(filteredRecords)} disabled={loading || filteredRecords.length === 0}>
             Export CSV
           </button>
@@ -400,10 +459,14 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
       <section className="screener-warning">
         <strong>Static + live data</strong>
         <span>
-          Market Cap, P/B, ROCE and NikScore remain undated workbook reference values. Use Fetch live MarketSmith to load Group Rank, RS, EPS Rank, MasterScore, Acc/Dis, PE, PEG and FScore for the full 2,256-stock universe. Data is fetched only when requested and is held in page memory; it is not uploaded or saved.
+          Market Cap remains a static reference value. Fetch live MarketSmith loads the ranking fields; Update NikScore recalculates P/B, ROCE and NikScore from the original MarketSmith quarterly sales and annual ROCE inputs. Refreshed values stay in page memory until you export CSV.
         </span>
       </section>
 
+      <div className={`screener-status ${nikRefresh.status === "error" ? "error" : ""}`} role="status">
+        <strong>{nikRefresh.status === "idle" ? "NikScore updater ready" : nikRefresh.status === "loading" ? "Recalculating legacy NikScore" : nikRefresh.status === "error" ? "NikScore refresh needs attention" : "NikScore refresh complete"}</strong>
+        <span>{nikRefresh.message || "Uses the original four-quarter sales-growth weighting, ROCE bands and P/B bands. Six concurrent workers; no data is uploaded or saved automatically."}</span>
+      </div>
       <section className="screener-live-status" aria-live="polite">
         <div>
           <strong>{marketSmithRefresh.status === "idle" ? "MarketSmith data not loaded" : marketSmithRefresh.status === "loading" ? "Fetching MarketSmith data" : marketSmithRefresh.status === "error" ? "MarketSmith refresh needs attention" : `MarketSmith updated ${liveUpdatedAt ? "· " + liveUpdatedAt : ""}`}</strong>

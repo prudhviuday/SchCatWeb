@@ -54,6 +54,9 @@ jobs:
       - name: Run static reference data tests
         working-directory: frontend
         run: npm run test:reference
+      - name: Run NikScore updater parity tests
+        working-directory: frontend
+        run: npm run test:nikscore
       - name: Run stock screener tests
         working-directory: frontend
         run: npm run test:screener

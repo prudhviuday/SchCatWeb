@@ -25,7 +25,8 @@
     "test:right-panel": "tsc -p tsconfig.analysis-tests.json && node --test tests/charts/rightPanelCharts.test.mjs",
     "test:chartink": "tsc -p tsconfig.analysis-tests.json && node --test tests/providers/chartInk.test.mjs",
     "test:industry-live": "tsc -p tsconfig.analysis-tests.json && node --test tests/industry/industryLive.test.mjs",
-    "test:chartink-history": "tsc -p tsconfig.analysis-tests.json && node --test tests/providers/chartInkHistory.test.mjs"
+    "test:chartink-history": "tsc -p tsconfig.analysis-tests.json && node --test tests/providers/chartInkHistory.test.mjs",
+    "test:nikscore": "tsc -p tsconfig.analysis-tests.json && node --test tests/screener/nikScore.test.mjs"
   },
   "dependencies": {
     "react": "^19.1.0",

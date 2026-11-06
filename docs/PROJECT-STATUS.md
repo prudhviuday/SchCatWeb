@@ -509,3 +509,14 @@ Implemented on `main`:
 **User test:** deploy latest `main`; open Research; import the performance CSV and query-definition CSV; click **Run ChartInk history**. Confirm progress advances one query at a time, history JSON can be exported, and the results table/chart populate. Check a failed query appears in the failure list and is marked unavailable. Compare a small query's returned unique symbols with the desktop Research workflow.
 
 **Provider boundary:** automated tests mock ChartInk's bootstrap and backtest response. Real historical availability still depends on ChartInk's upstream backtest service and Cloudflare Worker access; CI does not prove a live provider response.
+
+
+## Step 35 — NikScore / workbook updater (2026-11-06)
+
+- Inspected the original `Listupdater.py` and `util.py`. Ported the exact score: four most recent sales-growth quarters weighted 0.4/0.3/0.2/0.1, growth score clamped to 0–100 around 50, original ROCE bands, original P/B bands, and final 45% growth + 35% ROCE + 20% P/B weighting.
+- Quarter order and zero-padding match `processsales()`; score precision matches Python `round(..., 2)`.
+- Screener now has **Update NikScore**, fetching the current MarketSmith symbol/quarterly sales data and finance/annual ROCE data through the existing same-origin Worker APIs, with six concurrent workers.
+- Per-stock failure uses the original Listupdater fallback values (P/B 100, ROCE 0, NikScore 0). Progress and counts are shown.
+- Refreshed values update the in-page market universe and can be exported with the existing CSV export. Browser code cannot overwrite the source XLSX/static JSON, so the user explicitly downloads the updated CSV rather than a silent workbook mutation.
+- Tests cover quarter ordering/padding, all three score components, weighting, latest annual ROCE selection and score output.
+- Live provider availability still requires user-side testing with a current MarketSmith session; CI uses deterministic fixtures.
