@@ -116,7 +116,7 @@ The Stock Screener is available from the left navigation and uses the same-origi
 
 The reference workbook has no as-of date. Market Cap, P/B, ROCE and NikScore are explicitly marked as undated snapshot values in the UI and CSV. Provider-only fields (RS, EPS rank, MasterScore, Acc/Dis, PE and PEG) are not fabricated or filled with desktop fallback values; they remain unavailable until Worker-backed MarketSmith access has been validated.
 
-The desktop multi-query AND intersection is ported as session-only symbol-set queries. Users can add named comma/space-separated stock lists and intersect selected lists. This is not yet saved ChartInk scan execution: the saved query workbook sheet has not been imported, provider browser access remains unverified, and these temporary lists reset on refresh. Persistent query/watchlist management remains a later step.
+The desktop multi-query AND intersection is ported as session-only symbol-set queries. Users can add named comma/space-separated stock lists and intersect selected lists. This is not yet saved ChartInk scan execution: the saved query workbook sheet has not been imported, Worker-backed provider connectivity remains subject to live verification, and these temporary lists reset on refresh. Persistent query/watchlist management remains a later step.
 
 Run the screener logic tests:
 
@@ -138,7 +138,7 @@ The screen requests the desktop app's four chart periods independently:
 
 Charts render candlesticks and volume, with EMA 20/50 overlays calculated on the full returned series and aligned to their candle positions. The daily panel shows last close, change against the previous daily candle, and RSI(21). Visible chart history can be set to 100, 200 or 500 candles. Time labels use Asia/Kolkata.
 
-The selected-stock reference panel displays only the existing workbook fields (Market Cap, P/B, ROCE and NikScore) with the same explicit undated-snapshot warning as the screener. Provider-only fundamentals and the legacy ROCE, institutional ownership, quarterly sales and EPS charts have not been fabricated; they remain pending validated Worker-backed MarketSmith/NSE connectivity. Yahoo chart requests now use the direct browser endpoint, which returned HTTP 200 in the deployed-origin diagnostic. Individual chart cards show their own provider error and retry control when access fails.
+The selected-stock reference panel displays only the existing workbook fields (Market Cap, P/B, ROCE and NikScore) with the same explicit undated-snapshot warning as the screener. Provider-only fundamentals and the legacy ROCE, institutional ownership, quarterly sales and EPS charts have not been fabricated; they remain pending validated Worker-backed MarketSmith/NSE connectivity. Yahoo chart requests now use the same-origin Worker endpoint; confirm live upstream reachability with server-side diagnostics after deployment. Individual chart cards show their own provider error and retry control when access fails.
 
 Run chart view tests with:
 
@@ -198,9 +198,9 @@ Tests cover CSV quoting/BOM/CRLF parsing, supported column aliases and per-row f
 
 ## Provider diagnostics (Steps 8–9)
 
-After the latest frontend commit is deployed, open `https://schcatweb.prudhvi123143.workers.dev/?diagnostics=providers` and select **Run browser diagnostics**. This now tests direct browser access to Yahoo Finance, both MarketSmith hosts, NSE historical delivery and ChartInk's CSRF + scan flow. Use the MarketSmith ID/symbol fields for a known valid pair. The normal home page is unchanged.
+After the latest commit is deployed, open `https://schcatweb.prudhvi123143.workers.dev/?diagnostics=providers` and select **Run server-side diagnostics**. This calls the same-origin Worker routes for Yahoo Finance, both MarketSmith endpoints, NSE historical delivery and ChartInk's CSRF + scan flow. The browser does not call any external provider directly. Use the MarketSmith ID/symbol fields for a known valid pair. The normal home page is unchanged.
 
-The diagnostic tests direct cross-origin browser fetches using normal browser CORS and cookie rules. Yahoo direct access has already returned HTTP 200. ChartInk's production Market Pulse flow still uses the Worker because its server-side CSRF/session flow is confirmed working (3,000 rows). If the direct ChartInk probe succeeds, we can switch that feature too. MarketSmith 403 requires provider-approved authentication/access; NSE 520 needs a separate connectivity check.
+The diagnostic tests the deployed Worker-to-provider path and reports the upstream HTTP result. The browser should only need same-origin access to `/api/*`; CORS from Yahoo/MarketSmith/ChartInk/NSE should not affect the external request. The ChartInk Worker flow performs its own CSRF/session bootstrap. NSE now bootstraps its homepage and forwards the session cookie to the history endpoint. MarketSmith requires current authorization: configure `MARKETSMITH_FINANCE_AUTH` and `MARKETSMITH_SYMBOL_AUTH` as Cloudflare secrets (or shared `MARKETSMITH_AUTH`). If a provider still returns 403/520, that is an upstream restriction/network result, not a browser CORS error.
 
 
 ## Production integration smoke tests (Step 19)
