@@ -58,7 +58,10 @@ jobs:
       - name: Run Market Pulse tests
         working-directory: frontend
         run: npm run test:market-pulse
-      - name: Run Portfolio tests\n        working-directory: frontend\n        run: npm run test:portfolio\n      - name: Build static website
+      - name: Run Portfolio tests
+        working-directory: frontend
+        run: npm run test:portfolio
+      - name: Build static website
         working-directory: frontend
         run: npm run build
       - name: Verify static build output and deployment config
