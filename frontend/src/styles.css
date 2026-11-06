@@ -199,6 +199,7 @@ h2 { font-size: 17px; letter-spacing: -.3px; font-weight: 600; margin: 7px 0 0; 
 }
 .status-success { color: #8fd6ae; border-color: #315f4a; background: #15251f; }
 .status-auth-or-policy { color: #efc181; border-color: #6b502c; background: #292116; }
+.status-configuration-required { color: #e8c58c; border-color: #755c35; background: #302719; }
 .status-browser-blocked, .status-timeout, .status-http-error { color: #f0a0a0; border-color: #704040; background: #2a1a1d; }
 .status-invalid-response { color: #c5b5eb; border-color: #50426d; background: #211d2b; }
 .diagnostic-result p {
