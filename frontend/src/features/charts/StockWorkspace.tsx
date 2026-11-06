@@ -7,7 +7,6 @@ import {
 } from "../../data/providers/chartData";
 import type { MarketUniverseRecord } from "../../data/reference/marketUniverse";
 import {
-  formatChartTime,
   prepareChartView,
   type ChartDisplayPoint
 } from "./chartPresentation";
@@ -166,181 +165,24 @@ function StockWorkspace({
     setLoading(true);
     setRequestError("");
 
-    for (const timeframe of TIMEFRAMES) {
-      fetchChartData(symbol, timeframe.key)
-        .then((candles) => {
-          if (!active) return;
-          setStates((current) => ({
-            ...current,
-            [timeframe.key]: candles.length > 0
-              ? { status: "ready", candles, error: "" }
-              : { status: "error", candles: [], error: "The provider returned no candles for this symbol and period." }
-          }));
-        })
-        .catch((error: unknown) => {
-          if (!active) return;
-          setStates((current) => ({
-            ...current,
-            [timeframe.key]: { status: "error", candles: [], error: errorText(error) }
-          }));
-        })
-        .finally(() => {
-          if (active) {
-            setStates((current) => {
-              const remaining = TIMEFRAMES.some((item) => current[item.key].status === "loading");
-              if (!remaining) setLoading(false);
-              return current;
-            });
-          }
-        });
-    }
-
-    return () => { active = false; };
-  }, [symbol, retry]);
-
-  useEffect(() => {
-    if (initialRecord) {
-      setRecord(initialRecord);
-      setDraftSymbol(initialRecord.symbol);
-      setSymbol(initialRecord.symbol);
-    }
-  }, [initialRecord]);
-
-  const views = useMemo(() => {
-    const result = {} as Partial<Record<ChartTimeframe, ReturnType<typeof prepareChartView>>>;
-    for (const timeframe of TIMEFRAMES) {
-      const state = states[timeframe.key];
-      if (state.status === "ready") {
-        result[timeframe.key] = prepareChartView(state.candles, timeframe.key, visiblePoints);
+    const requests = TIMEFRAMES.map(async (timeframe) => {
+      try {
+        const candles = await fetchChartData(symbol, timeframe.key);
+        if (!active) return;
+        setStates((current) => ({
+          ...current,
+          [timeframe.key]: candles.length > 0
+            ? { status: "ready", candles, error: "" }
+            : { status: "error", candles: [], error: "The provider returned no candles for this symbol and period." }
+        }));
+      } catch (error) {
+        if (!active) return;
+        setStates((current) => ({
+          ...current,
+          [timeframe.key]: { status: "error", candles: [], error: errorText(error) }
+        }));
       }
-    }
-    return result;
-  }, [states, visiblePoints]);
-
-  const dailyView = views["1D"];
-  const dailyChange = dailyView?.latestClose !== null && dailyView?.latestClose !== undefined &&
-    dailyView.previousClose !== null && dailyView.previousClose !== undefined
-    ? dailyView.latestClose - dailyView.previousClose
-    : null;
-  const dailyChangePct = dailyChange !== null && dailyView?.previousClose
-    ? dailyChange / dailyView.previousClose * 100
-    : null;
-
-  function submitSymbol(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const next = draftSymbol.trim().toUpperCase();
-    if (!next) {
-      setRequestError("Enter a stock symbol.");
-      return;
-    }
-    setRecord(next === initialRecord?.symbol ? initialRecord : null);
-    setSymbol(next);
-  }
-
-  return (
-    <div className="workspace-content">
-      <div className="eyebrow">SCHCAT / CHARTS & STOCK WORKSPACE</div>
-      <div className="workspace-heading">
-        <div>
-          <h1>Stock Workspace</h1>
-          <p className="intro">Multi-timeframe price action, volume and reference fundamentals.</p>
-        </div>
-        <button type="button" className="screener-button secondary" onClick={onBack}>Back to Screener</button>
-      </div>
-
-      <form className="workspace-symbol-form" onSubmit={submitSymbol}>
-        <label>
-          <span>Stock symbol</span>
-          <input value={draftSymbol} onChange={(event) => setDraftSymbol(event.target.value.toUpperCase())} placeholder="e.g. RELIANCE" aria-label="Stock symbol" />
-        </label>
-        <button type="submit" className="screener-button">Load charts</button>
-        <button type="button" className="screener-button secondary" onClick={() => setRetry((value) => value + 1)} disabled={!symbol}>Retry data</button>
-        <span className="workspace-load-status" aria-live="polite">{loading ? "Fetching chart data…" : symbol ? "Provider request finished" : "Choose a stock to begin"}</span>
-      </form>
-      {requestError && <div className="screener-error" role="alert">{requestError}</div>}
-
-      {!symbol ? (
-        <section className="workspace-empty">
-          <div className="notice-icon">⌁</div>
-          <h2>No stock selected</h2>
-          <p>Search for a stock symbol above, or open a stock directly from the Stock Screener.</p>
-        </section>
-      ) : (
-        <>
-          <div className="workspace-summary-grid">
-            <section className="workspace-summary-main">
-              <div className="eyebrow">SELECTED STOCK</div>
-              <h2>{symbol}</h2>
-              <p>{record?.industry ?? "Industry not in reference file"} · {record?.sector ?? "Sector not in reference file"}</p>
-              <div className="workspace-price">{formatPrice(dailyView?.latestClose ?? null)}</div>
-              <div className={dailyChange === null ? "workspace-daily-change" : dailyChange >= 0 ? "workspace-daily-change positive" : "workspace-daily-change negative"}>
-                {dailyChange === null || dailyChangePct === null
-                  ? "Daily change unavailable"
-                  : `${dailyChange >= 0 ? "+" : ""}${dailyChange.toFixed(2)} (${dailyChangePct >= 0 ? "+" : ""}${dailyChangePct.toFixed(2)}%) vs previous daily candle`}
-              </div>
-            </section>
-            <section className="workspace-reference">
-              <div className="workspace-reference-title">
-                <div><div className="eyebrow">REFERENCE FUNDAMENTALS</div><span>Undated workbook snapshot</span></div>
-                <span className="screener-muted">Not live data</span>
-              </div>
-              <div className="workspace-reference-grid">
-                <div><span>Market Cap*</span><strong>{record?.marketCap === null || record?.marketCap === undefined ? "—" : formatVolume(record.marketCap)}</strong></div>
-                <div><span>P/B*</span><strong>{record?.pb ?? "—"}</strong></div>
-                <div><span>ROCE*</span><strong>{record?.roce === null || record?.roce === undefined ? "—" : `${record.roce}%`}</strong></div>
-                <div><span>NikScore*</span><strong>{record?.nikScore ?? "—"}</strong></div>
-                <div><span>MarketSmith ID</span><strong>{record?.instrumentId ?? "—"}</strong></div>
-                <div><span>RS / EPS / PE / PEG</span><strong>Provider pending</strong></div>
-              </div>
-            </section>
-          </div>
-
-          <section className="workspace-chart-section">
-            <div className="workspace-chart-section-heading">
-              <div><div className="eyebrow">PRICE & VOLUME</div><h2>Multi-timeframe charts</h2></div>
-              <div className="workspace-zoom-control" aria-label="Chart visible candle count">
-                {[100, 200, 500].map((count) => (
-                  <button type="button" key={count} className={visiblePoints === count ? "active" : ""} onClick={() => setVisiblePoints(count)}>{count}</button>
-                ))}
-              </div>
-            </div>
-            <p className="workspace-chart-note">Yahoo Finance direct browser data · Last {visiblePoints} candles where available · Time labels use IST · EMA 20/50 overlays and volume</p>
-            <div className="workspace-chart-grid">
-              {TIMEFRAMES.map((timeframe) => {
-                const state = states[timeframe.key];
-                return (
-                  <article className="workspace-chart-card" key={timeframe.key}>
-                    <div className="workspace-chart-card-heading">
-                      <div><h3>{timeframe.label}</h3><span>{timeframe.key}</span></div>
-                      {state.status === "loading" && <span className="workspace-chart-status">Loading</span>}
-                      {state.status === "ready" && <span className="workspace-chart-status ready">{state.candles.length.toLocaleString("en-IN")} candles</span>}
-                      {state.status === "error" && <span className="workspace-chart-status error">Unavailable</span>}
-                    </div>
-                    {state.status === "loading" ? (
-                      <div className="workspace-chart-empty">Fetching {timeframe.label.toLowerCase()} data…</div>
-                    ) : state.status === "error" ? (
-                      <div className="workspace-chart-failure">
-                        <strong>Chart unavailable</strong>
-                        <p>{state.error}</p>
-                        <button type="button" className="screener-button secondary" onClick={() => setRetry((value) => value + 1)}>Retry all charts</button>
-                      </div>
-                    ) : (
-                      <ChartGraphic points={views[timeframe.key]?.points ?? []} title={timeframe.label} />
-                    )}
-                  </article>
-                );
-              })}
-            </div>
-          </section>
-
-          <footer className="workspace-disclaimer">
-            Provider access is browser-dependent. If Yahoo Finance blocks requests from this website, inspect the Provider Diagnostics page and browser Console. No proxy or secret credentials are used. The reference workbook metrics above have no as-of date.
-          </footer>
-        </>
-      )}
-      <footer className="page-footer">SCHCATWEB <span>·</span> STOCK WORKSPACE <span>·</span> STEP 13</footer>
-    </div>
-  );
-}
-
-export default StockWorkspace;
+    });
+    void Promise.all(requests).then(() => {
+      if (active) setLoading(false);
+    });
