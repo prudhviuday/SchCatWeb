@@ -507,6 +507,18 @@ function StockWorkspace({
                 </div>}
               </div>
             )}
+            {liveFundamentals && (liveFundamentals.institutionalOwnership.length > 0 || liveFundamentals.institutionalCost.length > 0) && (
+              <div className="workspace-financial-history-grid">
+                {liveFundamentals.institutionalOwnership.length > 0 && <div className="workspace-financial-history">
+                  <div className="eyebrow">INSTITUTIONAL OWNERSHIP · FUNDS</div>
+                  <div className="workspace-financial-history-list">{liveFundamentals.institutionalOwnership.map((point, index) => <div key={point.period + index}><span>{point.period}</span><strong>{formatVolume(point.value)}</strong><small>{point.normalized === null ? "—" : "Index " + point.normalized}</small></div>)}</div>
+                </div>}
+                {liveFundamentals.institutionalCost.length > 0 && <div className="workspace-financial-history">
+                  <div className="eyebrow">INSTITUTIONAL HOLDING VALUE · LEGACY FORMULA</div>
+                  <div className="workspace-financial-history-list">{liveFundamentals.institutionalCost.map((point, index) => <div key={point.period + index}><span>{point.period}</span><strong>{formatVolume(point.value)}</strong><small>Shares × current price ÷ 1bn</small></div>)}</div>
+                </div>}
+              </div>
+            )}
             {fundamentalsUpdatedAt && <span className="workspace-chart-note">Last refreshed: {fundamentalsUpdatedAt} · MarketSmith India</span>}
           </section>
 
