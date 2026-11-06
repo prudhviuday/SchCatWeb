@@ -50,7 +50,7 @@ function finitePositive(value: unknown, field: string): number {
 }
 
 export function normalizePortfolioSymbol(value: unknown): string {
-  const symbol = String(value ?? "").trim().toUpperCase().replace(/\\s+/g, "");
+  const symbol = String(value ?? "").trim().toUpperCase();
   if (!symbol || !/^[A-Z0-9&._-]{1,40}$/.test(symbol)) {
     throw new TypeError("Enter a valid stock symbol (letters, numbers, . _ & or -).");
   }
