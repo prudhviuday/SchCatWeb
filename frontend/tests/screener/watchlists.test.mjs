@@ -2,8 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   addSymbolToWatchlist, EMPTY_SCREENER_LIBRARY, mergeScreenerLibraries,
-  parseScreenerLibraryJson, parseWatchlistsCsv, removeSavedQuery,
-  saveScreenerLibrary, serializeScreenerLibrary, serializeWatchlistsCsv,
+  parseScreenerLibraryJson, parseSavedQueriesCsv, parseWatchlistsCsv, removeSavedQuery,
+  saveScreenerLibrary, serializeScreenerLibrary, serializeSavedQueriesCsv, serializeWatchlistsCsv,
   upsertSavedQuery, validateScreenerLibrary
 } from "../../.test-dist/features/screener/watchlists.js";
 
@@ -44,4 +44,10 @@ test("browser storage save/load uses versioned private key", () => {
   const library = { version: 1, watchlists: [{ name: "Test", symbols: ["ABC"] }], queries: [] };
   saveScreenerLibrary(library, storage);
   assert.deepEqual(JSON.parse(values.get("schcatweb.screener-library.v1")), library);
+});
+
+test("ChartInk query CSV import and export preserve query clauses", () => {
+  const imported = parseSavedQueriesCsv('QueryName,QueryCode\r\n"Trend setup","close > ema(close,50)"');
+  assert.deepEqual(imported, [{ name: "Trend setup", queryCode: "close > ema(close,50)", symbols: [] }]);
+  assert.deepEqual(parseSavedQueriesCsv(serializeSavedQueriesCsv(imported)), imported);
 });
