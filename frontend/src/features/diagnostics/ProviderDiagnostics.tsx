@@ -1,4 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import {
+  getMarketSmithId,
+  loadMarketSmithIds,
+  type MarketSmithIdMap
+} from "../../data/reference/marketSmithIds";
 import {
   runProviderDiagnostics,
   type ProviderProbeResult
@@ -15,8 +20,30 @@ const STATUS_LABELS: Record<ProviderProbeResult["status"], string> = {
 };
 
 function ProviderDiagnostics() {
-  const [marketSmithStockId, setMarketSmithStockId] = useState("3159563");
+  const [marketSmithIds, setMarketSmithIds] = useState<MarketSmithIdMap | null>(null);
+  const [marketSmithIdsError, setMarketSmithIdsError] = useState("");
   const [marketSmithSymbol, setMarketSmithSymbol] = useState("RVNL");
+  const marketSmithStockId = marketSmithIds
+    ? String(getMarketSmithId(marketSmithIds, marketSmithSymbol) ?? "")
+    : "";
+
+  useEffect(() => {
+    let active = true;
+    loadMarketSmithIds()
+      .then((ids) => {
+        if (active) setMarketSmithIds(ids);
+      })
+      .catch((error: unknown) => {
+        if (active) {
+          setMarketSmithIdsError(
+            error instanceof Error ? error.message : "Could not load MarketSmith instrument IDs."
+          );
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
   const [results, setResults] = useState<ProviderProbeResult[]>([]);
   const [running, setRunning] = useState(false);
   const [startedAt, setStartedAt] = useState<string | null>(null);
@@ -72,13 +99,14 @@ function ProviderDiagnostics() {
 
       <section className="diagnostics-controls">
         <div className="diagnostics-input">
-          <label htmlFor="ms-stock-id">MarketSmith stock ID</label>
+          <label htmlFor="ms-stock-id">MarketSmith instrument ID (from reference JSON)</label>
           <input
             id="ms-stock-id"
-            value={marketSmithStockId}
-            onChange={(event) => setMarketSmithStockId(event.target.value)}
-            inputMode="numeric"
-            autoComplete="off"
+            value={marketSmithIdsError
+              ? "Reference ID file unavailable"
+              : marketSmithStockId || (marketSmithIds ? "No ID found for this symbol" : "Loading IDs…")}
+            readOnly
+            aria-live="polite"
           />
         </div>
         <div className="diagnostics-input">
