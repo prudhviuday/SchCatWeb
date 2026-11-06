@@ -76,6 +76,30 @@ npm run test:indicators
 
 The implementation is in `src/domain/analysis/technicalIndicators.ts`. It follows the exact `fast-technical-indicators@1.1.4` dependency pinned in the original desktop app's CRIP4 lockfile, including the RSI rounding rule, wrapper padding, and legacy ULTM/ATP indexing. The known ULTM/ATP alignment defects are documented and covered by tests rather than silently changed.
 
+## Static reference data (Step 11)
+
+The website now publishes these non-sensitive reference datasets under `frontend/public/data/`:
+
+- `marketUniverse.json`: 2,256 stock reference rows (symbol, MarketSmith ID, market cap, sector, industry, P/B, ROCE and NikScore).
+- `industries.json`: 107 unique industry labels.
+- `marketSmithIds.json`: 1,256 symbol-to-ID pairs used by the legacy CRIP4 chart provider.
+- `manifest.json`: provenance, record counts, source blob SHAs and limitations.
+- `conversion-report.json`: conversion checks and data-quality warnings.
+
+Use the typed loaders in `src/data/reference/`. Tests run with:
+
+```powershell
+npm run test:reference
+```
+
+**Important freshness warning:** the source stock-universe workbook has no recorded as-of date. MarketCap, P/B, ROCE and NikScore in `marketUniverse.json` are an undated static snapshot. Do not show them as live values or use them for current ranking until fresh provider data replaces them. The source has two duplicate instrument-ID pairs; both rows are retained and documented in the manifest/report.
+
+The smaller 1,256-entry chart lookup is intentionally separate from the 2,256-row stock universe. Do not merge their symbols/aliases or assume every screener row has a chart-provider mapping.
+
+The source `ChartInkQs.xlsx` Watchlist and Portfolio sheets, dated industry-analysis outputs, alternate reference lists and unidentified workbooks were not published. Personal holdings and watchlists must remain in browser-local storage/import/export.
+
+The development-time converter is `tools/convert-source-reference-data.mjs`. Its GitHub Actions workflow reads the approved workbooks from the source `SchCat` repository and commits generated JSON; the XLSX reader is not part of the deployed application.
+
 ## Provider diagnostics (Steps 8–9)
 
 After the latest frontend commit is deployed, open `https://schcatweb.prudhvi123143.workers.dev/?diagnostics=providers` and select **Run browser diagnostics**. This executes requests in the actual website origin for both MarketSmith hosts, ChartInk's CSRF + scan flow, NSE historical delivery data, and a small Yahoo Finance chart sample. Use the MarketSmith ID/symbol fields for a known valid pair. The normal home page is unchanged.
