@@ -3,7 +3,7 @@ const JSON_HEADERS = {
   "cache-control": "no-store"
 };
 
-const USER_AGENT = "Mozilla/5.0 (compatible; SchCatWeb/1.0; +https://schcatweb.prudhvi123143.workers.dev/)";
+const USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36";
 
 function json(data, status = 200, headers = {}) {
   return new Response(JSON.stringify(data), {
@@ -91,11 +91,17 @@ async function forwardJson(url, init = {}, cacheSeconds = 0) {
   return output;
 }
 
-function withMarketSmithAuth(url, env) {
-  if (env.MARKETSMITH_AUTH) {
-    url.searchParams.set("ms-auth", env.MARKETSMITH_AUTH);
-  }
-  return url;
+function withMarketSmithAuth(url, env, endpoint) {
+  const configured = endpoint === "finance"
+    ? (env.MARKETSMITH_FINANCE_AUTH || env.MARKETSMITH_AUTH)
+    : (env.MARKETSMITH_SYMBOL_AUTH || env.MARKETSMITH_AUTH);
+  if (typeof configured !== "string" || !configured.trim()) return false;
+
+  // A raw URL copied from DevTools may display spaces as '+'. Store the decoded
+  // ms-auth value as a Worker secret; never place it in browser JavaScript.
+  const authValue = configured.trim().replace(/\+/g, " ");
+  url.searchParams.set("ms-auth", authValue);
+  return true;
 }
 
 async function marketSmithFinance(url, env) {
@@ -105,10 +111,18 @@ async function marketSmithFinance(url, env) {
     `https://marketsmithindia.com/gateway/simple-api/ms-india/instr/0/${stockId}/financeDetails.json`
   );
   target.searchParams.set("isConsolidated", "false");
-  withMarketSmithAuth(target, env);
+  if (!withMarketSmithAuth(target, env, "finance")) {
+    return json({
+      error: "marketsmith_auth_not_configured",
+      message: "Set the Cloudflare Worker secret MARKETSMITH_FINANCE_AUTH (or MARKETSMITH_AUTH) to a currently valid MarketSmith ms-auth value."
+    }, 503);
+  }
   return forwardJson(target.toString(), {
-    headers: upstreamHeaders({ "referer": "https://marketsmithindia.com/" })
-  }, 180);
+    headers: upstreamHeaders({
+      "accept": "application/json,text/plain,*/*",
+      "referer": "https://marketsmithindia.com/"
+    })
+  }, 0);
 }
 
 async function marketSmithSymbol(url, env) {
@@ -125,10 +139,18 @@ async function marketSmithSymbol(url, env) {
   target.searchParams.set("text", symbol);
   target.searchParams.set("lang", "en");
   target.searchParams.set("isConsolidated", "0");
-  withMarketSmithAuth(target, env);
+  if (!withMarketSmithAuth(target, env, "symbol")) {
+    return json({
+      error: "marketsmith_auth_not_configured",
+      message: "Set the Cloudflare Worker secret MARKETSMITH_SYMBOL_AUTH (or MARKETSMITH_AUTH) to a currently valid MarketSmith ms-auth value."
+    }, 503);
+  }
   return forwardJson(target.toString(), {
-    headers: upstreamHeaders({ "referer": "https://marketsmithindia.com/" })
-  }, 180);
+    headers: upstreamHeaders({
+      "accept": "application/json,text/plain,*/*",
+      "referer": "https://marketsmithindia.com/"
+    })
+  }, 0);
 }
 
 async function yahooChart(url) {
@@ -150,7 +172,10 @@ async function yahooChart(url) {
   target.searchParams.set("includeAdjustedClose", "true");
   const ttl = interval === "5m" ? 20 : 90;
   return forwardJson(target.toString(), {
-    headers: upstreamHeaders({ "accept": "application/json" })
+    headers: upstreamHeaders({
+      "accept": "application/json",
+      "referer": "https://finance.yahoo.com/"
+    })
   }, ttl);
 }
 
@@ -169,12 +194,27 @@ async function nseDelivery(url) {
   target.searchParams.set("symbol", symbol);
   target.searchParams.set("type", "priceVolumeDeliverable");
   target.searchParams.set("series", "ALL");
-  return forwardJson(target.toString(), {
-    headers: upstreamHeaders({
-      "accept": "application/json,text/plain,*/*",
-      "referer": "https://www.nseindia.com/"
-    })
-  }, 120);
+  const headers = upstreamHeaders({
+    "accept": "application/json,text/plain,*/*",
+    "accept-language": "en-US,en;q=0.9",
+    "referer": "https://www.nseindia.com/"
+  });
+
+  // NSE commonly establishes an anonymous browser session on its home page
+  // before serving JSON. Keep that cookie exchange inside the Worker.
+  try {
+    const bootstrap = await upstreamFetch("https://www.nseindia.com/", {
+      headers
+    });
+    const cookies = extractCookies(bootstrap.headers);
+    if (cookies) headers.cookie = cookies;
+    await bootstrap.arrayBuffer();
+  } catch {
+    // Match the legacy requests.get behaviour as a fallback when NSE's
+    // homepage/bootstrap is unavailable from the Worker network.
+  }
+
+  return forwardJson(target.toString(), { headers }, 120);
 }
 
 function extractCsrf(html) {
@@ -286,7 +326,12 @@ async function handleApi(request, env) {
       ok: true,
       service: "schcatweb-api",
       version: "1",
-      providers: ["yahoo", "marketsmith", "chartink", "nse"]
+      providers: ["yahoo", "marketsmith", "chartink", "nse"],
+      marketSmithAuthConfigured: Boolean(
+        env.MARKETSMITH_AUTH ||
+        env.MARKETSMITH_FINANCE_AUTH ||
+        env.MARKETSMITH_SYMBOL_AUTH
+      )
     });
   }
 
