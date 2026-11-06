@@ -19,7 +19,8 @@ This is the durable source of truth for continuing the SchCat migration. In a ne
 - UI and analysis: React + TypeScript + Vite in `frontend/`.
 - Runtime API: `worker/index.js` handles fixed, validated provider routes under `/api/*`.
 - Hosting: one Cloudflare Worker serves both the API and the Vite production assets through the `ASSETS` binding configured in root `wrangler.toml`.
-- The Worker routes Yahoo Finance, MarketSmith, ChartInk and NSE requests server-side. Browser calls are same-origin, so browser CORS enforcement is removed from the provider request path.
+- Hybrid architecture: Yahoo chart data now fetches directly from the user's browser (verified HTTP 200); MarketSmith, NSE and ChartInk direct-browser access are tested by the provider diagnostics. The Worker retains fixed server-side routes as fallbacks.
+- Market Pulse keeps its proven Worker-backed ChartInk CSRF/session flow until the direct browser diagnostic confirms that the browser can read ChartInk and complete the scan POST.
 - The Worker uses upstream timeouts and short edge caching for successful read-only GET data. ChartInk scan POSTs are not cached.
 - Static JSON assets hold non-sensitive reference datasets. Personal holdings, settings and watchlists remain browser-local unless a sync feature is separately approved.
 - Node/npm are development/build tools only. No always-on Node server or Python runtime is required for the current Cloudflare deployment.
@@ -271,17 +272,20 @@ Verification:
 Implemented on `main`:
 - `worker/index.js` is the Cloudflare Worker entry point. It serves `/api/health`, Yahoo chart data, MarketSmith finance/symbol data, ChartInk scan/history/widget requests and NSE historical delivery data.
 - `wrangler.toml` now binds `frontend/dist` as `ASSETS` and routes `/api/*` through the Worker before static asset handling. SPA fallback remains enabled.
-- Yahoo chart requests in `frontend/src/data/providers/chartData.ts` now use the same-origin Worker API.
-- Provider diagnostics now call same-origin Worker routes instead of contacting third-party domains directly from the browser.
-- Market Pulse's ChartInk widget request now runs through the Worker, including CSRF bootstrap and short-lived session-cookie forwarding server-side.
+- Yahoo chart requests in `frontend/src/data/providers/chartData.ts` now call Yahoo Finance directly from the browser with credentials omitted.
+- Provider diagnostics now attempt direct cross-origin browser requests to Yahoo, both MarketSmith hosts, NSE and ChartInk, using ordinary browser CORS and cookie rules. The direct ChartInk test includes the CSRF + scan POST flow.
+- Market Pulse's ChartInk widget request continues through the Worker, including CSRF bootstrap and short-lived session-cookie forwarding server-side, because that path is confirmed to return 3,000 rows.
+- The last live diagnostic results were MarketSmith HTTP 403 on both endpoints, ChartInk Worker HTTP 200 (3,000 rows), NSE Worker HTTP 520 and Yahoo HTTP 200. These are observed results, not assumptions about the new direct-browser probes.
 - The Worker validates symbols, stock IDs, intervals, ranges and NSE dates; applies 12-second upstream timeouts; uses short edge caching for successful read-only GETs; and does not cache ChartInk POSTs.
 - No arbitrary URL proxy, database, R2 bucket, committed credential or frontend cookie access has been introduced. An optional `MARKETSMITH_AUTH` Cloudflare secret can be configured if a valid authorized value is available.
 - Integration tests cover health, Yahoo routing and validation, MarketSmith URL construction, ChartInk CSRF/session flow, safe redirect handling, invalid request bodies, static asset forwarding, unknown API routes and Wrangler configuration.
 - CI now runs `npx --yes wrangler deploy --dry-run --config ./wrangler.toml` after the frontend build to verify that Cloudflare can bundle the Worker and static assets before a real deployment.
 
 Important limitations:
-- A Cloudflare Worker removes browser CORS restrictions but is not a VPN. Cloudflare outbound IPs may still be blocked by providers, and MarketSmith may require a valid auth value. No live provider result is claimed until the Worker is deployed and checked.
-- Market Pulse is now wired to the Worker API. Other future features that need fresh MarketSmith/NSE/ChartInk data still need to be connected to these routes before their live calculations can be enabled.
+- Direct browser access is governed by provider CORS and browser cookie policy. Yahoo is verified from the browser; the new MarketSmith, NSE and ChartInk direct probes still need to be run from the deployed origin.
+- MarketSmith 403 is an authentication/access-policy outcome and cannot be fixed merely by moving the request into the browser. No legacy hard-coded auth token has been copied into frontend code.
+- NSE 520 from Cloudflare is an upstream/gateway failure. Direct browser testing may reveal a different result, but this is not guaranteed.
+- Market Pulse remains wired to the confirmed Worker ChartInk API. Other future features that need fresh MarketSmith/NSE/ChartInk data still need to be connected to validated provider responses before their live calculations can be enabled.
 - Configure Cloudflare WAF/rate limiting for `/api/*` before significant public use.
 - Cloudflare Workers Builds should watch `frontend/**`, `worker/**` and `wrangler.toml`; the existing deploy command remains `npx wrangler deploy --config ./wrangler.toml`.
 
