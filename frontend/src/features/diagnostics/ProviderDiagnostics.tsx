@@ -5,7 +5,10 @@ import {
   type MarketSmithIdMap
 } from "../../data/reference/marketSmithIds";
 import {
+  clearStoredMarketSmithAuth,
+  readStoredMarketSmithAuth,
   runProviderDiagnostics,
+  saveStoredMarketSmithAuth,
   type ProviderProbeResult
 } from "../../data/providers/providerDiagnostics";
 
@@ -23,11 +26,21 @@ function ProviderDiagnostics() {
   const [marketSmithIds, setMarketSmithIds] = useState<MarketSmithIdMap | null>(null);
   const [marketSmithIdsError, setMarketSmithIdsError] = useState("");
   const [marketSmithSymbol, setMarketSmithSymbol] = useState("RVNL");
+  const [marketSmithAuth, setMarketSmithAuth] = useState("");
+  const [marketSmithAuthMessage, setMarketSmithAuthMessage] = useState("Loading saved browser setting…");
+  const [marketSmithAuthSaved, setMarketSmithAuthSaved] = useState(false);
   const marketSmithStockId = marketSmithIds
     ? String(getMarketSmithId(marketSmithIds, marketSmithSymbol) ?? "")
     : "";
 
   useEffect(() => {
+    const savedAuth = readStoredMarketSmithAuth();
+    setMarketSmithAuth(savedAuth);
+    setMarketSmithAuthSaved(Boolean(savedAuth));
+    setMarketSmithAuthMessage(savedAuth
+      ? "MarketSmith value loaded from this browser."
+      : "No MarketSmith value saved in this browser yet.");
+
     let active = true;
     loadMarketSmithIds()
       .then((ids) => {
@@ -48,6 +61,29 @@ function ProviderDiagnostics() {
   const [running, setRunning] = useState(false);
   const [startedAt, setStartedAt] = useState<string | null>(null);
 
+  const saveMarketSmithAuth = () => {
+    try {
+      const saved = saveStoredMarketSmithAuth(marketSmithAuth);
+      setMarketSmithAuth(saved);
+      setMarketSmithAuthSaved(true);
+      setMarketSmithAuthMessage("Saved locally in this browser.");
+    } catch (error) {
+      setMarketSmithAuthSaved(false);
+      setMarketSmithAuthMessage(error instanceof Error ? error.message : "Could not save the value in this browser.");
+    }
+  };
+
+  const clearMarketSmithAuth = () => {
+    try {
+      clearStoredMarketSmithAuth();
+      setMarketSmithAuth("");
+      setMarketSmithAuthSaved(false);
+      setMarketSmithAuthMessage("Removed from this browser.");
+    } catch {
+      setMarketSmithAuthMessage("Could not clear the saved browser value.");
+    }
+  };
+
   const runAudit = async () => {
     if (running) return;
     setRunning(true);
@@ -57,7 +93,8 @@ function ProviderDiagnostics() {
     try {
       const nextResults = await runProviderDiagnostics({
         marketSmithStockId,
-        marketSmithSymbol
+        marketSmithSymbol,
+        marketSmithAuth: readStoredMarketSmithAuth()
       });
       setResults(nextResults);
     } finally {
@@ -87,14 +124,42 @@ function ProviderDiagnostics() {
           The browser only talks to SchCatWeb; provider cookies and upstream requests stay inside the Worker.
         </p>
         <p>
-          MarketSmith needs a current <code>ms-auth</code> value. Configure Cloudflare Worker secrets
-          <code> MARKETSMITH_FINANCE_AUTH</code> and <code> MARKETSMITH_SYMBOL_AUTH</code>, or use the shared
-          <code> MARKETSMITH_AUTH</code> secret. The old values in the desktop source may be expired.
-          Never place these values in frontend code or paste them into chat.
+          MarketSmith needs a current <code>ms-auth</code> value. Enter it in the browser-local field below.
+          It is saved only in this browser and supplied to the SchCatWeb Worker for each MarketSmith request.
         </p>
         <p>
           The results now include the upstream HTTP response returned by the Worker. This separates provider restrictions (401/403/520) from a failure to reach SchCatWeb itself.
         </p>
+      </section>
+
+      <section className="diagnostics-auth-panel">
+        <div className="diagnostics-auth-heading">
+          <div>
+            <h2>MarketSmith session</h2>
+            <p>Paste the value after <code>ms-auth=</code> from your working MarketSmith URL, or paste the full URL.</p>
+          </div>
+          <span className={marketSmithAuthSaved ? "diagnostics-auth-saved" : "diagnostics-auth-unsaved"}>
+            {marketSmithAuthSaved ? "Saved in this browser" : "Not saved"}
+          </span>
+        </div>
+        <div className="diagnostics-auth-row">
+          <input
+            id="ms-auth"
+            type="password"
+            value={marketSmithAuth}
+            onChange={(event) => {
+              setMarketSmithAuth(event.target.value);
+              setMarketSmithAuthSaved(false);
+              setMarketSmithAuthMessage("Unsaved changes. Save before running the MarketSmith checks.");
+            }}
+            placeholder="Paste MarketSmith ms-auth value or working URL"
+            autoComplete="off"
+            spellCheck={false}
+          />
+          <button type="button" onClick={saveMarketSmithAuth}>Save in this browser</button>
+          <button type="button" className="secondary" onClick={clearMarketSmithAuth}>Clear</button>
+        </div>
+        <p className="diagnostics-auth-message" aria-live="polite">{marketSmithAuthMessage}</p>
       </section>
 
       <section className="diagnostics-controls">
@@ -164,7 +229,7 @@ function ProviderDiagnostics() {
       </section>
 
       <footer className="diagnostics-footer">
-        The diagnostic page does not read or store provider cookies or session tokens. MarketSmith credentials, when configured, are held as Cloudflare Worker secrets.
+        The MarketSmith value is kept in this browser's local storage, not in the static site files or Cloudflare settings. It is sent over HTTPS to the SchCatWeb Worker only when MarketSmith is requested. Clearing browser data or using another browser removes the saved setting.
       </footer>
     </main>
   );
