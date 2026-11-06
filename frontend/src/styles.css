@@ -703,3 +703,6 @@ h2 { font-size: 17px; letter-spacing: -.3px; font-weight: 600; margin: 7px 0 0; 
   .workspace-chart-ohlc { gap: 6px 8px; font-size: 7px; }
   .workspace-chart-card-heading { padding: 9px 10px; }
 }
+
+.workspace-rsi { display: flex; align-items: center; gap: 9px; margin-top: 12px; color: #8696aa; font-size: 10px; }
+.workspace-rsi strong { color: #e5a64e; font-size: 12px; font-variant-numeric: tabular-nums; }
