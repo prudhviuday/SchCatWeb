@@ -1,7 +1,7 @@
 import type { MarketSmithLiveMetrics } from "../../data/providers/marketSmithStockData.js";
 import type { MarketUniverseRecord } from "../../data/reference/marketUniverse.js";
 
-export interface ScreenerRow extends MarketUniverseRecord, Partial<MarketSmithLiveMetrics> {}
+export interface ScreenerRow extends MarketUniverseRecord, Partial<Omit<MarketSmithLiveMetrics, "quarterlyGrowth">> {}
 
 export type ScreenerNumericField =
   | "marketCap" | "pb" | "roce" | "nikScore"
