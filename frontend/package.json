@@ -11,7 +11,7 @@
     "test:providers": "tsc -p tsconfig.analysis-tests.json && node --test tests/providers/providerDiagnostics.test.mjs",
     "test:charts": "tsc -p tsconfig.analysis-tests.json && node --test tests/providers/chartData.test.mjs",
     "test:indicators": "tsc -p tsconfig.analysis-tests.json && node --test tests/analysis/technicalIndicators.test.mjs",
-    "test:reference": "tsc -p tsconfig.analysis-tests.json && node --test tests/reference/marketSmithIds.test.mjs"
+    "test:reference": "tsc -p tsconfig.analysis-tests.json && node --test tests/reference/*.test.mjs"
   },
   "dependencies": {
     "react": "^19.1.0",
