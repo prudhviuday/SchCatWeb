@@ -65,7 +65,8 @@ The root `wrangler.toml` sets `main = "worker/index.js"`, binds `frontend/dist` 
 | 17 | Portfolio using browser-local storage/import/export | Complete — holdings, P&L, legacy synthetic OHLC charts, CSV/JSON backup and parity tests |
 | 18 | Watchlists and query management using browser-local storage/import/export | Complete — browser-local watchlists and saved queries, desktop-format CSV migration, JSON/CSV backup and parity tests |
 | 19 | Integration, parity, browser compatibility and end-to-end testing | Complete — all six modules linked from Overview; production preview smoke tests cover SPA fallback, bundle, reference data and static deployment config |
-| 20 | Cloudflare Worker API integration, production deployment and final release verification | In progress — provider paths restored to server-side Worker calls; confirm CI, Cloudflare deployment and live upstream outcomes |
+| 20 | Cloudflare Worker API integration, production deployment and provider diagnostics | In progress — same-origin Worker routes are in place; user confirmed the browser-local MarketSmith session input and diagnostics flow work. Continue checking the actual live outcomes and deployment state |
+| 21 | Live MarketSmith Stock Screener data | Implemented on main; CI/parity tests pass. User still needs to run the full-universe refresh from the deployed screener to verify live results and provider limits |
 
 Steps 7–11 are ordered to establish calculations, provider access, chart behaviour and static data before completing the feature screens. The original desktop app remains the behavioural reference throughout.
 
@@ -270,34 +271,44 @@ Verification:
 - Run: https://github.com/prudhviuday/SchCatWeb/actions/runs/42166528885.
 - This is a local production-preview smoke test in CI, not a live browser session against Cloudflare. Live provider CORS/authentication and Cloudflare publication remain unverified and are deliberately left for Step 20.
 
-## Step 20 — Server-side provider API and Cloudflare release (in progress)
+## Step 20 — Server-side provider API and Cloudflare release (provider diagnostics working; final release checks continue)
 
 Implemented on `main`:
 - `worker/index.js` is the Cloudflare Worker entry point. It serves `/api/health`, Yahoo chart data, MarketSmith finance/symbol data, ChartInk scan/history/widget requests and NSE historical delivery data.
-- `wrangler.toml` now binds `frontend/dist` as `ASSETS` and routes `/api/*` through the Worker before static asset handling. SPA fallback remains enabled.
-- Yahoo chart requests in `frontend/src/data/providers/chartData.ts` now call Yahoo Finance directly from the browser with credentials omitted.
-- Provider diagnostics now attempt direct cross-origin browser requests to Yahoo, both MarketSmith hosts, NSE and ChartInk, using ordinary browser CORS and cookie rules. The direct ChartInk test includes the CSRF + scan POST flow.
-- Market Pulse's ChartInk widget request continues through the Worker, including CSRF bootstrap and short-lived session-cookie forwarding server-side, because that path is confirmed to return 3,000 rows.
-- The last live diagnostic results were MarketSmith HTTP 403 on both endpoints, ChartInk Worker HTTP 200 (3,000 rows), NSE Worker HTTP 520 and Yahoo HTTP 200. These are observed results, not assumptions about the new direct-browser probes.
-- The Worker validates symbols, stock IDs, intervals, ranges and NSE dates; applies 12-second upstream timeouts; uses short edge caching for successful read-only GETs; and does not cache ChartInk POSTs.
-- No arbitrary URL proxy, database, R2 bucket or committed credential has been introduced. The MarketSmith session value is stored in browser-local storage and passed per request; no Cloudflare secret is required. An optional legacy `MARKETSMITH_AUTH` secret remains supported for backward compatibility.
-- Integration tests cover health, Yahoo routing and validation, MarketSmith URL construction, ChartInk CSRF/session flow, safe redirect handling, invalid request bodies, static asset forwarding, unknown API routes and Wrangler configuration.
-- CI now runs `npx --yes wrangler deploy --dry-run --config ./wrangler.toml` after the frontend build to verify that Cloudflare can bundle the Worker and static assets before a real deployment.
+- `wrangler.toml` binds `frontend/dist` as `ASSETS` and routes `/api/*` through the Worker before static asset handling. The website remains a static frontend; the Worker is a small same-origin provider relay, not an application database or persistent backend.
+- Yahoo chart requests use the same-origin `/api/yahoo/chart` Worker route. ChartInk keeps its CSRF bootstrap + session-cookie forwarding flow in the Worker. NSE bootstraps its homepage before requesting historical delivery data.
+- The provider diagnostics page calls the same-origin Worker routes. The MarketSmith textbox accepts either the raw `ms-auth` query value or the full working URL, saves it in that browser's `localStorage`, and sends it to the Worker in the `x-marketsmith-auth` header. No Cloudflare secret is required for this workflow. The Worker-secret fallback remains optional for backward compatibility.
+- User confirmed that the browser-local MarketSmith input and diagnostics flow are working. The previously reported diagnostic run before that change showed Yahoo, ChartInk and NSE reachable; the 503 for MarketSmith was SchCatWeb's missing-session configuration response, not an upstream MarketSmith rejection.
+- The Worker validates symbols, instrument IDs, intervals, ranges and NSE dates; applies upstream timeouts; uses short edge caching for successful read-only GET data; and does not cache ChartInk POST requests.
+- Integration tests cover health, Yahoo routing and validation, MarketSmith URL construction and header authentication, ChartInk CSRF/session flow, NSE cookie bootstrap, static asset forwarding, unknown API routes and Wrangler configuration.
+- CI runs `npx --yes wrangler deploy --dry-run --config ./wrangler.toml` after the frontend build to verify that Cloudflare can bundle the Worker and static assets before a real deployment.
 
-Important limitations:
-- Direct browser access is governed by provider CORS and browser cookie policy. Yahoo is verified from the browser; the new MarketSmith, NSE and ChartInk direct probes still need to be run from the deployed origin.
-- MarketSmith 403 is an authentication/access-policy outcome and cannot be fixed merely by moving the request into the browser. No legacy hard-coded auth token has been copied into frontend code.
-- NSE 520 from Cloudflare is an upstream/gateway failure. Direct browser testing may reveal a different result, but this is not guaranteed.
-- Market Pulse remains wired to the confirmed Worker ChartInk API. Other future features that need fresh MarketSmith/NSE/ChartInk data still need to be connected to validated provider responses before their live calculations can be enabled.
-- Configure Cloudflare WAF/rate limiting for `/api/*` before significant public use.
-- Cloudflare Workers Builds should watch `frontend/**`, `worker/**` and `wrangler.toml`; the existing deploy command remains `npx wrangler deploy --config ./wrangler.toml`.
+Release checks still required:
+1. Confirm Cloudflare Workers Builds deployed the latest `main` commit.
+2. Open `https://schcatweb.prudhvi123143.workers.dev/api/health` and confirm the JSON health response.
+3. Run `https://schcatweb.prudhvi123143.workers.dev/?diagnostics=providers` in the same browser where the MarketSmith value was saved; note exact HTTP statuses and row counts.
+4. Test the chart workspace and Market Pulse against the deployed site. If a provider returns 401/403/520, record the actual upstream response and address only that provider-specific issue.
 
-Next verification:
-1. Confirm Cloudflare Workers Builds deploys the latest `main` commit using the new Worker entrypoint.
-2. Open `https://schcatweb.prudhvi123143.workers.dev/api/health` and verify the JSON health response.
-3. Run provider diagnostics from `https://schcatweb.prudhvi123143.workers.dev/?diagnostics=providers`.
-4. Test chart loading and Market Pulse. Record exact upstream HTTP/auth/network outcomes. If Cloudflare egress is blocked, evaluate a separate Node host/VPN route rather than claiming a Worker proxy fixed it.
+## Step 21 — Live MarketSmith Stock Screener (implemented; full live refresh awaiting user verification)
 
+Implemented on `main`:
+- `frontend/src/data/providers/marketSmithStockData.ts` adds a typed MarketSmith symbol-details client. It calls the same-origin Worker with the browser-local session value in the `x-marketsmith-auth` header; the credential is not embedded in the URL, committed code or static assets.
+- `parseMarketSmithStockMetrics` ports the field mapping from the desktop `util.fetch_stock_data_from_MS`: Group Rank, RS numeric grade, EPS rank, MasterScore, Acc/Dis rating, PE, PEG, ROE, EPS growth, earnings stability, book value, cash flow and current price.
+- FScore uses the existing parity-tested `calculateEarningsSalesScore` on the first three returned quarterly EPS/sales growth observations. PE keeps the desktop integer conversion; PEG follows the existing PE / EPS-growth calculation and fallback.
+- The Stock Screener now has an explicit **Fetch live MarketSmith** action. It requests the full reference universe only after the user clicks it, uses the desktop's eight-request concurrency, resolves an instrument ID from the workbook record or the static MarketSmith ID map, and reports progress, failures and symbols without an ID.
+- The table now displays and sorts by Group Rank, RS, EPS Rank, MasterScore, Acc/Dis, PE, PEG and FScore. Numeric filters are available for the live MarketSmith fields as well as the existing reference fields.
+- Market Cap, P/B, ROCE and NikScore remain clearly marked as undated workbook snapshot data; live MarketSmith values do not silently overwrite those reference values.
+- Refreshed MarketSmith rows stay in page memory only. No market data is uploaded to a database or written to browser storage. The browser-local session value remains in localStorage by the explicit user choice made in Step 20.
 
+Tests and verification:
+- `npm run test:marketsmith` covers response parsing, desktop field mapping, FScore/PEG values, request URL/header, upstream errors, eight-worker concurrency, ID fallback and progress.
+- Screener tests now cover numeric filtering and sorting for the live RS/FScore columns.
+- CI includes the new MarketSmith provider suite, full TypeScript/Vite build, existing parity suites, production preview smoke tests and Wrangler dry-run.
+- The latest successful full CI run before the final additional screener regression test is available at https://github.com/prudhviuday/SchCatWeb/actions/runs/42205975936. The newer run will be recorded after it completes.
+- Cloudflare publication of the latest Step 21 commit and an actual full-universe live refresh have not yet been independently confirmed.
 
-
+User test instructions:
+1. Open `https://schcatweb.prudhvi123143.workers.dev/?diagnostics=providers` in the same browser and confirm the MarketSmith session is saved there.
+2. Open the main site, select **Stock Screener**, and click **Fetch live MarketSmith**.
+3. Let the progress counter finish. Confirm RS, EPS Rank, MasterScore, PE, PEG and FScore populate, then try sorting by RS and filtering by FScore.
+4. Note the success/failure counts. If it reports many errors or takes too long, do not repeatedly trigger refreshes; record the first error and the final counts for the next step.
