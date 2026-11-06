@@ -89,7 +89,7 @@ function downloadCsv(records: readonly ScreenerRow[]) {
   const lines = [
     columns.map(([label]) => csvCell(label)).join(","),
     ...records.map((record) =>
-      columns.map(([, key]) => csvCell(record[key])).join(",")
+      columns.map(([, key]) => { const value = record[key]; return csvCell(typeof value === "string" || typeof value === "number" ? value : null); }).join(",")
     )
   ];
   const blob = new Blob([lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
@@ -537,7 +537,7 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
                       ) : column.key === "marketCap" ? (
                         compactNumber(record.marketCap)
                       ) : (
-                        displayScreenerValue(record[column.key])
+                        displayScreenerValue(typeof record[column.key] === "string" || typeof record[column.key] === "number" ? record[column.key] : null)
                       )}
                     </td>
                   ))}
