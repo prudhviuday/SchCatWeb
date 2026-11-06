@@ -47,6 +47,17 @@ async function upstreamFetch(url, init = {}) {
 }
 
 async function forwardJson(url, init = {}, cacheSeconds = 0) {
+  const cache = typeof caches !== "undefined" ? caches.default : null;
+  const cacheKey = new Request(url, { method: "GET" });
+  if (cache && cacheSeconds > 0) {
+    try {
+      const cached = await cache.match(cacheKey);
+      if (cached) return cached;
+    } catch {
+      // Cache failures must never prevent a live provider request.
+    }
+  }
+
   let response;
   try {
     response = await upstreamFetch(url, init);
@@ -69,7 +80,15 @@ async function forwardJson(url, init = {}, cacheSeconds = 0) {
       : "no-store",
     "x-schcat-upstream-status": String(response.status)
   });
-  return new Response(body, { status: response.status, headers });
+  const output = new Response(body, { status: response.status, headers });
+  if (cache && cacheSeconds > 0 && response.ok) {
+    try {
+      await cache.put(cacheKey, output.clone());
+    } catch {
+      // A cache write failure does not change the provider response.
+    }
+  }
+  return output;
 }
 
 function withMarketSmithAuth(url, env) {
