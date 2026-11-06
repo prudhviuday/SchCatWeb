@@ -57,6 +57,12 @@ jobs:
       - name: Run chart workspace tests
         working-directory: frontend
         run: npm run test:workspace
+      - name: Run Multi-Stock Analysis tests
+        working-directory: frontend
+        run: npm run test:multi-stock-analysis
+      - name: Run Right Panel chart tests
+        working-directory: frontend
+        run: npm run test:right-panel
       - name: Run industry analysis tests
         working-directory: frontend
         run: npm run test:industry
