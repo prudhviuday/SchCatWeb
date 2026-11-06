@@ -5,7 +5,11 @@ import {
   buildMarketSmithFinanceDetailsUrl,
   buildMarketSmithSymbolDetailsUrl,
   buildNseDeliveryUrl,
-  extractCsrfToken
+  buildMarketSmithFinanceProxyUrl,
+  buildMarketSmithSymbolProxyUrl,
+  buildNseDeliveryProxyUrl,
+  extractCsrfToken,
+  runProviderDiagnostics
 } from "../../.test-dist/data/providers/providerDiagnostics.js";
 
 test("MarketSmith finance URL preserves the legacy endpoint and consolidation flag", () => {
@@ -78,4 +82,76 @@ test("CSRF token parser supports reordered attributes and single quotes", () => 
 
 test("CSRF token parser returns null when the meta tag is missing", () => {
   assert.equal(extractCsrfToken("<html><head></head></html>"), null);
+});
+
+
+test("provider diagnostics call only same-origin Worker APIs", async () => {
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (input, init = {}) => {
+    const url = String(input);
+    calls.push({ url, init });
+    if (url.startsWith("/api/marketsmith/finance")) {
+      return new Response(JSON.stringify({ ratiosAnnualData: [] }), { status: 200 });
+    }
+    if (url.startsWith("/api/marketsmith/symbol")) {
+      return new Response(JSON.stringify({ response: {} }), { status: 200 });
+    }
+    if (url === "/api/chartink/scan") {
+      return new Response(JSON.stringify({ data: [{ nsecode: "RELIANCE" }] }), { status: 200 });
+    }
+    if (url.startsWith("/api/nse/delivery")) {
+      return new Response(JSON.stringify({ data: [] }), { status: 200 });
+    }
+    if (url.startsWith("/api/yahoo/chart")) {
+      return new Response(JSON.stringify({
+        chart: { result: [{ timestamp: [1] }], error: null }
+      }), { status: 200 });
+    }
+    throw new Error("Unexpected URL: " + url);
+  };
+
+  try {
+    const results = await runProviderDiagnostics({
+      marketSmithStockId: "3159563",
+      marketSmithSymbol: "RVNL"
+    });
+    assert.equal(results.length, 5);
+    assert.equal(results.every((item) => item.status === "success"), true);
+    assert.equal(calls.every((call) => call.url.startsWith("/api/")), true);
+    assert.equal(calls.some((call) => call.url.startsWith("https://")), false);
+    const chartink = calls.find((call) => call.url === "/api/chartink/scan");
+    assert.equal(chartink.init.method, "POST");
+    assert.equal(chartink.init.mode, "same-origin");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("MarketSmith Worker URL builders validate inputs and never include auth values", () => {
+  const finance = new URL(
+    buildMarketSmithFinanceProxyUrl("3159563"),
+    "https://schcatweb.test"
+  );
+  assert.equal(finance.pathname, "/api/marketsmith/finance");
+  assert.equal(finance.searchParams.get("stockId"), "3159563");
+  const symbol = new URL(
+    buildMarketSmithSymbolProxyUrl("3159563", "rvnl"),
+    "https://schcatweb.test"
+  );
+  assert.equal(symbol.pathname, "/api/marketsmith/symbol");
+  assert.equal(symbol.searchParams.get("symbol"), "RVNL");
+  assert.equal(symbol.searchParams.has("ms-auth"), false);
+  assert.throws(() => buildMarketSmithFinanceProxyUrl("1&x=2"), TypeError);
+});
+
+test("NSE Worker URL builder uses its same-origin route", () => {
+  const url = new URL(
+    buildNseDeliveryProxyUrl("reliance", "01-11-2026", "06-11-2026"),
+    "https://schcatweb.test"
+  );
+  assert.equal(url.pathname, "/api/nse/delivery");
+  assert.equal(url.searchParams.get("symbol"), "RELIANCE");
+  assert.equal(url.searchParams.get("from"), "01-11-2026");
+  assert.equal(url.searchParams.get("to"), "06-11-2026");
 });
