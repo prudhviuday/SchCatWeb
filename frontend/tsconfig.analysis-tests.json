@@ -21,6 +21,7 @@
     "src/features/screener/watchlists.ts",
     "src/features/charts/chartPresentation.ts",
     "src/features/industry/industryAnalysis.ts",
+    "src/features/industry/industryLive.ts",
     "src/features/research/research.ts",
     "src/features/marketPulse/marketPulse.ts",
     "src/features/portfolio/portfolio.ts",
