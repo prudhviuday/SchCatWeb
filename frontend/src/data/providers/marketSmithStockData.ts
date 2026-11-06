@@ -181,6 +181,8 @@ export function parseMarketSmithStockMetrics(payload: unknown): MarketSmithLiveM
     livePb: finiteNumber(headerBlock.bookVal),
     cashFlow: finiteNumber(headerBlock.cashFlow),
     currentPrice: finiteNumber(header.currentPrice),
+    institutionalOwnership,
+    institutionalCost,
     quarterlyGrowth
   };
 }
