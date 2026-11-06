@@ -126,13 +126,13 @@ Implemented on `main`:
 - NSE now bootstraps the NSE homepage and forwards its anonymous session cookie before requesting historical delivery data; if bootstrap fails, it falls back to the legacy direct API request shape.
 - Yahoo chart requests now use `/api/yahoo/chart` from the browser, while the Worker contacts Yahoo server-side using browser-like request headers.
 - Provider diagnostics now exercise the same-origin Worker routes for Yahoo, MarketSmith finance/symbol, ChartInk and NSE. They report the Worker/upstream result rather than an external-provider CORS error.
-- MarketSmith still requires a current authorized `ms-auth` value. Configure `MARKETSMITH_FINANCE_AUTH` and `MARKETSMITH_SYMBOL_AUTH` as Cloudflare secrets, or use shared `MARKETSMITH_AUTH`. The old source values are not copied because they are session-like and may be expired.
+- MarketSmith symbol-details now matches the user-supplied working URL shape: `marketsmithindia.com/.../symboldetails.json`, `isConsolidated=1`, `lang=en`, symbol text, and a rolling five-year `s/e` range. The diagnostic UI loads `marketSmithIds.json` and resolves the entered symbol to its instrument ID (RVNL → 3159563) rather than asking the user to type an ID. The current `ms-auth` value remains a Cloudflare Worker secret (`MARKETSMITH_SYMBOL_AUTH` or shared `MARKETSMITH_AUTH`); finance can use `MARKETSMITH_FINANCE_AUTH` or the shared fallback. Never commit the auth value.
 - Provider request URL, parameter, and CSRF parser tests are in `frontend/tests/providers/providerDiagnostics.test.mjs`, run with `npm run test:providers`.
 
 Verification:
 - GitHub Actions passed on commit `a2f16a3ae211520b39d4b3d264b7d83a1b31d142`: calculation tests, provider request-shape tests, TypeScript/Vite production build and static output checks.
 - The earlier direct-browser tests returned browser-blocked for Yahoo, MarketSmith, ChartInk and NSE. That is expected when the providers do not grant this website CORS access; it does not mean their server-side APIs are unavailable.
-- The Worker-backed code changes are committed on `main`, but require the latest CI run and Cloudflare deployment before live provider results can be collected. After deployment, open `https://schcatweb.prudhvi123143.workers.dev/?diagnostics=providers` and click **Run server-side diagnostics**.
+- The Worker-backed code changes are committed on `main`. The latest successful CI run validates the MarketSmith endpoint URL/parameters, rolling date range, diagnostic symbol-to-ID lookup compile, provider tests, production build and Worker integration tests. After Cloudflare deploys the latest commit, open `https://schcatweb.prudhvi123143.workers.dev/?diagnostics=providers` and click **Run server-side diagnostics**.
 - If MarketSmith reports `marketsmith_auth_not_configured`, configure current authorized endpoint-specific Cloudflare secrets. If Yahoo, ChartInk or NSE returns an upstream HTTP/network error, use that actual upstream response to decide the next provider-specific fix.
 
 ## Step 9 — Chart data workflow and CRIP4 chart transforms (in progress)
