@@ -24,7 +24,8 @@
     "src/features/research/research.ts",
     "src/features/marketPulse/marketPulse.ts",
     "src/features/portfolio/portfolio.ts",
-    "src/data/providers/marketSmithStockData.ts"
+    "src/data/providers/marketSmithStockData.ts",
+    "src/data/providers/nseDelivery.ts"
   ],
   "include": []
 }
