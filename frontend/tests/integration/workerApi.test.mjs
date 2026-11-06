@@ -101,6 +101,7 @@ test("ChartInk route performs CSRF bootstrap and posts a scan with the token", a
   assert.equal(calls[1].init.headers["x-csrf-token"], "csrf-test");
   assert.match(calls[1].init.headers.cookie, /ci_session=session-test/);
   assert.equal(calls[1].init.method, "POST");
+  assert.equal(calls[1].init.redirect, "manual", "session cookies must not be forwarded across redirects");
   assert.deepEqual(await response.json(), { data: [{ nsecode: "RELIANCE" }] });
 });
 
@@ -129,4 +130,22 @@ test("unknown API routes return JSON 404 instead of the SPA shell", async () => 
   );
   assert.equal(response.status, 404);
   assert.deepEqual(await response.json(), { error: "api_route_not_found" });
+});
+
+test("ChartInk rejects a non-object body without making an upstream request", async () => {
+  let called = false;
+  globalThis.fetch = async () => {
+    called = true;
+    return new Response("{}");
+  };
+  const response = await worker.fetch(
+    new Request("https://schcatweb.test/api/chartink/scan", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "null"
+    }),
+    { ASSETS: { fetch: async () => new Response("asset") } }
+  );
+  assert.equal(response.status, 400);
+  assert.equal(called, false);
 });
