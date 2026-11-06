@@ -1,4 +1,4 @@
-import { buildYahooProxyUrl } from "./chartData.js";
+import { buildYahooChartUrl } from "./chartData.js";
 
 export type ProviderProbeStatus =
   | "success"
@@ -44,7 +44,8 @@ async function requestText(
   provider: ProviderProbeResult["provider"],
   title: string,
   url: string,
-  init: RequestInit = {}
+  init: RequestInit = {},
+  fetchOptions: Pick<RequestInit, "mode" | "credentials"> = {}
 ): Promise<FetchAttempt> {
   const startedAt = now();
   const controller = new AbortController();
@@ -56,8 +57,8 @@ async function requestText(
   try {
     const response = await fetch(url, {
       ...init,
-      mode: "same-origin",
-      credentials: init.credentials ?? "same-origin",
+      mode: fetchOptions.mode ?? "same-origin",
+      credentials: fetchOptions.credentials ?? init.credentials ?? "same-origin",
       redirect: "follow",
       signal: controller.signal
     });
@@ -85,7 +86,9 @@ async function requestText(
         status: isTimeout ? "timeout" : "browser-blocked",
         message: isTimeout
           ? "The provider did not respond within 12 seconds."
-          : "The SchCatWeb API request failed before returning a response. Check the Worker deployment and API diagnostics.",
+          : fetchOptions.mode === "cors"
+            ? "The browser could not read the provider response. The provider may not allow cross-origin browser access (CORS), or the network may have blocked it."
+            : "The SchCatWeb API request failed before returning a response. Check the Worker deployment and API diagnostics.",
         elapsedMs
       }
     };
@@ -255,13 +258,9 @@ async function probeMarketSmith(
     : "MarketSmith symboldetails endpoint";
   let url: string;
   try {
-    if (endpoint === "finance") {
-      buildMarketSmithFinanceDetailsUrl(stockId);
-      url = `/api/marketsmith/finance?stockId=${encodeURIComponent(stockId.trim())}`;
-    } else {
-      buildMarketSmithSymbolDetailsUrl(stockId, symbol);
-      url = `/api/marketsmith/symbol?stockId=${encodeURIComponent(stockId.trim())}&symbol=${encodeURIComponent(symbol.trim().toUpperCase())}`;
-    }
+    url = endpoint === "finance"
+      ? buildMarketSmithFinanceDetailsUrl(stockId)
+      : buildMarketSmithSymbolDetailsUrl(stockId, symbol);
   } catch (error) {
     return {
       id,
@@ -278,7 +277,8 @@ async function probeMarketSmith(
     "MarketSmith",
     title,
     url,
-    { headers: { Accept: "application/json" } }
+    { headers: { Accept: "application/json" } },
+    { mode: "cors", credentials: "include" }
   );
 
   return jsonResult(id, "MarketSmith", title, attempt, (data) => {
@@ -347,16 +347,17 @@ async function probeChartInk(): Promise<ProviderProbeResult[]> {
 }
 
 async function probeNse(): Promise<ProviderProbeResult> {
-  const title = "NSE historical delivery API";
+  const title = "NSE historical delivery API (direct browser request)";
   const { from, to } = recentNseWindow();
   buildNseDeliveryUrl("RELIANCE", from, to);
-  const url = `/api/nse/delivery?symbol=RELIANCE&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+  const url = buildNseDeliveryUrl("RELIANCE", from, to);
   const attempt = await requestText(
     "nse-delivery",
     "NSE",
     title,
     url,
-    { headers: { Accept: "application/json" } }
+    { headers: { Accept: "application/json" } },
+    { mode: "cors", credentials: "include" }
   );
 
   return jsonResult("nse-delivery", "NSE", title, attempt, (data) => {
@@ -378,17 +379,17 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 }
 
 async function probeYahooFinance(): Promise<ProviderProbeResult> {
-  const title = "Yahoo Finance chart endpoint (RELIANCE, 5-day daily sample)";
-  const url = buildYahooProxyUrl("RELIANCE", "1D", { range: "5d" });
+  const title = "Yahoo Finance chart endpoint (direct browser request; RELIANCE, 5-day daily sample)";
+  const url = buildYahooChartUrl("RELIANCE", "1D", { range: "5d" });
   const attempt = await requestText(
     "yahoo-chart",
     "Yahoo Finance",
     title,
     url,
     {
-      credentials: "omit",
       headers: { Accept: "application/json" }
-    }
+    },
+    { mode: "cors", credentials: "omit" }
   );
 
   return jsonResult(
@@ -405,7 +406,7 @@ async function probeYahooFinance(): Promise<ProviderProbeResult> {
       const first = asRecord(results[0]);
       const timestamps = first?.timestamp;
       return Array.isArray(timestamps)
-        ? `Browser read Yahoo chart JSON (${timestamps.length} timestamp slots).`
+        ? `Direct browser request read Yahoo chart JSON (${timestamps.length} timestamp slots).`
         : "JSON response readable, but timestamp data is missing.";
     }
   );
