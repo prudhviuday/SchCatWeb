@@ -192,6 +192,18 @@ Live provider boundary:
 
 Tests: `npm run test:industry` covers padding behaviour, industry aggregation, denominator rules, zero traded-value rejection, grouping/filtering and legacy saved-file parsing/serialization. Full CI passed on commit `af6d7402024c9a997fd3cb011c3d5cd1e49a75ed`: https://github.com/prudhviuday/SchCatWeb/actions/runs/42153154031. All existing suites, nine industry tests, TypeScript/Vite production build and static output checks passed. Cloudflare publication of this commit has not been independently verified.
 
+## Step 16 — Market Pulse (implemented; provider validation pending)
+
+Implemented on `main`:
+- `frontend/src/features/marketPulse/marketPulse.ts`: exact desktop `querybig` ChartInk query, 13-column parser, newest-first ordering, one-decimal 5/10-day ratio rounding and desktop cell-colour rules.
+- `frontend/src/features/marketPulse/MarketPulse.tsx`: responsive table, six latest-session summary metrics, manual refresh and optional 60-second auto-refresh.
+- `frontend/tests/marketPulse/marketPulse.test.mjs`: parsing, date ordering, ratio rounding, malformed response and colour-rule tests.
+- App navigation and CI test integration.
+
+The original widget request is preserved (`use_live=1`, `limit=6`, `size=375`). It uses the desktop's 13 columns and original inclusive threshold ordering. The browser fetches a CSRF token from ChartInk and POSTs directly to its widget endpoint. No backend, proxy, private key, cookie extraction or session persistence has been added.
+
+Live browser-origin access is not yet verified. CORS, authentication or browser privacy policy may block the provider; in that case the page shows the error and never substitutes fabricated readings. Run `npm run test:market-pulse` and `npm run build`; after Cloudflare publishes the latest `main` commit, verify the live request from the deployed site.
+
 ## Next step
 
-Step 15 — Research module. Live provider CORS/authentication checks from Steps 8–9 remain open and must be revisited before fresh provider-driven industry calculations are enabled.
+Step 17 — Portfolio (browser-local holdings, import/export and P&L analytics).
