@@ -29,6 +29,26 @@ jobs:
         run: npm install --no-save xlsx
       - name: Convert approved public reference workbooks
         run: node tools/convert-source-reference-data.mjs source-schcat .
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm install
+      - name: Run full calculation, provider, chart, indicator and reference tests
+        working-directory: frontend
+        run: |
+          npm run test:analysis
+          npm run test:providers
+          npm run test:charts
+          npm run test:indicators
+          npm run test:reference
+      - name: Build the static website and verify reference assets
+        working-directory: frontend
+        run: npm run build
+      - name: Check generated static reference files
+        run: |
+          test -s frontend/dist/data/marketSmithIds.json
+          test -s frontend/dist/data/marketUniverse.json
+          test -s frontend/dist/data/industries.json
+          test -s frontend/dist/data/manifest.json
       - name: Commit generated static datasets
         run: |
           git config user.name "github-actions[bot]"
