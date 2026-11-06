@@ -1378,3 +1378,13 @@ h2 { font-size: 17px; letter-spacing: -.3px; font-weight: 600; margin: 7px 0 0; 
 
 .portfolio-chart-positive-body { fill: #319b78; stroke: #4fc49a; stroke-width: .8; }
 .portfolio-chart-negative-body { fill: #a95059; stroke: #e17f83; stroke-width: .8; }
+
+
+/* Step 23: live annual financial history */
+.workspace-financial-history-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 13px; }
+.workspace-financial-history { min-width: 0; padding: 12px; border: 1px solid #29374a; border-radius: 7px; background: #0c141f; }
+.workspace-financial-history-list { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 9px; }
+.workspace-financial-history-list > div { display: grid; gap: 4px; min-width: 72px; padding: 8px; border: 1px solid #263346; border-radius: 5px; }
+.workspace-financial-history-list span, .workspace-financial-history-list small { color: #8190a4; font-size: 8px; }
+.workspace-financial-history-list strong { color: #e6b574; font-size: 11px; font-variant-numeric: tabular-nums; }
+@media (max-width: 720px) { .workspace-financial-history-grid { grid-template-columns: 1fr; } }
