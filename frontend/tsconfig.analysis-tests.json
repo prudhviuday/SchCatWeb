@@ -26,7 +26,8 @@
     "src/features/portfolio/portfolio.ts",
     "src/data/providers/marketSmithStockData.ts",
     "src/data/providers/nseDelivery.ts",
-    "src/features/analysis/multiStockAnalysis.ts"
+    "src/features/analysis/multiStockAnalysis.ts",
+    "src/features/charts/rightPanelCharts.ts"
   ],
   "include": []
 }

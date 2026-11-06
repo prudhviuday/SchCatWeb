@@ -443,3 +443,23 @@ User verification:
 4. Press Right Arrow or `.` outside the search field to cycle to the next industry.
 
 CI must pass before considering Step 30 verified. Live Yahoo access and Cloudflare publication remain separate checks.
+
+
+## Step 31 — Legacy Right Panel visualisation (implemented; CI and live verification pending)
+
+Implemented on `main`:
+- Migrated the original `Tabs/rightpanel.py` historical graph presentation into Stock Workspace, reusing data fetched by the existing MarketSmith fundamentals action. No additional provider calls or credentials were added.
+- Annual ROCE is now rendered as a chronological line chart with the desktop's original quality bands: green at 15% and above, amber at 10% to below 15%, red below 10%.
+- Institutional ownership is rendered as a chronological bar chart using the reported fund-held share values, showing the latest 20 observations and scaling bar heights to the highest observation in the visible series.
+- Annual revenue and annual EPS are compared on a shared chart using their existing legacy-normalized 0–100 indices, aligned by fiscal year. Missing values remain gaps; raw values with different units are not incorrectly mixed on one axis.
+- Retains the existing raw annual history lists where applicable, including institutional holding value, and keeps all charts responsive in the existing dark terminal layout.
+- Added deterministic tests for ROCE thresholds, institutional bar scaling/order/limit, and fiscal-year alignment of revenue/EPS.
+- Reuses the current Stock Workspace state; no new database, API route, background job or persistent storage.
+
+User verification:
+1. Open a stock in **Charts & Workspace** and click **Fetch live fundamentals** with a valid saved MarketSmith session.
+2. Scroll to **MarketSmith Fundamentals**. Confirm Annual ROCE displays a line chart with green/amber/red segments; institutional ownership displays bars; annual revenue/EPS display aligned index lines when both series have usable data.
+3. Check a stock with missing history: the page should show an explanatory empty state and must not invent values.
+4. Confirm NSE delivery history and RS history continue to load independently.
+
+CI must pass before considering Step 31 verified. Actual MarketSmith responses and Cloudflare publication remain separate checks.
