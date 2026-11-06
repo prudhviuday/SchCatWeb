@@ -109,7 +109,7 @@ function defaultMarketSmithDateRange(now = new Date()) {
 }
 
 function validMarketSmithDate(value) {
-  return typeof value === "string" && /^\\d{8}$/.test(value);
+  return typeof value === "string" && /^\d{8}$/.test(value);
 }
 
 function withMarketSmithAuth(url, env, endpoint) {
