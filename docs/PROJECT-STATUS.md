@@ -351,3 +351,17 @@ Implemented on main:
 Tests:
 - Added parser coverage for chronological annual ROCE/revenue ordering and normalized values.
 - The full CI workflow must pass before treating this step as verified. Actual provider response availability and Cloudflare publication remain to be confirmed in the deployed site.
+
+
+## Step 24 — NSE delivery analysis in Stock Workspace (implemented; CI and live-site verification pending)
+
+Implemented on main:
+- Added an on-demand NSE delivery-history provider using the existing same-origin /api/nse/delivery Worker route. No MarketSmith session or other credential is required.
+- Retrieves approximately 300 calendar days for the selected NSE symbol.
+- Ports desktop util.fetch_DeliveryPerc_from_NSE: daily delivery value in crore = traded value × delivery percentage / 10,000,000; traded value in crore = traded value / 100,000; both values use a five-session rolling mean. As in the desktop, the first five rows are excluded after the rolling calculation. Daily delivery percentage remains the reported percentage for the latest observation in each rolling window.
+- Stock Workspace now shows latest delivery percentage, rolling delivery value, rolling traded value, change versus the previous session, and the latest 12 observations in a table.
+- Fetch is user-triggered, keeps results in page memory, and reports provider errors without fabricating data.
+
+Tests:
+- Added tests for the desktop rolling calculation, invalid/missing delivery observations, same-origin Worker request parameters and input validation.
+- Full CI and actual NSE response on the deployed Cloudflare site remain to be confirmed.
