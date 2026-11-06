@@ -4,7 +4,7 @@ import {
   addSymbolToWatchlist, EMPTY_SCREENER_LIBRARY, mergeScreenerLibraries,
   parseScreenerLibraryJson, parseWatchlistsCsv, removeSavedQuery,
   saveScreenerLibrary, serializeScreenerLibrary, serializeWatchlistsCsv,
-  upsertSavedQuery, validateScreenerLibrary, type ScreenerLibrary
+  upsertSavedQuery, validateScreenerLibrary
 } from "../../.test-dist/features/screener/watchlists.js";
 
 test("watchlist symbols normalize, deduplicate and add to an existing list", () => {
@@ -20,15 +20,15 @@ test("saved queries retain ChartInk code and symbol sets", () => {
 });
 
 test("library JSON round trips and rejects unsupported or duplicate names", () => {
-  const library: ScreenerLibrary = { version: 1, watchlists: [{ name: "Core", symbols: ["ABC"] }], queries: [{ name: "Trend", queryCode: "close>ema", symbols: ["ABC"] }] };
+  const library = { version: 1, watchlists: [{ name: "Core", symbols: ["ABC"] }], queries: [{ name: "Trend", queryCode: "close>ema", symbols: ["ABC"] }] };
   assert.deepEqual(parseScreenerLibraryJson(serializeScreenerLibrary(library)), library);
   assert.throws(() => validateScreenerLibrary({ ...library, watchlists: [{ name: "Core", symbols: [] }, { name: "core", symbols: [] }] }), /Duplicate watchlist/);
   assert.throws(() => parseScreenerLibraryJson("{bad"), /valid JSON/);
 });
 
 test("merge updates matching names while retaining unrelated local entries", () => {
-  const a: ScreenerLibrary = { version: 1, watchlists: [{ name: "Core", symbols: ["ABC"] }], queries: [] };
-  const b: ScreenerLibrary = { version: 1, watchlists: [{ name: "Core", symbols: ["XYZ"] }, { name: "Swing", symbols: ["TCS"] }], queries: [] };
+  const a = { version: 1, watchlists: [{ name: "Core", symbols: ["ABC"] }], queries: [] };
+  const b = { version: 1, watchlists: [{ name: "Core", symbols: ["XYZ"] }, { name: "Swing", symbols: ["TCS"] }], queries: [] };
   assert.deepEqual(mergeScreenerLibraries(a, b).watchlists, [{ name: "Core", symbols: ["XYZ"] }, { name: "Swing", symbols: ["TCS"] }]);
 });
 
