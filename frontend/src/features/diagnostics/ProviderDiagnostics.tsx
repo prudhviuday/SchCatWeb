@@ -8,7 +8,7 @@ const STATUS_LABELS: Record<ProviderProbeResult["status"], string> = {
   success: "Readable",
   "http-error": "HTTP error",
   "auth-or-policy": "Auth / access policy",
-  "browser-blocked": "Browser blocked",
+  "browser-blocked": "Site/API unreachable",
   timeout: "Timed out",
   "invalid-response": "Unexpected response"
 };
@@ -43,10 +43,10 @@ function ProviderDiagnostics() {
     <main className="diagnostics-shell">
       <header className="diagnostics-header">
         <div>
-          <div className="eyebrow">SCHCATWEB / STEP 08</div>
+          <div className="eyebrow">SCHCATWEB / PROVIDER CHECK</div>
           <h1>Provider connectivity diagnostics</h1>
           <p className="diagnostics-intro">
-            These checks run in this browser from the live SchCatWeb origin. They do not use a server proxy.
+            The page calls SchCatWeb's same-origin Worker API. The Worker contacts Yahoo, MarketSmith, ChartInk and NSE server-side, like the original desktop Node/Python app.
           </p>
         </div>
         <a className="diagnostics-back" href="/">Back to SchCat</a>
@@ -55,9 +55,8 @@ function ProviderDiagnostics() {
       <section className="diagnostics-explainer">
         <h2>What this test checks</h2>
         <p>
-          MarketSmith finance and symbol endpoints, the ChartInk CSRF + scan flow, and NSE historical delivery data.
-          Browser cookies are only offered to the matching provider through normal fetch credentials. This page never reads,
-          saves, or displays cookies.
+          MarketSmith finance and symbol endpoints, the ChartInk CSRF + scan flow, NSE historical delivery data, and Yahoo chart data.
+          The browser only talks to SchCatWeb; provider cookies and upstream requests stay inside the Worker.
         </p>
         <p>
           The legacy desktop code contains hard-coded <code>ms-auth</code> query values. They are deliberately not copied
@@ -65,8 +64,7 @@ function ProviderDiagnostics() {
           flow or a protected credential that must not be embedded in the website.
         </p>
         <p>
-          Browser errors can be caused by CORS, network filtering, or third-party-cookie policy. JavaScript cannot reliably
-          tell those apart; the DevTools Console provides the provider's specific browser error.
+          The results now include the upstream HTTP response returned by the Worker. This separates provider restrictions (401/403/520) from a failure to reach SchCatWeb itself.
         </p>
       </section>
 
@@ -91,7 +89,7 @@ function ProviderDiagnostics() {
           />
         </div>
         <button type="button" onClick={runAudit} disabled={running}>
-          {running ? "Testing providers…" : "Run browser diagnostics"}
+          {running ? "Testing provider routes…" : "Run server-side diagnostics"}
         </button>
       </section>
 
@@ -110,7 +108,7 @@ function ProviderDiagnostics() {
             <div className="notice-icon">⌁</div>
             <div>
               <h2>No tests run yet</h2>
-              <p>Press “Run browser diagnostics” to send the provider requests from this page.</p>
+              <p>Press “Run server-side diagnostics” to test the Worker-backed provider routes.</p>
             </div>
           </div>
         ) : (
@@ -136,7 +134,7 @@ function ProviderDiagnostics() {
       </section>
 
       <footer className="diagnostics-footer">
-        No provider results, credentials, cookies, or session tokens are stored by this diagnostic page.
+        The diagnostic page does not read or store provider cookies or session tokens. MarketSmith credentials, when configured, are held as Cloudflare Worker secrets.
       </footer>
     </main>
   );
