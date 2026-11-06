@@ -23,13 +23,17 @@ export function parseMarketPulseResponse(payload: unknown): MarketPulseRow[] {
     const item = groups[index] as Record<string, unknown> | null;
     const values = item && item[column];
     if (!Array.isArray(values)) throw new TypeError("ChartInk response is missing " + column + ".");
-    const numbers = values.map((value) => Number(value));
+    const numbers = values.map((value) => {
+      if (value === null || value === undefined || (typeof value === "string" && value.trim() === "")) throw new TypeError("ChartInk returned a missing value for " + column + ".");
+      return Number(value);
+    });
     if (numbers.some((value) => !Number.isFinite(value))) throw new TypeError("ChartInk returned invalid values for " + column + ".");
     return numbers.map((value) => column === "5-day ratio" || column === "10-day ratio" ? Math.round(value * 10) / 10 : value);
   });
   if (!dates.length || series.some((values) => values.length !== dates.length)) throw new TypeError("ChartInk metric series have inconsistent history lengths.");
 
   return dates.map((timestamp, index) => {
+    if (timestamp === null || timestamp === undefined || timestamp === "") throw new TypeError("ChartInk returned an invalid timestamp.");
     const dateValue = Number(timestamp);
     if (!Number.isFinite(dateValue)) throw new TypeError("ChartInk returned an invalid timestamp.");
     const date = new Date(dateValue);
