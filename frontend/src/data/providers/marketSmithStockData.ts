@@ -35,8 +35,16 @@ export interface MarketSmithQuarterlyGrowthPoint {
   salesPct: number;
 }
 
+export interface MarketSmithAnnualValuePoint {
+  year: number;
+  value: number;
+  normalized: number | null;
+}
+
 export interface MarketSmithFinanceData {
   annualEps: MarketSmithAnnualEpsPoint[];
+  annualRoce: MarketSmithAnnualValuePoint[];
+  annualRevenue: MarketSmithAnnualValuePoint[];
 }
 
 export interface MarketSmithFetchFailure {
@@ -231,12 +239,34 @@ export function parseMarketSmithFinanceData(payload: unknown): MarketSmithFinanc
     }
   }
 
+  const annualValues = (source: unknown, yearField: string, valueField: string, revenueYear = false): MarketSmithAnnualValuePoint[] => {
+    const values = Array.isArray(source) ? source.map(asRecord).filter((row): row is Record<string, unknown> => row !== null)
+      .map((row) => {
+        const rawYear = textValue(row[yearField]);
+        let year = finiteNumber(rawYear);
+        if (revenueYear && rawYear?.includes("-")) {
+          const suffix = rawYear.split("-").at(-1) ?? "";
+          const shortYear = finiteNumber(suffix);
+          year = shortYear === null ? null : (shortYear < 100 ? 2000 + shortYear : shortYear);
+        }
+        return { year, value: finiteNumber(row[valueField]) };
+      }).filter((row): row is { year: number; value: number } => row.year !== null && row.value !== null)
+      .reverse() : [];
+    let indices: number[] = [];
+    if (values.length > 1) {
+      try { indices = normalizeSeries(values.map((row) => row.value)); } catch { indices = []; }
+    }
+    return values.map((row, index) => ({ year: row.year, value: row.value, normalized: indices[index] ?? null }));
+  };
+
   return {
     annualEps: chronological.map((row, index) => ({
       year: row.year,
       eps: row.eps,
       normalized: normalized[index] ?? null
-    }))
+    })),
+    annualRoce: annualValues(root?.ratiosAnnualData, "c0", "c4"),
+    annualRevenue: annualValues(root?.incAnnualData, "c0", "c3", true)
   };
 }
 
