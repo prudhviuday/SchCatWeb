@@ -38,7 +38,7 @@ async function upstreamFetch(url, init = {}) {
   try {
     return await fetch(url, {
       ...init,
-      redirect: "follow",
+      redirect: init.redirect || "follow",
       signal: controller.signal
     });
   } finally {
@@ -199,6 +199,9 @@ async function chartInkScan(request) {
   } catch {
     return json({ error: "invalid_json_body" }, 400);
   }
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    return json({ error: "invalid_chartink_request" }, 400);
+  }
   const query = typeof input.query === "string" ? input.query.trim() : "";
   const mode = input.mode || "scan";
   if (!query || query.length > 20000 || !["scan", "history", "widget"].includes(mode)) {
@@ -247,6 +250,7 @@ async function chartInkScan(request) {
   try {
     result = await upstreamFetch(endpoint, {
       method: "POST",
+      redirect: "manual",
       headers: upstreamHeaders({
         "accept": "application/json,text/plain,*/*",
         "content-type": "application/x-www-form-urlencoded;charset=UTF-8",
