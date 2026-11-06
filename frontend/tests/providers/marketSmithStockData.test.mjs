@@ -178,6 +178,31 @@ test("MarketSmith annual EPS history reverses provider order and normalizes like
   ]);
 });
 
+test("MarketSmith finance parser adds chronological annual ROCE and revenue histories", () => {
+  const result = parseMarketSmithFinanceData({
+    ratiosAnnualData: [
+      { c0: "2025", c20: "30", c4: "18" },
+      { c0: "2024", c20: "20", c4: "15" },
+      { c0: "2023", c20: "10", c4: "12" }
+    ],
+    incAnnualData: [
+      { c0: "03-25", c3: "300" },
+      { c0: "03-24", c3: "200" },
+      { c0: "03-23", c3: "100" }
+    ]
+  });
+  assert.deepEqual(result.annualRoce, [
+    { year: 2023, value: 12, normalized: 0 },
+    { year: 2024, value: 15, normalized: 50 },
+    { year: 2025, value: 18, normalized: 100 }
+  ]);
+  assert.deepEqual(result.annualRevenue, [
+    { year: 2023, value: 100, normalized: 0 },
+    { year: 2024, value: 200, normalized: 50 },
+    { year: 2025, value: 300, normalized: 100 }
+  ]);
+});
+
 test("MarketSmith annual EPS handles a constant series without fabricating normalized values", () => {
   const result = parseMarketSmithFinanceData({
     ratiosAnnualData: [
