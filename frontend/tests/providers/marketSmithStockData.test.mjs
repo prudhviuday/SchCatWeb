@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { fetchNseDeliveryHistory, parseNseDeliveryHistory } from "../../.test-dist/data/providers/nseDelivery.js";
+
 import {
   fetchMarketSmithFinanceData,
   fetchMarketSmithStockMetrics,
@@ -235,4 +237,47 @@ test("MarketSmith finance request uses same-origin Worker and browser-saved sess
   assert.equal(parsed.searchParams.get("stockId"), "3159563");
   assert.equal(requestInit.headers["x-marketsmith-auth"], "test auth");
   assert.equal(result.annualEps[0].year, 2024);
+});
+
+
+test("NSE delivery parser matches desktop five-session rolling value calculations", () => {
+  const rows = Array.from({ length: 7 }, (_, index) => ({
+    mTIMESTAMP: "Day " + (7 - index),
+    CH_TOT_TRADED_VAL: String((index + 1) * 10000000),
+    COP_DELIV_PERC: String(40 + index)
+  }));
+  const result = parseNseDeliveryHistory({ data: rows });
+  assert.equal(result.length, 2);
+  assert.deepEqual(result[0], { date: "Day 3", deliveryValueCr: 3.2, tradedValueCr: 4, deliveryPct: 44 });
+  assert.deepEqual(result[1], { date: "Day 2", deliveryValueCr: 4.5, tradedValueCr: 5, deliveryPct: 45 });
+});
+
+test("NSE delivery parser ignores rows without a reported delivery percentage", () => {
+  assert.deepEqual(parseNseDeliveryHistory({ data: [
+    { mTIMESTAMP: "D1", CH_TOT_TRADED_VAL: 10000000, COP_DELIV_PERC: 40 },
+    { mTIMESTAMP: "D2", CH_TOT_TRADED_VAL: 10000000, COP_DELIV_PERC: null }
+  ] }), []);
+});
+
+test("NSE delivery request uses the same-origin Worker and date-scoped query", async () => {
+  let requestUrl = "";
+  let requestInit = {};
+  const history = Array.from({ length: 8 }, (_, index) => ({ mTIMESTAMP: "Day " + index, CH_TOT_TRADED_VAL: 10000000, COP_DELIV_PERC: 50 }));
+  const result = await fetchNseDeliveryHistory("rvnl", 300, async (input, init = {}) => {
+    requestUrl = String(input); requestInit = init;
+    return new Response(JSON.stringify({ data: history }), { status: 200 });
+  }, new Date(2026, 10, 6));
+  const parsed = new URL(requestUrl, "https://schcatweb.test");
+  assert.equal(parsed.pathname, "/api/nse/delivery");
+  assert.equal(parsed.searchParams.get("symbol"), "RVNL");
+  assert.match(parsed.searchParams.get("from"), /^\d{2}-\d{2}-\d{4}$/);
+  assert.match(parsed.searchParams.get("to"), /^\d{2}-\d{2}-\d{4}$/);
+  assert.equal(requestInit.mode, "same-origin");
+  assert.equal(requestInit.credentials, "same-origin");
+  assert.equal(result.length, 3);
+});
+
+test("NSE delivery request validates symbol and history window", async () => {
+  await assert.rejects(() => fetchNseDeliveryHistory("bad symbol"), /unsupported characters/);
+  await assert.rejects(() => fetchNseDeliveryHistory("TEST", 10), /between 30 and 730/);
 });
