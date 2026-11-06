@@ -246,7 +246,7 @@ export async function fetchMarketSmithFinanceData(
   fetcher: typeof fetch = fetch
 ): Promise<MarketSmithFinanceData> {
   const id = String(stockId).trim();
-  if (!/^\\d{1,12}$/.test(id)) throw new TypeError("MarketSmith instrument ID must contain digits only");
+  if (!/^\d{1,12}$/.test(id)) throw new TypeError("MarketSmith instrument ID must contain digits only");
   if (!authValue.trim()) throw new Error("MarketSmith session is not configured in this browser");
 
   const controller = new AbortController();
