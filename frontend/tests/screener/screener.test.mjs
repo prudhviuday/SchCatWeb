@@ -91,3 +91,21 @@ test("symbol list parser accepts commas, semicolons and whitespace", () => {
     "RELIANCE", "TCS", "INFY", "ONGC"
   ]);
 });
+
+test("live MarketSmith fields support numeric filtering and stable sorting", () => {
+  const liveRows = [
+    { ...rows[0], rs: 92, epsRank: 84, masterScore: 90, pe: 21, peg: 0.8, fScore: 25 },
+    { ...rows[1], rs: 78, epsRank: 70, masterScore: 68, pe: 31, peg: 1.4, fScore: 16 },
+    { ...rows[2], rs: null, epsRank: null, masterScore: null, pe: 0, peg: null, fScore: 0 }
+  ];
+
+  assert.deepEqual(
+    applyScreenerFilters(liveRows, { ranges: { rs: { min: 80 }, fScore: { min: 20 } } })
+      .map(row => row.symbol),
+    ["RELIANCE"]
+  );
+  assert.deepEqual(
+    sortScreenerRecords(liveRows, "rs", false).map(row => row.symbol),
+    ["RELIANCE", "TCS", "ONGC"]
+  );
+});
