@@ -351,7 +351,15 @@ ChartInk dashboard maps 13 columns: Date, 4% bull/bear, 5-day ratio, 10-day rati
 
 ## 10. Portfolio
 
-Holdings contain stock, quantity and buy price. Legacy chart calculates each holding's OHLC contribution as quantity × (price − buy price), aligns timestamps, forward-fills and sums. This is aggregate unrealised P&L contribution, not portfolio market value. Store personal holdings locally and support import/export.
+Implemented in `src/features/portfolio/portfolio.ts` and `Portfolio.tsx`.
+
+Holdings use symbol, quantity and buy price. The source is `Tabs/portfolioTab.py` plus `util.getPortfolio()`. The exact legacy synthetic candle formula is retained for each OHLC field: quantity × (price − buy price). Per-stock candle timestamps are unioned and sorted; each stock's OHLC contribution and volume are independently forward-filled, leading gaps are zero-filled, then series are summed. The default chart history cap is 800 points. Four charts are provided: weekly, daily, hourly and 5-minute.
+
+The web module adds local add/edit/remove, invested capital, latest daily close, current value, unrealised P&L and return-on-cost metrics. It only displays live values after an explicit user refresh. The synthetic chart is aggregate unrealised P&L contribution, not market value or time-weighted return.
+
+Personal holdings are stored in versioned browser localStorage and never placed in static assets or uploaded. CSV/JSON import/export is browser-only; imports can merge by symbol or explicitly replace the current list. Legacy three-column JSON rows are accepted. Seven tests cover validation, calculations, import/export, merge and desktop candle aggregation parity.
+
+Provider boundary: latest prices and OHLC history reuse the existing direct-browser Yahoo adapter. No backend/proxy, database or secret credentials. Actual Yahoo CORS/provider access from the deployed website origin remains unverified; errors are surfaced and unavailable symbols are excluded rather than replaced with sample prices.
 
 ## 11. Known issues to verify
 
