@@ -212,7 +212,10 @@ function StockWorkspace({
   const [deliveryStatus, setDeliveryStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [deliveryMessage, setDeliveryMessage] = useState("");
   const [deliveryHistory, setDeliveryHistory] = useState<NseDeliveryPoint[]>([]);
-  const [deliveryUpdatedAt, setDeliveryUpdatedAt] = useState<string | null>(null);\n  const [rsStatus, setRsStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");\n  const [rsMessage, setRsMessage] = useState("");\n  const [rsHistory, setRsHistory] = useState<MarketSmithRelativeStrengthPoint[]>([]);
+  const [deliveryUpdatedAt, setDeliveryUpdatedAt] = useState<string | null>(null);
+  const [rsStatus, setRsStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [rsMessage, setRsMessage] = useState("");
+  const [rsHistory, setRsHistory] = useState<MarketSmithRelativeStrengthPoint[]>([]);
 
   useEffect(() => {
     if (!symbol) return;
@@ -397,7 +400,8 @@ function StockWorkspace({
     setFundamentalStatus("idle");
     setFundamentalMessage("");
     setFundamentalsUpdatedAt(null);
-    setDeliveryStatus("idle"); setDeliveryMessage(""); setDeliveryHistory([]); setDeliveryUpdatedAt(null);\n    setRsStatus("idle"); setRsMessage(""); setRsHistory([]);
+    setDeliveryStatus("idle"); setDeliveryMessage(""); setDeliveryHistory([]); setDeliveryUpdatedAt(null);
+    setRsStatus("idle"); setRsMessage(""); setRsHistory([]);
     setSymbol(next);
   }
 
@@ -502,7 +506,8 @@ function StockWorkspace({
               <div><div className="eyebrow">MARKETSMITH FUNDAMENTALS</div><h2>Quarterly growth & annual EPS</h2><p className="workspace-chart-note">Relative-strength history is fetched separately on demand.</p></div><button type="button" className="screener-button secondary" onClick={() => void fetchRelativeStrengthHistory()} disabled={!symbol || rsStatus === "loading"}>{rsStatus === "loading" ? "Fetching RS…" : rsStatus === "ready" ? "Refresh RS history" : "Fetch RS history"}</button>
               <span className={fundamentalStatus === "error" ? "workspace-chart-status error" : fundamentalStatus === "ready" ? "workspace-chart-status ready" : "workspace-chart-status"}>{fundamentalStatus === "idle" ? "Not loaded" : fundamentalStatus === "loading" ? "Loading" : fundamentalStatus === "partial" ? "Partial" : fundamentalStatus === "error" ? "Unavailable" : "Live"}</span>
             </div>
-            <p className="workspace-chart-note">{fundamentalMessage || "Use Fetch live fundamentals to retrieve MarketSmith symbol details and finance history. The saved browser session is sent only with the request."}</p>\n            <p className="workspace-chart-note" aria-live="polite">{rsMessage}</p>
+            <p className="workspace-chart-note">{fundamentalMessage || "Use Fetch live fundamentals to retrieve MarketSmith symbol details and finance history. The saved browser session is sent only with the request."}</p>
+            <p className="workspace-chart-note" aria-live="polite">{rsMessage}</p>
             {rsHistory.length > 1 && (() => {
               const values = rsHistory.map((point) => point.value);
               const minimum = Math.min(...values);
