@@ -9,6 +9,7 @@ import {
   buildMarketSmithSymbolProxyUrl,
   buildNseDeliveryProxyUrl,
   extractCsrfToken,
+  normalizeMarketSmithAuthInput,
   runProviderDiagnostics
 } from "../../.test-dist/data/providers/providerDiagnostics.js";
 
@@ -80,6 +81,15 @@ test("CSRF token parser supports reordered attributes and single quotes", () => 
   );
 });
 
+test("MarketSmith credential input accepts a raw value or a copied working URL", () => {
+  assert.equal(normalizeMarketSmithAuthInput("one+two+three"), "one+two+three");
+  assert.equal(
+    normalizeMarketSmithAuthInput("https://marketsmithindia.com/path?s=x&ms-auth=one+two+three&lang=en"),
+    "one two three"
+  );
+  assert.equal(normalizeMarketSmithAuthInput("ms-auth=one+two+three"), "one two three");
+});
+
 test("CSRF token parser returns null when the meta tag is missing", () => {
   assert.equal(extractCsrfToken("<html><head></head></html>"), null);
 });
@@ -114,12 +124,16 @@ test("provider diagnostics call only same-origin Worker APIs", async () => {
   try {
     const results = await runProviderDiagnostics({
       marketSmithStockId: "3159563",
-      marketSmithSymbol: "RVNL"
+      marketSmithSymbol: "RVNL",
+      marketSmithAuth: "sample auth value"
     });
     assert.equal(results.length, 5);
     assert.equal(results.every((item) => item.status === "success"), true);
     assert.equal(calls.every((call) => call.url.startsWith("/api/")), true);
     assert.equal(calls.some((call) => call.url.startsWith("https://")), false);
+    const marketSmithCalls = calls.filter((call) => call.url.startsWith("/api/marketsmith/"));
+    assert.equal(marketSmithCalls.length, 2);
+    assert.equal(marketSmithCalls.every((call) => call.init.headers["x-marketsmith-auth"] === "sample auth value"), true);
     const chartink = calls.find((call) => call.url === "/api/chartink/scan");
     assert.equal(chartink.init.method, "POST");
     assert.equal(chartink.init.mode, "same-origin");
@@ -157,16 +171,10 @@ test("NSE Worker URL builder uses its same-origin route", () => {
 });
 
 
-test("missing MarketSmith Worker secrets are reported as configuration, not provider rejection", async () => {
+test("missing browser-saved MarketSmith value is reported before sending requests", async () => {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async (input) => {
     const url = String(input);
-    if (url.startsWith("/api/marketsmith/")) {
-      return new Response(JSON.stringify({
-        error: "marketsmith_auth_not_configured",
-        message: "Set the Cloudflare Worker secret."
-      }), { status: 503, headers: { "content-type": "application/json" } });
-    }
     if (url === "/api/chartink/scan") {
       return new Response(JSON.stringify({ data: [] }), { status: 200 });
     }
@@ -184,14 +192,15 @@ test("missing MarketSmith Worker secrets are reported as configuration, not prov
   try {
     const results = await runProviderDiagnostics({
       marketSmithStockId: "3159563",
-      marketSmithSymbol: "RVNL"
+      marketSmithSymbol: "RVNL",
+      marketSmithAuth: ""
     });
     const marketSmith = results.filter((item) => item.provider === "MarketSmith");
     assert.equal(marketSmith.length, 2);
     assert.equal(marketSmith.every((item) => item.status === "configuration-required"), true);
-    assert.equal(marketSmith.every((item) => item.httpStatus === 503), true);
+    assert.equal(marketSmith.every((item) => item.httpStatus === undefined), true);
     assert.equal(
-      marketSmith.every((item) => item.message.includes("No request has been sent to MarketSmith yet")),
+      marketSmith.every((item) => item.message.includes("Enter the current MarketSmith ms-auth value")),
       true
     );
     assert.equal(
