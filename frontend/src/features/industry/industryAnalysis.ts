@@ -92,7 +92,7 @@ export function aggregateIndustrySeries(
     inputs.marketCapWeightedRelativeStrength
   );
 
-  const marketCapDenominator = 1 + inputs.marketCaps.reduce(
+  const marketCapDenominator = 1 + inputs.marketCaps.reduce<number>(
     (sum, marketCap) => sum + (marketCap ?? 1),
     0
   );
