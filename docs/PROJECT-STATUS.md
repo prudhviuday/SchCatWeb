@@ -62,7 +62,7 @@ The single root `wrangler.toml` sets `name = "schcatweb"` and `assets.directory 
 | 15 | Research module | Complete — browser CSV/JSON imports, desktop match calculations, results chart/export, tests and build pass; live ChartInk historical scans deferred until browser-origin access is verified |
 | 16 | Market Pulse | Implemented; live ChartInk browser access must be confirmed from the deployed origin |
 | 17 | Portfolio using browser-local storage/import/export | Complete — holdings, P&L, legacy synthetic OHLC charts, CSV/JSON backup and parity tests |
-| 18 | Watchlists and query management using browser-local storage/import/export | Not started |
+| 18 | Watchlists and query management using browser-local storage/import/export | Implemented — pending final CI verification; desktop-format CSV import, saved ChartInk query definitions, multi-query intersections and local backup/restore |
 | 19 | Integration, parity, browser compatibility and end-to-end testing | Not started |
 | 20 | Cloudflare production deployment and final release verification | Not started |
 
@@ -226,6 +226,27 @@ Privacy and provider boundary:
 
 Verification: GitHub Actions run `42162429809` passed all existing suites, all seven Portfolio tests, the TypeScript/Vite production build and static output checks on commit `b913238445c3a1b6a2a5517a752ef9dfd7e62c84`. Run: https://github.com/prudhviuday/SchCatWeb/actions/runs/42162429809. Cloudflare publication and live Yahoo browser-origin access are not confirmed.
 
+
+## Step 18 — Watchlists and query management (implementation complete; CI verification pending)
+
+Implemented on main:
+- frontend/src/features/screener/watchlists.ts: versioned browser-local library, watchlist/query validation, symbol add/remove, query create/update/delete, JSON backup parsing/serialization, merge behaviour, and CSV import/export.
+- frontend/src/features/screener/StockScreener.tsx: watchlist creation, target selection, one-click save from screener rows, individual symbol removal, watchlist filtering, saved query management, ChartInk query-code storage, and import/export controls.
+- frontend/tests/screener/watchlists.test.mjs: tests for watchlist normalization, saved query persistence, backup validation/roundtrip, merge, CSV handling and browser storage.
+- CI runs npm run test:watchlists; the overview milestone label is updated to Step 18.
+
+Desktop parity:
+- Source references: prudhviuday/SchCat/helper.py (toggle_query, toggle_watchlist, refresh_watchlists, apply_filters, add_to_watchlist_on_keypress) and prudhviuday/SchCat/util.py (getAllQueries, getAllWatchlists, addStToWatchlists).
+- Legacy Watchlist sheet columns are separate watchlists; each column contains its symbols. The CSV importer supports this wide-column layout and the normalized Watchlist,Symbol layout.
+- Legacy QUERIES uses its second and third columns as query name and query clause. Query CSV import supports QueryName,QueryCode and Name,Query aliases.
+- Multiple selected query symbol sets continue to intersect with AND semantics. A selected watchlist filters the screener universe; the browser UI separates the active filter from the target list used for adding symbols.
+
+Privacy and provider boundary:
+- Watchlists and query definitions are stored in versioned localStorage in the current browser only. They are not uploaded, included in static assets or synced across devices.
+- JSON backup includes both watchlists and saved query definitions. CSV export is available separately for watchlists and queries; import supports merge/update or explicit JSON replacement.
+- ChartInk query clauses are preserved as text, but live scan execution is not enabled. Browser-origin CORS/session access remains unverified; the UI does not claim to run scans or fabricate query matches.
+
 ## Next step
 
-Step 18 — Watchlists and query management using browser-local storage/import/export.
+Step 19 — Integration, parity, browser compatibility and end-to-end testing.
+
