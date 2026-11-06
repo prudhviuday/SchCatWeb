@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "frontend/**"
+      - "worker/**"
       - "wrangler.toml"
       - "README.md"
       - "docs/**"
