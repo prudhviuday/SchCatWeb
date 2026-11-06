@@ -70,7 +70,8 @@ test("MarketSmith parser handles absent optional sections without inventing valu
   assert.equal(result.fScore, 0);
   assert.equal(result.rs, null);
   assert.equal(result.roe, null);
-  assert.equal(result.livePb, null);\n  assert.deepEqual(result.institutionalOwnership, []);
+  assert.equal(result.livePb, null);
+  assert.deepEqual(result.institutionalOwnership, []);
 });
 
 test("MarketSmith parser rejects a response without the legacy response object", () => {
