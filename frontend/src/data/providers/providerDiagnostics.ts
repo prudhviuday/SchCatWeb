@@ -1,4 +1,4 @@
-import { buildYahooChartUrl } from "./chartData.js";
+import { buildYahooProxyUrl } from "./chartData.js";
 
 export type ProviderProbeStatus =
   | "success"
@@ -56,8 +56,8 @@ async function requestText(
   try {
     const response = await fetch(url, {
       ...init,
-      mode: "cors",
-      credentials: init.credentials ?? "include",
+      mode: "same-origin",
+      credentials: init.credentials ?? "same-origin",
       redirect: "follow",
       signal: controller.signal
     });
@@ -85,7 +85,7 @@ async function requestText(
         status: isTimeout ? "timeout" : "browser-blocked",
         message: isTimeout
           ? "The provider did not respond within 12 seconds."
-          : "The browser rejected the request. This can be CORS, a network block, or browser privacy policy; JavaScript cannot reliably distinguish them. Check DevTools Console for the browser's specific message.",
+          : "The SchCatWeb API request failed before returning a response. Check the Worker deployment and API diagnostics.",
         elapsedMs
       }
     };
@@ -255,9 +255,13 @@ async function probeMarketSmith(
     : "MarketSmith symboldetails endpoint";
   let url: string;
   try {
-    url = endpoint === "finance"
-      ? buildMarketSmithFinanceDetailsUrl(stockId)
-      : buildMarketSmithSymbolDetailsUrl(stockId, symbol);
+    if (endpoint === "finance") {
+      buildMarketSmithFinanceDetailsUrl(stockId);
+      url = `/api/marketsmith/finance?stockId=${encodeURIComponent(stockId.trim())}`;
+    } else {
+      buildMarketSmithSymbolDetailsUrl(stockId, symbol);
+      url = `/api/marketsmith/symbol?stockId=${encodeURIComponent(stockId.trim())}&symbol=${encodeURIComponent(symbol.trim().toUpperCase())}`;
+    }
   } catch (error) {
     return {
       id,
@@ -288,114 +292,36 @@ async function probeMarketSmith(
 
 async function probeChartInk(): Promise<ProviderProbeResult[]> {
   const provider = "ChartInk" as const;
-  const title = "ChartInk CSRF session + scan POST";
-  const pageCandidates = [
-    "https://chartink.com/screener/process",
-    "https://chartink.com/screener/"
-  ];
-
-  let csrfToken: string | null = null;
-  let pageFailure: ProviderProbeResult | null = null;
-  let pageMessage = "";
-
-  for (const [index, pageUrl] of pageCandidates.entries()) {
-    const pageAttempt = await requestText(
-      index === 0 ? "chartink-original-session" : "chartink-session-fallback",
-      provider,
-      index === 0
-        ? "ChartInk legacy CSRF bootstrap (/screener/process)"
-        : "ChartInk screener page CSRF bootstrap (/screener/)",
-      pageUrl,
-      { headers: { Accept: "text/html,application/xhtml+xml" } }
-    );
-
-    if (!pageAttempt.ok) {
-      pageFailure = pageAttempt.result;
-      if (index === 0) continue;
-      return [pageFailure];
-    }
-
-    const { response, body, elapsedMs } = pageAttempt.value;
-    if (!response.ok) {
-      pageFailure = httpFailure(
-        index === 0 ? "chartink-original-session" : "chartink-session-fallback",
-        provider,
-        title,
-        response,
-        elapsedMs
-      );
-      continue;
-    }
-
-    csrfToken = extractCsrfToken(body);
-    pageMessage = index === 0
-      ? "Legacy CSRF page fetched."
-      : "Legacy URL did not expose a token; screener page exposed the CSRF token.";
-    if (csrfToken) break;
-  }
-
-  if (!csrfToken) {
-    return [{
-      id: "chartink-session",
-      provider,
-      title,
-      status: pageFailure?.status ?? "invalid-response",
-      httpStatus: pageFailure?.httpStatus,
-      message: pageFailure
-        ? pageFailure.message
-        : "Page response was readable, but neither legacy nor screener page contained a csrf-token meta tag.",
-      elapsedMs: pageFailure?.elapsedMs ?? 0
-    }];
-  }
-
-  const body = new URLSearchParams({
-    scan_clause: "( {cash} ( latest close > 0 ) )"
-  }).toString();
-
-  const postAttempt = await requestText(
+  const title = "ChartInk server-side CSRF session + scan POST";
+  const attempt = await requestText(
     "chartink-scan-post",
     provider,
-    "ChartInk scan POST (minimal public cash-market query)",
-    "https://chartink.com/screener/process",
+    title,
+    "/api/chartink/scan",
     {
       method: "POST",
       headers: {
         Accept: "application/json",
-        "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
-        "x-csrf-token": csrfToken
+        "Content-Type": "application/json"
       },
-      body
+      body: JSON.stringify({
+        mode: "scan",
+        query: "( {cash} ( latest close > 0 ) )"
+      })
     }
   );
 
-  if (!postAttempt.ok) {
-    return [{
-      ...postAttempt.result,
-      message: `${pageMessage} POST failed: ${postAttempt.result.message}`
-    }];
-  }
-
-  const { response, body: responseBody, elapsedMs } = postAttempt.value;
+  if (!attempt.ok) return [attempt.result];
+  const { response, body, elapsedMs } = attempt.value;
   if (!response.ok) {
-    return [{
-      ...httpFailure(
-        "chartink-scan-post",
-        provider,
-        title,
-        response,
-        elapsedMs
-      ),
-      message: `${pageMessage} ${httpFailure("chartink-scan-post", provider, title, response, elapsedMs).message}`
-    }];
+    return [httpFailure("chartink-scan-post", provider, title, response, elapsedMs)];
   }
-
   try {
-    const data: unknown = JSON.parse(responseBody);
+    const data: unknown = JSON.parse(body);
     const rows =
       data && typeof data === "object" && Array.isArray((data as { data?: unknown }).data)
         ? (data as { data: unknown[] }).data.length
         : null;
-
     return [{
       id: "chartink-scan-post",
       provider,
@@ -403,8 +329,8 @@ async function probeChartInk(): Promise<ProviderProbeResult[]> {
       status: rows === null ? "invalid-response" : "success",
       httpStatus: response.status,
       message: rows === null
-        ? `${pageMessage} Scan returned JSON, but did not contain the expected data array.`
-        : `${pageMessage} Browser read the scan response (${rows} rows).`,
+        ? "Worker reached ChartInk, but the scan response did not contain the expected data array."
+        : `Worker completed the ChartInk CSRF + scan flow (${rows} rows).`,
       elapsedMs
     }];
   } catch {
@@ -414,7 +340,7 @@ async function probeChartInk(): Promise<ProviderProbeResult[]> {
       title,
       status: "invalid-response",
       httpStatus: response.status,
-      message: `${pageMessage} Scan response was not valid JSON.`,
+      message: "Worker returned a response that was not valid JSON.",
       elapsedMs
     }];
   }
@@ -423,7 +349,8 @@ async function probeChartInk(): Promise<ProviderProbeResult[]> {
 async function probeNse(): Promise<ProviderProbeResult> {
   const title = "NSE historical delivery API";
   const { from, to } = recentNseWindow();
-  const url = buildNseDeliveryUrl("RELIANCE", from, to);
+  buildNseDeliveryUrl("RELIANCE", from, to);
+  const url = `/api/nse/delivery?symbol=RELIANCE&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
   const attempt = await requestText(
     "nse-delivery",
     "NSE",
@@ -452,7 +379,7 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 
 async function probeYahooFinance(): Promise<ProviderProbeResult> {
   const title = "Yahoo Finance chart endpoint (RELIANCE, 5-day daily sample)";
-  const url = buildYahooChartUrl("RELIANCE", "1D", { range: "5d" });
+  const url = buildYahooProxyUrl("RELIANCE", "1D", { range: "5d" });
   const attempt = await requestText(
     "yahoo-chart",
     "Yahoo Finance",
