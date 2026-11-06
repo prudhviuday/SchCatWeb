@@ -516,7 +516,7 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
                 <span>{query.name}</span>
                 <small>{query.symbols.length} symbols{query.queryCode ? " · ChartInk clause saved" : " · manual list"}</small>
                 {query.queryCode && <button type="button" className="screener-query-run" disabled={queryRuns[query.name]?.status === "loading"} onClick={(event) => { event.preventDefault(); event.stopPropagation(); void runSavedQuery(query.name); }}>{queryRuns[query.name]?.status === "loading" ? "Running…" : "Run scan"}</button>}
-                <button type="button" aria-label={`Remove ${query.name}`} onClick={(event) => { event.preventDefault(); event.stopPropagation(); removeQuery(query.name); }}>×</button>
+                <button type="button" aria-label={`Remove ${query.name}`} disabled={queryRuns[query.name]?.status === "loading"} onClick={(event) => { event.preventDefault(); event.stopPropagation(); removeQuery(query.name); }}>×</button>
                 {queryRuns[query.name] && <span className={"screener-query-run-status " + queryRuns[query.name].status} role="status">{queryRuns[query.name].message}</span>}
               </label>
             ))}

@@ -68,6 +68,8 @@ The root `wrangler.toml` sets `main = "worker/index.js"`, binds `frontend/dist` 
 | 20 | Cloudflare Worker API integration, production deployment and provider diagnostics | In progress — same-origin Worker routes are in place; user confirmed the browser-local MarketSmith session input and diagnostics flow work. Continue checking the actual live outcomes and deployment state |
 | 21 | Live MarketSmith Stock Screener data | Implemented on main; CI/parity tests pass. User still needs to run the full-universe refresh from the deployed screener to verify live results and provider limits |
 | 22 | Live MarketSmith fundamentals in Stock Workspace | Implemented on main; awaiting CI and user verification of symbol-details + financeDetails against their saved browser session |
+| 31 | Right Panel financial history charts (ROCE, revenue/EPS and institutional ownership) | Implemented; uses existing fetched MarketSmith fundamentals |
+| 32 | Live ChartInk saved-query scans in the Stock Screener | Implemented; same-origin Worker integration and CI passed; live Cloudflare provider response still needs user confirmation |
 
 Steps 7–11 are ordered to establish calculations, provider access, chart behaviour and static data before completing the feature screens. The original desktop app remains the behavioural reference throughout.
 
