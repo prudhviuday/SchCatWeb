@@ -91,6 +91,27 @@ async function forwardJson(url, init = {}, cacheSeconds = 0) {
   return output;
 }
 
+function compactUtcDate(date) {
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  return `${year}${month}${day}`;
+}
+
+function defaultMarketSmithDateRange(now = new Date()) {
+  const end = new Date(now);
+  const start = new Date(now);
+  start.setUTCFullYear(start.getUTCFullYear() - 5);
+  return {
+    start: compactUtcDate(start),
+    end: compactUtcDate(end)
+  };
+}
+
+function validMarketSmithDate(value) {
+  return typeof value === "string" && /^\\d{8}$/.test(value);
+}
+
 function withMarketSmithAuth(url, env, endpoint) {
   const configured = endpoint === "finance"
     ? (env.MARKETSMITH_FINANCE_AUTH || env.MARKETSMITH_AUTH)
@@ -131,14 +152,24 @@ async function marketSmithSymbol(url, env) {
   if (!validStockId(stockId) || !validSymbol(symbol)) {
     return json({ error: "invalid_stock_id_or_symbol" }, 400);
   }
+  // Match the currently working MarketSmith India URL supplied for RVNL:
+  // marketsmithindia.com/.../symboldetails.json?s=YYYYMMDD&e=YYYYMMDD
+  // The default window rolls forward and always covers five years.
+  const dateRange = defaultMarketSmithDateRange();
+  const startDate = url.searchParams.get("s") || dateRange.start;
+  const endDate = url.searchParams.get("e") || dateRange.end;
+  if (!validMarketSmithDate(startDate) || !validMarketSmithDate(endDate) || startDate > endDate) {
+    return json({ error: "invalid_marketsmith_date_range" }, 400);
+  }
+
   const target = new URL(
-    `https://msi-gcloud-prod.appspot.com/gateway/simple-api/ms-india/instr/0/${stockId}/symboldetails.json`
+    `https://marketsmithindia.com/gateway/simple-api/ms-india/instr/0/${stockId}/symboldetails.json`
   );
-  target.searchParams.set("s", url.searchParams.get("s") || "20190810");
-  target.searchParams.set("e", url.searchParams.get("e") || "20250810");
+  target.searchParams.set("s", startDate);
+  target.searchParams.set("e", endDate);
   target.searchParams.set("text", symbol);
   target.searchParams.set("lang", "en");
-  target.searchParams.set("isConsolidated", "0");
+  target.searchParams.set("isConsolidated", "1");
   if (!withMarketSmithAuth(target, env, "symbol")) {
     return json({
       error: "marketsmith_auth_not_configured",
