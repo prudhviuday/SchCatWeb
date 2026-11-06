@@ -69,6 +69,29 @@ export function parseWatchlistsCsv(csv:string):Watchlist[] {
   const grouped=new Map<string,string[]>();for(const r of rows.slice(1)){const n=r[ni]?.trim(),s=r[si]?.trim().toUpperCase();if(n&&s)grouped.set(n,[...(grouped.get(n)??[]),s]);}
   return uniqueNames([...grouped].map(([name,symbols])=>({name,symbols:[...new Set(symbols)]})),"watchlist");
 }
+
+export function parseSavedQueriesCsv(csv:string):SavedQuery[] {
+  const rows=parseCsv(csv);
+  if(rows.length<2)throw new Error("Query CSV needs a header and data rows.");
+  const headers=rows[0].map(x=>x.trim().toLowerCase());
+  const nameIndex=headers.indexOf("queryname")>=0?headers.indexOf("queryname"):headers.indexOf("name");
+  const codeIndex=headers.indexOf("querycode")>=0?headers.indexOf("querycode"):headers.indexOf("query");
+  const symbolsIndex=headers.indexOf("symbols");
+  if(nameIndex<0||codeIndex<0)throw new Error("Query CSV needs QueryName/Name and QueryCode/Query columns.");
+  const queries:SavedQuery[]=[];
+  for(const row of rows.slice(1)){
+    const name=row[nameIndex]?.trim(),queryCode=row[codeIndex]?.trim();
+    if(!name||!queryCode)continue;
+    const symbols=symbolsIndex<0?[]:(row[symbolsIndex]??"").split(/[\\s,;]+/).map(x=>x.trim().toUpperCase()).filter(Boolean);
+    queries.push({name,queryCode,symbols:[...new Set(symbols)]});
+  }
+  return uniqueNames(queries,"query");
+}
+export function serializeSavedQueriesCsv(queries:readonly SavedQuery[]):string {
+  const q=(s:string)=>'"'+s.replaceAll('"','""')+'"';
+  return ["QueryName,QueryCode,Symbols",...queries.map(x=>[q(x.name),q(x.queryCode),q(x.symbols.join(" "))].join(","))].join("\\r\\n");
+}
+
 export function serializeWatchlistsCsv(items:readonly Watchlist[]):string {
   const q=(s:string)=>'"'+s.replaceAll('"','""')+'"';return["Watchlist,Symbol",...items.flatMap(x=>x.symbols.map(s=>q(x.name)+","+q(s)))].join("\r\n");
 }
