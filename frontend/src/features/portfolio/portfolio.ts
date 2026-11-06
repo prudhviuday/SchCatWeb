@@ -1,4 +1,4 @@
-import type { ChartCandle, ChartTimeframe } from "../../data/providers/chartData";
+import type { ChartCandle, ChartTimeframe } from "../../data/providers/chartData.js";
 
 export const PORTFOLIO_STORAGE_KEY = "schcat.portfolio.v1";
 export const PORTFOLIO_SCHEMA_VERSION = 1;
