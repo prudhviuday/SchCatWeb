@@ -13,7 +13,8 @@ import {
   fetchMarketSmithFinanceData,
   fetchMarketSmithStockMetrics,
   type MarketSmithAnnualEpsPoint,
-  type MarketSmithLiveMetrics
+  type MarketSmithLiveMetrics,
+  type MarketSmithQuarterlyExpansionPoint
 } from "../../data/providers/marketSmithStockData";
 import {
   prepareChartView,
@@ -203,6 +204,7 @@ function StockWorkspace({
   const [annualEps, setAnnualEps] = useState<MarketSmithAnnualEpsPoint[]>([]);
   const [annualRoce, setAnnualRoce] = useState<Array<{ year: number; value: number; normalized: number | null }>>([]);
   const [annualRevenue, setAnnualRevenue] = useState<Array<{ year: number; value: number; normalized: number | null }>>([]);
+  const [quarterlyExpansion, setQuarterlyExpansion] = useState<MarketSmithQuarterlyExpansionPoint[]>([]);
   const [fundamentalsUpdatedAt, setFundamentalsUpdatedAt] = useState<string | null>(null);
   const [deliveryStatus, setDeliveryStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [deliveryMessage, setDeliveryMessage] = useState("");
@@ -305,6 +307,7 @@ function StockWorkspace({
     setAnnualEps([]);
     setAnnualRoce([]);
     setAnnualRevenue([]);
+    setQuarterlyExpansion([]);
 
     try {
       const ids = await loadMarketSmithIds();
@@ -325,6 +328,7 @@ function StockWorkspace({
         setAnnualEps(financeResult.value.annualEps);
         setAnnualRoce(financeResult.value.annualRoce);
         setAnnualRevenue(financeResult.value.annualRevenue);
+        setQuarterlyExpansion(financeResult.value.quarterlyExpansion);
       }
 
       if (!symbolOk && !financeOk) {
@@ -361,6 +365,7 @@ function StockWorkspace({
     setAnnualEps([]);
     setAnnualRoce([]);
     setAnnualRevenue([]);
+    setQuarterlyExpansion([]);
     setFundamentalStatus("idle");
     setFundamentalMessage("");
     setFundamentalsUpdatedAt(null);
@@ -492,6 +497,14 @@ function StockWorkspace({
                       <small>{point.normalized === null ? "—" : `Index ${point.normalized}`}</small>
                     </div>
                   ))}
+                </div>
+              </div>
+            )}
+            {quarterlyExpansion.length > 0 && (
+              <div className="workspace-financial-history">
+                <div className="eyebrow">QUARTERLY EXPANSION · LEGACY FORMULA</div>
+                <div className="workspace-financial-history-list">
+                  {quarterlyExpansion.map((point, index) => <div key={point.period + index}><span>{point.period}</span><strong>{point.value}%</strong><small>c25 ÷ c32 × 100</small></div>)}
                 </div>
               </div>
             )}
