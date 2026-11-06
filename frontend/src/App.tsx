@@ -4,9 +4,10 @@ import StockScreener from "./features/screener/StockScreener";
 import StockWorkspace from "./features/charts/StockWorkspace";
 import IndustryAnalysis from "./features/industry/IndustryAnalysis";
 import Research from "./features/research/Research";
+import MarketPulse from "./features/marketPulse/MarketPulse";
 import type { MarketUniverseRecord } from "./data/reference/marketUniverse";
 
-type Page = "overview" | "screener" | "workspace" | "industry" | "research";
+type Page = "overview" | "screener" | "workspace" | "industry" | "research" | "pulse";
 
 function App() {
   const [activePage, setActivePage] = useState<Page>("overview");
@@ -43,18 +44,18 @@ function App() {
           </button>
           <button type="button" className={"nav-item " + (activePage === "industry" ? "active" : "")} onClick={() => setActivePage("industry")}><span className="nav-icon">▤</span> Industry Analysis</button>
           <button type="button" className={"nav-item " + (activePage === "research" ? "active" : "")} onClick={() => setActivePage("research")}><span className="nav-icon">⌁</span> Research</button>
-          <div className="nav-item nav-coming-soon"><span className="nav-icon">◷</span> Market Pulse</div>
+          <button type="button" className={"nav-item " + (activePage === "pulse" ? "active" : "")} onClick={() => setActivePage("pulse")}><span className="nav-icon">◷</span> Market Pulse</button>
           <div className="nav-item nav-coming-soon"><span className="nav-icon">▣</span> Portfolio</div>
         </nav>
         <div className="sidebar-footer">
           <span className="status-dot" />
-          {activePage === "screener" ? "SCREENER ONLINE" : activePage === "workspace" ? "WORKSPACE ONLINE" : "MIGRATION IN PROGRESS"}
+          {activePage === "screener" ? "SCREENER ONLINE" : activePage === "workspace" ? "WORKSPACE ONLINE" : activePage === "pulse" ? "MARKET PULSE ONLINE" : "MIGRATION IN PROGRESS"}
         </div>
       </aside>
 
       <section className="main-panel">
         <header className="topbar">
-          <div className="breadcrumb">SCHCAT <span>/</span> {activePage === "screener" ? "STOCK SCREENER" : activePage === "workspace" ? "CHARTS & WORKSPACE" : activePage === "industry" ? "INDUSTRY ANALYSIS" : activePage === "research" ? "RESEARCH" : "OVERVIEW"}</div>
+          <div className="breadcrumb">SCHCAT <span>/</span> {activePage === "screener" ? "STOCK SCREENER" : activePage === "workspace" ? "CHARTS & WORKSPACE" : activePage === "industry" ? "INDUSTRY ANALYSIS" : activePage === "research" ? "RESEARCH" : activePage === "pulse" ? "MARKET PULSE" : "OVERVIEW"}</div>
           <div className="topbar-right"><span className="market-status"><i /> LOCAL WORKSPACE</span><div className="avatar">U</div></div>
         </header>
 
