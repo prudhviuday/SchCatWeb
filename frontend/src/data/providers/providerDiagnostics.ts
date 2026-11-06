@@ -1,4 +1,4 @@
-import { buildYahooChartUrl } from "./chartData.js";
+import { buildYahooProxyUrl } from "./chartData.js";
 
 export type ProviderProbeStatus =
   | "success"
@@ -33,134 +33,20 @@ type FetchAttempt =
   | { ok: true; value: FetchBody }
   | { ok: false; result: ProviderProbeResult };
 
-const REQUEST_TIMEOUT_MS = 12_000;
+const REQUEST_TIMEOUT_MS = 15_000;
 
 function now(): number {
   return typeof performance !== "undefined" ? performance.now() : Date.now();
 }
 
-async function requestText(
-  id: string,
-  provider: ProviderProbeResult["provider"],
-  title: string,
-  url: string,
-  init: RequestInit = {},
-  fetchOptions: Pick<RequestInit, "mode" | "credentials"> = {}
-): Promise<FetchAttempt> {
-  const startedAt = now();
-  const controller = new AbortController();
-  const timeoutId = globalThis.setTimeout(
-    () => controller.abort(),
-    REQUEST_TIMEOUT_MS
-  );
-
-  try {
-    const response = await fetch(url, {
-      ...init,
-      mode: fetchOptions.mode ?? "same-origin",
-      credentials: fetchOptions.credentials ?? init.credentials ?? "same-origin",
-      redirect: "follow",
-      signal: controller.signal
-    });
-    const body = await response.text();
-
-    return {
-      ok: true,
-      value: {
-        response,
-        body,
-        elapsedMs: Math.round(now() - startedAt)
-      }
-    };
-  } catch (error) {
-    const elapsedMs = Math.round(now() - startedAt);
-    const isTimeout =
-      error instanceof DOMException && error.name === "AbortError";
-
-    return {
-      ok: false,
-      result: {
-        id,
-        provider,
-        title,
-        status: isTimeout ? "timeout" : "browser-blocked",
-        message: isTimeout
-          ? "The provider did not respond within 12 seconds."
-          : fetchOptions.mode === "cors"
-            ? "The browser could not read the provider response. The provider may not allow cross-origin browser access (CORS), or the network may have blocked it."
-            : "The SchCatWeb API request failed before returning a response. Check the Worker deployment and API diagnostics.",
-        elapsedMs
-      }
-    };
-  } finally {
-    globalThis.clearTimeout(timeoutId);
-  }
+function apiUrl(path: string): string {
+  return path;
 }
 
-function httpFailure(
-  id: string,
-  provider: ProviderProbeResult["provider"],
-  title: string,
-  response: Response,
-  elapsedMs: number
-): ProviderProbeResult {
-  const status = response.status === 401 || response.status === 403
-    ? "auth-or-policy"
-    : "http-error";
-
-  return {
-    id,
-    provider,
-    title,
-    status,
-    httpStatus: response.status,
-    message: response.status === 401
-      ? "Provider returned 401. Authentication is required or the session was not accepted."
-      : response.status === 403
-        ? "Provider returned 403. Access may be restricted by authentication, anti-bot policy, or origin policy."
-        : "Provider returned an HTTP error. The request reached the provider, but the response was not successful.",
-    elapsedMs
-  };
-}
-
-function jsonResult(
-  id: string,
-  provider: ProviderProbeResult["provider"],
-  title: string,
-  attempt: FetchAttempt,
-  summary: (data: unknown) => string
-): ProviderProbeResult {
-  if (!attempt.ok) return attempt.result;
-  const { response, body, elapsedMs } = attempt.value;
-
-  if (!response.ok) {
-    return httpFailure(id, provider, title, response, elapsedMs);
-  }
-
-  try {
-    const data: unknown = JSON.parse(body);
-    return {
-      id,
-      provider,
-      title,
-      status: "success",
-      httpStatus: response.status,
-      message: summary(data),
-      elapsedMs
-    };
-  } catch {
-    return {
-      id,
-      provider,
-      title,
-      status: "invalid-response",
-      httpStatus: response.status,
-      message: "The browser could read the response, but it was not valid JSON.",
-      elapsedMs
-    };
-  }
-}
-
+/**
+ * These request builders preserve the source API paths for reference/tests.
+ * Live diagnostics intentionally call the same-origin Worker routes below.
+ */
 export function buildMarketSmithFinanceDetailsUrl(stockId: string): string {
   const safeId = stockId.trim();
   if (!/^\d+$/.test(safeId)) {
@@ -190,15 +76,36 @@ export function buildMarketSmithSymbolDetailsUrl(
   const url = new URL(
     `https://msi-gcloud-prod.appspot.com/gateway/simple-api/ms-india/instr/0/${safeId}/symboldetails.json`
   );
-  // Preserve the legacy request's historical window and consolidation flag.
   url.searchParams.set("s", "20190810");
   url.searchParams.set("e", "20250810");
   url.searchParams.set("text", safeSymbol);
   url.searchParams.set("lang", "en");
   url.searchParams.set("isConsolidated", "0");
-  // Deliberately do not copy the legacy hard-coded ms-auth query values into
-  // public frontend code. They are session-like values, not public API keys.
   return url.toString();
+}
+
+export function buildMarketSmithFinanceProxyUrl(stockId: string): string {
+  const safeId = stockId.trim();
+  if (!/^\d+$/.test(safeId)) {
+    throw new TypeError("MarketSmith stock ID must contain digits only");
+  }
+  return apiUrl(`/api/marketsmith/finance?stockId=${encodeURIComponent(safeId)}`);
+}
+
+export function buildMarketSmithSymbolProxyUrl(
+  stockId: string,
+  symbol: string
+): string {
+  const safeId = stockId.trim();
+  const safeSymbol = symbol.trim().toUpperCase();
+  if (!/^\d+$/.test(safeId)) {
+    throw new TypeError("MarketSmith stock ID must contain digits only");
+  }
+  if (!/^[A-Z0-9._-]+$/.test(safeSymbol)) {
+    throw new TypeError("MarketSmith symbol contains unsupported characters");
+  }
+  const params = new URLSearchParams({ stockId: safeId, symbol: safeSymbol });
+  return apiUrl(`/api/marketsmith/symbol?${params.toString()}`);
 }
 
 export function buildNseDeliveryUrl(
@@ -222,12 +129,28 @@ export function buildNseDeliveryUrl(
   return url.toString();
 }
 
+export function buildNseDeliveryProxyUrl(
+  symbol: string,
+  fromDate: string,
+  toDate: string
+): string {
+  const safeSymbol = symbol.trim().toUpperCase();
+  if (!/^[A-Z0-9&._-]+$/.test(safeSymbol)) {
+    throw new TypeError("NSE symbol contains unsupported characters");
+  }
+  const params = new URLSearchParams({
+    symbol: safeSymbol,
+    from: fromDate,
+    to: toDate
+  });
+  return apiUrl(`/api/nse/delivery?${params.toString()}`);
+}
+
 export function extractCsrfToken(html: string): string | null {
   const meta = html.match(
     /<meta\b[^>]*\bname\s*=\s*["']csrf-token["'][^>]*>/i
   )?.[0];
   if (!meta) return null;
-
   return meta.match(/\bcontent\s*=\s*["']([^"']+)["']/i)?.[1] ?? null;
 }
 
@@ -237,157 +160,268 @@ function formatNseDate(date: Date): string {
   return `${day}-${month}-${date.getFullYear()}`;
 }
 
+/** Match the legacy Python utility's 300-calendar-day NSE delivery request. */
 function recentNseWindow(): { from: string; to: string } {
   const today = new Date();
   const from = new Date(today);
-  from.setDate(from.getDate() - 10);
+  from.setDate(from.getDate() - 300);
   return {
     from: formatNseDate(from),
     to: formatNseDate(today)
   };
 }
 
-async function probeMarketSmith(
+async function requestText(
+  id: string,
+  provider: ProviderProbeResult["provider"],
+  title: string,
+  url: string,
+  init: RequestInit = {}
+): Promise<FetchAttempt> {
+  const startedAt = now();
+  const controller = new AbortController();
+  const timeoutId = globalThis.setTimeout(
+    () => controller.abort(),
+    REQUEST_TIMEOUT_MS
+  );
+
+  try {
+    const response = await fetch(url, {
+      ...init,
+      mode: "same-origin",
+      credentials: "same-origin",
+      redirect: "follow",
+      signal: controller.signal
+    });
+    const body = await response.text();
+    return {
+      ok: true,
+      value: {
+        response,
+        body,
+        elapsedMs: Math.round(now() - startedAt)
+      }
+    };
+  } catch (error) {
+    const elapsedMs = Math.round(now() - startedAt);
+    const isTimeout =
+      error instanceof DOMException && error.name === "AbortError";
+    return {
+      ok: false,
+      result: {
+        id,
+        provider,
+        title,
+        status: isTimeout ? "timeout" : "browser-blocked",
+        message: isTimeout
+          ? "The SchCatWeb Worker API did not respond within 15 seconds."
+          : "The browser could not reach SchCatWeb's same-origin Worker API. Check the site deployment, /api routes, and network.",
+        elapsedMs
+      }
+    };
+  } finally {
+    globalThis.clearTimeout(timeoutId);
+  }
+}
+
+function parseBody(body: string): unknown | null {
+  try {
+    return JSON.parse(body) as unknown;
+  } catch {
+    return null;
+  }
+}
+
+function providerErrorMessage(data: unknown, fallback: string): string {
+  if (data && typeof data === "object") {
+    const record = data as Record<string, unknown>;
+    const message = typeof record.message === "string" ? record.message : "";
+    const error = typeof record.error === "string" ? record.error : "";
+    const upstream = typeof record.upstreamStatus === "number"
+      ? ` (upstream HTTP ${record.upstreamStatus})`
+      : "";
+    if (message) return `${message}${upstream}`;
+    if (error) return `${error}${upstream}`;
+  }
+  return fallback;
+}
+
+function httpFailure(
+  id: string,
+  provider: ProviderProbeResult["provider"],
+  title: string,
+  response: Response,
+  body: string,
+  elapsedMs: number
+): ProviderProbeResult {
+  const data = parseBody(body);
+  const dataError = data && typeof data === "object"
+    ? (data as Record<string, unknown>).error
+    : undefined;
+  const status = response.status === 401 ||
+    response.status === 403 ||
+    dataError === "marketsmith_auth_not_configured"
+    ? "auth-or-policy"
+    : "http-error";
+
+  const fallback = response.status === 401
+    ? "The upstream provider requires authentication or rejected the configured session."
+    : response.status === 403
+      ? "The upstream provider denied access. Check the provider session, entitlement, and request policy."
+      : `The SchCatWeb Worker returned HTTP ${response.status} while contacting the provider.`;
+
+  return {
+    id,
+    provider,
+    title,
+    status,
+    httpStatus: response.status,
+    message: providerErrorMessage(data, fallback),
+    elapsedMs
+  };
+}
+
+function jsonResult(
+  id: string,
+  provider: ProviderProbeResult["provider"],
+  title: string,
+  attempt: FetchAttempt,
+  summary: (data: unknown) => string
+): ProviderProbeResult {
+  if (!attempt.ok) return attempt.result;
+  const { response, body, elapsedMs } = attempt.value;
+  if (!response.ok) {
+    return httpFailure(id, provider, title, response, body, elapsedMs);
+  }
+
+  const data = parseBody(body);
+  if (data === null) {
+    return {
+      id,
+      provider,
+      title,
+      status: "invalid-response",
+      httpStatus: response.status,
+      message: "The Worker returned a response that was not valid JSON.",
+      elapsedMs
+    };
+  }
+
+  return {
+    id,
+    provider,
+    title,
+    status: "success",
+    httpStatus: response.status,
+    message: summary(data),
+    elapsedMs
+  };
+}
+
+function probeMarketSmith(
   stockId: string,
   symbol: string,
   endpoint: "finance" | "symbol"
 ): Promise<ProviderProbeResult> {
   const id = endpoint === "finance" ? "marketsmith-finance" : "marketsmith-symbol";
   const title = endpoint === "finance"
-    ? "MarketSmith financeDetails endpoint"
-    : "MarketSmith symboldetails endpoint";
+    ? "MarketSmith financeDetails via SchCatWeb Worker"
+    : "MarketSmith symboldetails via SchCatWeb Worker";
+
   let url: string;
   try {
     url = endpoint === "finance"
-      ? buildMarketSmithFinanceDetailsUrl(stockId)
-      : buildMarketSmithSymbolDetailsUrl(stockId, symbol);
+      ? buildMarketSmithFinanceProxyUrl(stockId)
+      : buildMarketSmithSymbolProxyUrl(stockId, symbol);
   } catch (error) {
-    return {
+    return Promise.resolve({
       id,
       provider: "MarketSmith",
       title,
       status: "invalid-response",
       message: error instanceof Error ? error.message : "Invalid test input.",
       elapsedMs: 0
-    };
+    });
   }
 
-  const attempt = await requestText(
-    id,
-    "MarketSmith",
-    title,
-    url,
-    { headers: { Accept: "application/json" } },
-    { mode: "cors", credentials: "include" }
+  return requestText(id, "MarketSmith", title, url).then((attempt) =>
+    jsonResult(id, "MarketSmith", title, attempt, (data) => {
+      if (!data || typeof data !== "object") {
+        return "JSON response received, but the payload is not an object.";
+      }
+      const keys = Object.keys(data);
+      return `Worker successfully read MarketSmith JSON. Top-level fields: ${keys.slice(0, 8).join(", ") || "(none)"}.`;
+    })
   );
-
-  return jsonResult(id, "MarketSmith", title, attempt, (data) => {
-    if (!data || typeof data !== "object") {
-      return "JSON response received, but the payload is not an object.";
-    }
-    const keys = Object.keys(data);
-    return `JSON response readable. Top-level fields: ${keys.slice(0, 8).join(", ") || "(none)"}.`;
-  });
 }
 
-async function probeChartInk(): Promise<ProviderProbeResult[]> {
-  const provider = "ChartInk" as const;
-  const title = "ChartInk direct browser CSRF session + scan POST";
-  const bootstrap = await requestText(
-    "chartink-browser-bootstrap",
-    provider,
+async function probeChartInk(): Promise<ProviderProbeResult> {
+  const title = "ChartInk CSRF session + scan via SchCatWeb Worker";
+  const attempt = await requestText(
+    "chartink-worker-scan",
+    "ChartInk",
     title,
-    "https://chartink.com/screener/process",
-    { headers: { Accept: "text/html,application/xhtml+xml" } },
-    { mode: "cors", credentials: "include" }
-  );
-  if (!bootstrap.ok) return [bootstrap.result];
-
-  const csrf = extractCsrfToken(bootstrap.value.body);
-  if (!csrf) {
-    return [{
-      id: "chartink-browser-bootstrap",
-      provider,
-      title,
-      status: "invalid-response",
-      httpStatus: bootstrap.value.response.status,
-      message: "The browser reached ChartInk, but the CSRF token was not readable in the response.",
-      elapsedMs: bootstrap.value.elapsedMs
-    }];
-  }
-
-  const form = new URLSearchParams({ scan_clause: "( {cash} ( latest close > 0 ) )" });
-  const scan = await requestText(
-    "chartink-browser-scan",
-    provider,
-    title,
-    "https://chartink.com/screener/process",
+    "/api/chartink/scan",
     {
       method: "POST",
-      headers: {
-        Accept: "application/json,text/plain,*/*",
-        "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
-        "X-CSRF-TOKEN": csrf
-      },
-      body: form.toString()
-    },
-    { mode: "cors", credentials: "include" }
+      headers: { "content-type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({
+        mode: "scan",
+        query: "( {cash} ( latest close > 0 ) )"
+      })
+    }
   );
-  if (!scan.ok) return [scan.result];
-  if (!scan.value.response.ok) {
-    return [httpFailure("chartink-browser-scan", provider, title, scan.value.response, scan.value.elapsedMs)];
-  }
-  try {
-    const data = JSON.parse(scan.value.body) as { data?: unknown[] };
-    const rows = Array.isArray(data.data) ? data.data.length : null;
-    return [{
-      id: "chartink-browser-scan",
-      provider,
-      title,
-      status: rows === null ? "invalid-response" : "success",
-      httpStatus: scan.value.response.status,
-      message: rows === null
-        ? "The browser reached ChartInk, but the scan response did not contain the expected data array."
-        : `Direct browser CSRF + scan flow succeeded (${rows} rows).`,
-      elapsedMs: bootstrap.value.elapsedMs + scan.value.elapsedMs
-    }];
-  } catch {
-    return [{
-      id: "chartink-browser-scan",
-      provider,
-      title,
-      status: "invalid-response",
-      httpStatus: scan.value.response.status,
-      message: "ChartInk returned a response that was not valid JSON.",
-      elapsedMs: bootstrap.value.elapsedMs + scan.value.elapsedMs
-    }];
-  }
+
+  return jsonResult(
+    "chartink-worker-scan",
+    "ChartInk",
+    title,
+    attempt,
+    (data) => {
+      if (!data || typeof data !== "object") {
+        return "Worker received a response, but the payload is not an object.";
+      }
+      const rows = (data as { data?: unknown }).data;
+      return Array.isArray(rows)
+        ? `Server-side ChartInk session and scan succeeded (${rows.length} rows).`
+        : "ChartInk returned JSON, but the expected data array is missing.";
+    }
+  );
 }
 
 async function probeNse(): Promise<ProviderProbeResult> {
-  const title = "NSE historical delivery API (direct browser request)";
+  const title = "NSE historical delivery via SchCatWeb Worker";
   const { from, to } = recentNseWindow();
-  const url = buildNseDeliveryUrl("RELIANCE", from, to);
+  let url: string;
+  try {
+    url = buildNseDeliveryProxyUrl("RELIANCE", from, to);
+  } catch (error) {
+    return {
+      id: "nse-delivery",
+      provider: "NSE",
+      title,
+      status: "invalid-response",
+      message: error instanceof Error ? error.message : "Invalid NSE test input.",
+      elapsedMs: 0
+    };
+  }
   const attempt = await requestText(
     "nse-delivery",
     "NSE",
     title,
     url,
-    { headers: { Accept: "application/json" } },
-    { mode: "cors", credentials: "include" }
+    { headers: { Accept: "application/json" } }
   );
-
   return jsonResult("nse-delivery", "NSE", title, attempt, (data) => {
     if (!data || typeof data !== "object") {
-      return "JSON response received, but the payload is not an object.";
+      return "Worker received JSON, but the payload is not an object.";
     }
     const rows = (data as { data?: unknown }).data;
     return Array.isArray(rows)
-      ? `JSON response readable. ${rows.length} historical rows returned for RELIANCE (${from} to ${to}).`
-      : "JSON response readable, but the expected data array is missing.";
+      ? `Worker successfully read ${rows.length} historical rows for RELIANCE (${from} to ${to}).`
+      : "NSE returned JSON, but the expected data array is missing.";
   });
 }
-
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value !== null && typeof value === "object"
@@ -396,37 +430,31 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 }
 
 async function probeYahooFinance(): Promise<ProviderProbeResult> {
-  const title = "Yahoo Finance chart endpoint (direct browser request; RELIANCE, 5-day daily sample)";
-  const url = buildYahooChartUrl("RELIANCE", "1D", { range: "5d" });
+  const title = "Yahoo Finance chart via SchCatWeb Worker (RELIANCE, 5-day sample)";
+  const url = buildYahooProxyUrl("RELIANCE", "1D", { range: "5d" });
   const attempt = await requestText(
     "yahoo-chart",
     "Yahoo Finance",
     title,
     url,
-    {
-      headers: { Accept: "application/json" }
-    },
-    { mode: "cors", credentials: "omit" }
+    { headers: { Accept: "application/json" } }
   );
 
-  return jsonResult(
-    "yahoo-chart",
-    "Yahoo Finance",
-    title,
-    attempt,
-    (data) => {
-      const chart = asRecord(asRecord(data)?.chart);
-      const results = chart?.result;
-      if (!Array.isArray(results) || results.length === 0) {
-        return "JSON response readable, but the chart result array is empty.";
-      }
-      const first = asRecord(results[0]);
-      const timestamps = first?.timestamp;
-      return Array.isArray(timestamps)
-        ? `Direct browser request read Yahoo chart JSON (${timestamps.length} timestamp slots).`
-        : "JSON response readable, but timestamp data is missing.";
+  return jsonResult("yahoo-chart", "Yahoo Finance", title, attempt, (data) => {
+    const chart = asRecord(asRecord(data)?.chart);
+    const results = chart?.result;
+    if (!Array.isArray(results) || results.length === 0) {
+      const error = asRecord(chart?.error)?.description;
+      return typeof error === "string"
+        ? `Worker reached Yahoo Finance, but Yahoo returned: ${error}`
+        : "Worker received JSON, but the chart result array is empty.";
     }
-  );
+    const first = asRecord(results[0]);
+    const timestamps = first?.timestamp;
+    return Array.isArray(timestamps)
+      ? `Server-side Yahoo Finance request succeeded (${timestamps.length} timestamp slots).`
+      : "Yahoo returned JSON, but timestamp data is missing.";
+  });
 }
 
 export async function runProviderDiagnostics(
@@ -439,6 +467,5 @@ export async function runProviderDiagnostics(
     probeNse(),
     probeYahooFinance()
   ]);
-
-  return [finance, symbol, ...chartInk, nse, yahoo];
+  return [finance, symbol, chartInk, nse, yahoo];
 }
