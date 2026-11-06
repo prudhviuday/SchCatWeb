@@ -232,7 +232,7 @@ cd frontend && npm install && npm run build
 npx wrangler deploy --config ./wrangler.toml
 ```
 
-- Build watch paths: `frontend/**` and `wrangler.toml`.
+- Build watch paths: `frontend/**`, `worker/**` and `wrangler.toml`.
 
 The root Wrangler config publishes `./frontend/dist` as static assets. It intentionally has no `main` entry point, Worker script, API route, R2 binding or database. Keep the Worker name as `schcatweb` to match the existing Cloudflare deployment.
 
