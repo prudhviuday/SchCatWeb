@@ -11,10 +11,12 @@ import { getMarketSmithId, loadMarketSmithIds } from "../../data/reference/marke
 import { readStoredMarketSmithAuth } from "../../data/providers/providerDiagnostics";
 import {
   fetchMarketSmithFinanceData,
+  fetchMarketSmithRelativeStrength,
   fetchMarketSmithStockMetrics,
   type MarketSmithAnnualEpsPoint,
   type MarketSmithLiveMetrics,
-  type MarketSmithQuarterlyExpansionPoint
+  type MarketSmithQuarterlyExpansionPoint,
+  type MarketSmithRelativeStrengthPoint
 } from "../../data/providers/marketSmithStockData";
 import {
   prepareChartView,
