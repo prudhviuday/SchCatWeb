@@ -387,3 +387,14 @@ Implemented on main:
 - Stock Workspace displays the quarterly series inside MarketSmith Fundamentals. It reuses the existing on-demand finance request and browser-local MarketSmith session; no new endpoint, credential, backend or persistent storage is introduced.
 - Added parser regression coverage for formula parity, chronological ordering and invalid denominators.
 - Full CI and live MarketSmith response availability remain to be confirmed; Cloudflare publication is not assumed.
+
+
+## Step 27 — Weekly close × volume history (implemented; CI pending)
+
+Implemented on main:
+- Ported desktop `util.fetch_closexvol_for_stock` into the chart presentation layer.
+- Reuses the weekly Yahoo candles already loaded by Stock Workspace; no extra network request or provider credential is required.
+- Preserves the desktop formula `round(close × volume / 1,000,000,000, 2)`, selects the latest 30 observations and presents them chronologically.
+- The UI labels the series as a close-volume proxy, not official traded turnover, because that is exactly what the desktop calculation produces.
+- Added regression tests for ordering, latest-30 selection, rounding and invalid limits.
+- Full CI and deployed-site behaviour remain to be confirmed; Cloudflare publication is not assumed.
