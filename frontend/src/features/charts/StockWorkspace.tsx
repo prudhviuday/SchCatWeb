@@ -210,7 +210,7 @@ function StockWorkspace({
   const [deliveryStatus, setDeliveryStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [deliveryMessage, setDeliveryMessage] = useState("");
   const [deliveryHistory, setDeliveryHistory] = useState<NseDeliveryPoint[]>([]);
-  const [deliveryUpdatedAt, setDeliveryUpdatedAt] = useState<string | null>(null);
+  const [deliveryUpdatedAt, setDeliveryUpdatedAt] = useState<string | null>(null);\n  const [rsStatus, setRsStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");\n  const [rsMessage, setRsMessage] = useState("");\n  const [rsHistory, setRsHistory] = useState<MarketSmithRelativeStrengthPoint[]>([]);
 
   useEffect(() => {
     if (!symbol) return;
@@ -293,6 +293,31 @@ function StockWorkspace({
     } catch (error) { setDeliveryStatus("error"); setDeliveryMessage(errorText(error)); }
   }
 
+  async function fetchRelativeStrengthHistory() {
+    if (!symbol || rsStatus === "loading") return;
+    const auth = readStoredMarketSmithAuth();
+    if (!auth) {
+      setRsStatus("error");
+      setRsMessage("Save your current MarketSmith session in Provider Diagnostics first.");
+      return;
+    }
+    setRsStatus("loading");
+    setRsMessage("Fetching MarketSmith relative-strength history…");
+    setRsHistory([]);
+    try {
+      const ids = await loadMarketSmithIds();
+      const stockId = record?.instrumentId ?? getMarketSmithId(ids, symbol);
+      if (stockId === null || stockId === undefined) throw new Error(`No MarketSmith instrument ID is available for ${symbol}.`);
+      const points = await fetchMarketSmithRelativeStrength(stockId, symbol, auth);
+      setRsHistory(points);
+      setRsStatus("ready");
+      setRsMessage(`Loaded ${points.length} MarketSmith relative-strength observations.`);
+    } catch (error) {
+      setRsStatus("error");
+      setRsMessage(errorText(error));
+    }
+  }
+
   async function fetchLiveFundamentals() {
     if (!symbol || fundamentalStatus === "loading") return;
     const auth = readStoredMarketSmithAuth();
@@ -370,7 +395,7 @@ function StockWorkspace({
     setFundamentalStatus("idle");
     setFundamentalMessage("");
     setFundamentalsUpdatedAt(null);
-    setDeliveryStatus("idle"); setDeliveryMessage(""); setDeliveryHistory([]); setDeliveryUpdatedAt(null);
+    setDeliveryStatus("idle"); setDeliveryMessage(""); setDeliveryHistory([]); setDeliveryUpdatedAt(null);\n    setRsStatus("idle"); setRsMessage(""); setRsHistory([]);
     setSymbol(next);
   }
 
@@ -472,10 +497,32 @@ function StockWorkspace({
 
           <section className="workspace-live-fundamentals" aria-live="polite">
             <div className="workspace-chart-section-heading">
-              <div><div className="eyebrow">MARKETSMITH FUNDAMENTALS</div><h2>Quarterly growth & annual EPS</h2></div>
+              <div><div className="eyebrow">MARKETSMITH FUNDAMENTALS</div><h2>Quarterly growth & annual EPS</h2><p className="workspace-chart-note">Relative-strength history is fetched separately on demand.</p></div><button type="button" className="screener-button secondary" onClick={() => void fetchRelativeStrengthHistory()} disabled={!symbol || rsStatus === "loading"}>{rsStatus === "loading" ? "Fetching RS…" : rsStatus === "ready" ? "Refresh RS history" : "Fetch RS history"}</button>
               <span className={fundamentalStatus === "error" ? "workspace-chart-status error" : fundamentalStatus === "ready" ? "workspace-chart-status ready" : "workspace-chart-status"}>{fundamentalStatus === "idle" ? "Not loaded" : fundamentalStatus === "loading" ? "Loading" : fundamentalStatus === "partial" ? "Partial" : fundamentalStatus === "error" ? "Unavailable" : "Live"}</span>
             </div>
-            <p className="workspace-chart-note">{fundamentalMessage || "Use Fetch live fundamentals to retrieve MarketSmith symbol details and finance history. The saved browser session is sent only with the request."}</p>
+            <p className="workspace-chart-note">{fundamentalMessage || "Use Fetch live fundamentals to retrieve MarketSmith symbol details and finance history. The saved browser session is sent only with the request."}</p>\n            <p className="workspace-chart-note" aria-live="polite">{rsMessage}</p>
+            {rsHistory.length > 1 && (() => {
+              const values = rsHistory.map((point) => point.value);
+              const minimum = Math.min(...values);
+              const maximum = Math.max(...values);
+              const spread = maximum - minimum || 1;
+              const coordinates = values.map((value, index) => {
+                const px = 12 + index * 696 / (values.length - 1);
+                const py = 126 - (value - minimum) / spread * 108;
+                return `${px.toFixed(1)},${py.toFixed(1)}`;
+              }).join(" ");
+              return <div className="workspace-rs-history">
+                <div className="eyebrow">MARKETSMITH RELATIVE STRENGTH · HISTORICAL SEQUENCE</div>
+                <svg viewBox="0 0 720 150" role="img" aria-label={`${symbol} MarketSmith relative strength history, ${values.length} observations`}>
+                  <line x1="12" x2="708" y1="126" y2="126" className="chart-grid-line" />
+                  <polyline points={coordinates} className="workspace-rs-line" />
+                  <text x="12" y="145" className="chart-axis-label">Oldest</text>
+                  <text x="708" y="145" textAnchor="end" className="chart-axis-label">Latest</text>
+                </svg>
+                <p className="workspace-chart-note">Legacy desktop formula: provider rlst values, missing points replaced by the integer mean, then reversed to chronological order. MarketSmith response does not expose a stable date label in this legacy series, so the x-axis is sequence-only.</p>
+              </div>;
+            })()}
+
             {liveFundamentals && (
               <div className="workspace-quarter-grid">
                 {liveFundamentals.quarterlyGrowth.map((quarter, index) => (
