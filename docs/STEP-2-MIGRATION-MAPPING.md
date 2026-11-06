@@ -68,14 +68,33 @@ Do not port the hard-coded legacy MarketSmith `ms-auth` query values into the we
 
 | Source file | Known use | Static-site treatment |
 |---|---|---|
-| `data/marketsmithidsall4.xlsx` | MarketSmith IDs, symbol, market cap, industry, PB, ROCE, NikScore | Convert to non-sensitive JSON during development/build; load as a static asset |
-| `data/ChartInkQs.xlsx` / QUERIES | Saved query names/definitions | Import/export JSON or browser-local saved queries; provider query execution remains direct browser request |
-| `data/ChartInkQs.xlsx` / Watchlist | Watchlist names and stock membership | Browser-local storage and JSON import/export |
-| `data/ChartInkQs.xlsx` / Portfolio | Stock, quantity and buy price | Browser-local storage and JSON import/export |
-| `data/Industrydata.xlsx` | Industry autocomplete | Static JSON asset |
-| `data/IndustryAnalysis/*.json` | Saved analysis results | Static JSON for non-sensitive shared reference results or local import/export for personal results |
+| `data/marketsmithidsall4.xlsx` | Symbol, instrument ID, market cap, sector, industry, P/B, ROCE and NikScore | Converted to `public/data/marketUniverse.json` (2,256 rows); static snapshot with unknown as-of date. MarketCap/PB/ROCE/NikScore must not be presented as live values |
+| `data/Industrydata.xlsx` | Industry autocomplete/reference labels | Converted to `public/data/industries.json` (107 unique values) |
+| `CRIP4/public/Tools/marketsmithids.json` | Legacy chart-provider symbol-to-MarketSmith-ID lookup | Copied to `public/data/marketSmithIds.json` (1,256 keys); distinct from the larger screener universe |
+| `data/ChartInkQs.xlsx` / QUERIES | Saved query names/definitions | Not imported yet; inspect/select the query sheet separately in a later feature step |
+| `data/ChartInkQs.xlsx` / Watchlist | Watchlist names and stock membership | Excluded from public assets; later import/export through browser-local storage |
+| `data/ChartInkQs.xlsx` / Portfolio | Stock, quantity and buy price | Excluded from public assets; later import/export through browser-local storage |
+| `data/IndustryAnalysis/*.json` | Dated saved analysis results | Excluded from public assets; historical snapshots are not a current reference dataset |
+| `data/marketsmithidsall.txt` | Alternate symbol/ID list | Not imported; 2,242 entries differ from the chart map and include a conflicting UJJIVAN ID |
+| `data/Industrydata-2.xlsx` | Alternate industry classification | Not imported; 178-label taxonomy differs from the current Industrydata workbook |
+| `data/Book1.xlsx` | Unidentified workbook | Excluded until its purpose and content are mapped |
 
-Static assets are public. Never publish private holdings, personal notes or secrets as static JSON. Browser storage is per browser/device and does not synchronise automatically.
+Static assets are public. Never publish personal holdings, watchlist membership, notes, provider credentials or session tokens as static JSON. Browser storage is per browser/device and does not synchronise automatically.
+
+### Step 11 converted reference-data contract
+
+Generated assets and typed clients:
+- `frontend/public/data/marketUniverse.json`: 2,256 rows with `symbol`, `instrumentId`, `marketCap`, `sector`, `industry`, `pb`, `roce`, `nikScore`.
+- `frontend/public/data/industries.json`: 107 unique industry labels. The source list exactly covers the non-empty `industry` values in the stock-universe workbook; the workbook also contains 25 distinct sectors.
+- `frontend/public/data/marketSmithIds.json`: 1,256 legacy CRIP4 symbol-to-ID pairs used for chart requests. Do not merge it into the 2,256-row stock universe: the datasets have alias differences and one conflict in the alternate text list.
+- `frontend/public/data/manifest.json`: source paths, blob SHAs, counts and freshness limitations.
+- `frontend/public/data/conversion-report.json`: row counts, schema checks and source data quality warnings.
+
+Typed clients: `src/data/reference/marketUniverse.ts`, `src/data/reference/industries.ts`, and `src/data/reference/marketSmithIds.ts`. They fetch static files from the same origin and validate the JSON schema.
+
+The workbook has no recorded as-of date. Treat MarketCap, P/B, ROCE and NikScore as an undated historical snapshot, not live metrics. The source also contains two shared instrument-ID pairs: `M&M`/`M&MFIN` (3022514) and `IL&FSENGG`/`IL&FSTRANS` (3098076). All 2,256 rows are retained and the duplicate IDs are exposed as warnings in the manifest/conversion report. No invalid instrument IDs or numeric metric cells were found. The market universe has unique stock symbols.
+
+The converter is `tools/convert-source-reference-data.mjs`; its development-time workflow checks out the desktop source repository, converts the two approved reference workbooks to JSON, and commits the generated static files. The XLSX reader is not included in the deployed frontend runtime. Automated reference tests validate counts, examples, data consistency and the known duplicate-ID cases. CI also checks that Vite copies the JSON assets to `frontend/dist/data/`.
 
 ## 4. Screener contract and behaviour
 
@@ -240,4 +259,4 @@ Holdings contain stock, quantity and buy price. Legacy chart calculates each hol
 
 ## 12. Migration sequence
 
-See `docs/PROJECT-STATUS.md` for the binding 20-step plan. Steps 7–10 cover core calculations, provider diagnostics, browser chart-data transformations and technical-indicator parity. Next is Step 11 (static non-sensitive reference-data conversion), while live browser CORS checks for the required external providers remain open. The previous backend endpoint proposals are superseded; app-internal workflows should be TypeScript functions, not HTTP routes.
+See `docs/PROJECT-STATUS.md` for the binding 20-step plan. Steps 7–11 cover core calculations, provider diagnostics, browser chart-data transformations, technical-indicator parity and static reference-data conversion. Next is Step 12 (browser stock screener), while live browser CORS checks for the required external providers remain open. The previous backend endpoint proposals are superseded; app-internal workflows should be TypeScript functions, not HTTP routes.
