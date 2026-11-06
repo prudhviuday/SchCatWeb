@@ -57,7 +57,7 @@ The single root `wrangler.toml` sets `name = "schcatweb"` and `assets.directory 
 | 10 | Port technical indicators with numerical parity tests | Complete — exact fast-technical-indicators 1.1.4 SMA/EMA/RSI kernels, CRIP4 wrappers, ULTM/ATP ports and CI parity tests |
 | 11 | Convert/import non-sensitive reference workbooks and JSON to static browser-readable data | Complete — 2,256-row stock universe, 107-industry list and 1,256-symbol CRIP4 MarketSmith ID map converted to static JSON; provenance, freshness and duplicate-ID warnings captured |
 | 12 | Stock screener: universe, filters, queries and sorting | Complete — browser screener, tests and production build pass |
-| 13 | Charts and Stock Workspace | Not started |
+| 13 | Charts and Stock Workspace | Complete — responsive multi-timeframe chart workspace, stock detail panel, tests and production build pass |
 | 14 | Industry Analysis | Not started |
 | 15 | Research module | Not started |
 | 16 | Market Pulse | Not started |
