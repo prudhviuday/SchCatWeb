@@ -108,6 +108,56 @@ test("ChartInk route performs CSRF bootstrap and posts a scan with the token", a
   assert.deepEqual(await response.json(), { data: [{ nsecode: "RELIANCE" }] });
 });
 
+
+test("ChartInk history mode posts to the backtest endpoint and returns historical tuples", async () => {
+  const calls = [];
+  globalThis.fetch = async (input, init = {}) => {
+    calls.push({ url: String(input), init });
+    if (calls.length === 1) {
+      return new Response('<meta name="csrf-token" content="history-csrf">', {
+        status: 200,
+        headers: { "set-cookie": "ci_session=history-session; Path=/; Secure" }
+      });
+    }
+    return new Response(JSON.stringify({
+      metaData: [{ tradeTimes: [1000, 2000] }],
+      aggregatedStockList: [["TCS", 10, 20, "INFY", 11, 21], ["RELIANCE", 30, 40]]
+    }), { status: 200, headers: { "content-type": "application/json" } });
+  };
+  const response = await worker.fetch(
+    new Request("https://schcatweb.test/api/chartink/scan", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ mode: "history", query: "close > ema(20)" })
+    }),
+    { ASSETS: { fetch: async () => new Response("asset") } }
+  );
+  assert.equal(response.status, 200);
+  assert.equal(calls.length, 2);
+  assert.equal(calls[1].url, "https://chartink.com/backtest/process");
+  assert.equal(calls[1].init.headers["x-csrf-token"], "history-csrf");
+  assert.equal(calls[1].init.body, "scan_clause=close+%3E+ema%2820%29");
+  assert.deepEqual(await response.json(), {
+    metaData: [{ tradeTimes: [1000, 2000] }],
+    aggregatedStockList: [["TCS", 10, 20, "INFY", 11, 21], ["RELIANCE", 30, 40]]
+  });
+});
+
+test("ChartInk rejects an unknown mode before contacting the provider", async () => {
+  let called = false;
+  globalThis.fetch = async () => { called = true; return new Response("{}"); };
+  const response = await worker.fetch(
+    new Request("https://schcatweb.test/api/chartink/scan", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ mode: "unexpected", query: "close > 1" })
+    }),
+    { ASSETS: { fetch: async () => new Response("asset") } }
+  );
+  assert.equal(response.status, 400);
+  assert.equal(called, false);
+});
+
 test("non-API requests are served by the static assets binding", async () => {
   let forwarded = false;
   const response = await worker.fetch(

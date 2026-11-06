@@ -87,6 +87,7 @@ test("Cloudflare deploys the provider API Worker with the SPA static asset bindi
   assert.match(worker, /\/api\/yahoo\/chart/);
   assert.match(worker, /\/api\/marketsmith\/finance/);
   assert.match(worker, /\/api\/chartink\/scan/);
+  assert.match(worker, /backtest\/process/);
   assert.match(worker, /\/api\/nse\/delivery/);
   assert.doesNotMatch(config, /^\s*\[\[?r2_buckets\]?\]/m);
 });

@@ -29,7 +29,8 @@
     "src/data/providers/nseDelivery.ts",
     "src/features/analysis/multiStockAnalysis.ts",
     "src/features/charts/rightPanelCharts.ts",
-    "src/data/providers/chartInk.ts"
+    "src/data/providers/chartInk.ts",
+    "src/data/providers/chartInkHistory.ts"
   ],
   "include": []
 }

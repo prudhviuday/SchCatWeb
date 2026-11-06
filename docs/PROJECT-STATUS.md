@@ -494,3 +494,18 @@ Implemented on `main`:
 **User test:** deploy the latest main commit, open Industry Analysis, save a valid MarketSmith session in Provider Diagnostics if not already saved, select a small industry and click **Run live analysis**. Confirm progress reaches the constituent count, four charts populate, and any provider failures are listed by symbol. Export JSON and re-import it to confirm desktop format compatibility. Try a second industry to confirm the previous result remains available.
 
 **Provider boundary:** CI tests use deterministic provider stubs. A successful real run still depends on current MarketSmith session validity and live Yahoo/NSE/MarketSmith availability from the Cloudflare Worker. Do not treat CI as proof of provider availability or Cloudflare publication.
+
+
+## Step 34 — Research historical ChartInk backtesting
+
+Implemented on `main`:
+- Added `frontend/src/data/providers/chartInkHistory.ts` to call the existing same-origin ChartInk Worker with explicit `mode: "history"`.
+- Reuses the existing Worker CSRF/session bootstrap and its supported `/backtest/process` mode; no additional backend, secret, or new external route is required.
+- Parses ChartInk's `metaData[0].tradeTimes` and `aggregatedStockList`. For each historical date it extracts the legacy tuple positions 0, 3, 6… and deduplicates symbols across the entire backtest, matching original `chartinkHistory()`.
+- Research now runs query clauses sequentially, shows progress, reports failures per query, and evaluates successful historical sets against the imported performance CSV. Failed histories remain unavailable rather than being reported as zero-match results.
+- Added export of the collected historical symbol sets as JSON; manual historical JSON import and offline evaluation remain available.
+- Does not replace current-day Stock Screener scans or Market Pulse.
+
+**User test:** deploy latest `main`; open Research; import the performance CSV and query-definition CSV; click **Run ChartInk history**. Confirm progress advances one query at a time, history JSON can be exported, and the results table/chart populate. Check a failed query appears in the failure list and is marked unavailable. Compare a small query's returned unique symbols with the desktop Research workflow.
+
+**Provider boundary:** automated tests mock ChartInk's bootstrap and backtest response. Real historical availability still depends on ChartInk's upstream backtest service and Cloudflare Worker access; CI does not prove a live provider response.

@@ -1460,3 +1460,24 @@ h2 { font-size: 17px; letter-spacing: -.3px; font-weight: 600; margin: 7px 0 0; 
 .screener-query-run-status { flex-basis:100%; color:#8c9bb0; font-size:9px; line-height:1.5; overflow-wrap:anywhere; }
 .screener-query-run-status.success { color:#71c49b; }
 .screener-query-run-status.error { color:#e58d83; }
+
+
+/* Step 34: ChartInk historical backtest progress and provider failures */
+.research-backtest-progress, .research-backtest-failures {
+  border: 1px solid #344256;
+  border-radius: 7px;
+  background: #111a26;
+  color: #aab8ca;
+  padding: 11px 13px;
+  margin: 0 0 13px;
+  font-size: 9px;
+}
+.research-backtest-progress > div:first-child { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-bottom: 9px; }
+.research-backtest-progress strong { color: #efbd80; }
+.research-backtest-progress span { color: #8d9db1; }
+.research-backtest-track { height: 5px; border-radius: 5px; background: #263447; overflow: hidden; }
+.research-backtest-track > span { display: block; height: 100%; background: #c68a4b; transition: width .15s ease; }
+.research-backtest-failures { border-color: #704344; background: #211719; color: #cba4a4; }
+.research-backtest-failures summary { color: #ef9d9d; cursor: pointer; font-weight: 600; }
+.research-backtest-failures ul { margin: 9px 0 0; padding-left: 18px; line-height: 1.7; overflow-wrap: anywhere; }
+.research-backtest-failures strong { color: #f0c5c5; }

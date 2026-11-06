@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from "react";
+import { fetchChartInkHistory } from "../../data/providers/chartInkHistory";
 import {
   createHistoricalMatchesTemplate,
   evaluateResearch,
@@ -80,6 +81,9 @@ function Research() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [runNotice, setRunNotice] = useState("");
   const [hasRun, setHasRun] = useState(false);
+  const [backtestRunning, setBacktestRunning] = useState(false);
+  const [backtestProgress, setBacktestProgress] = useState({ completed: 0, total: 0, query: "" });
+  const [backtestFailures, setBacktestFailures] = useState<Array<{ query: string; message: string }>>([]);
   const performanceInput = useRef<HTMLInputElement>(null);
   const queryInput = useRef<HTMLInputElement>(null);
   const historyInput = useRef<HTMLInputElement>(null);
@@ -143,6 +147,51 @@ function Research() {
     }
   }
 
+  async function runChartInkBacktests() {
+    if (queries.length === 0 || backtestRunning) return;
+    setBacktestRunning(true);
+    setBacktestFailures([]);
+    setRunNotice("Running ChartInk historical backtests sequentially. This may take some time for a large query file.");
+    setBacktestProgress({ completed: 0, total: queries.length, query: "" });
+    const completedHistory: ResearchMatchSet[] = [];
+    const failures: Array<{ query: string; message: string }> = [];
+    for (let index = 0; index < queries.length; index += 1) {
+      const query = queries[index];
+      setBacktestProgress({ completed: index, total: queries.length, query: query.name });
+      try {
+        const historyResult = await fetchChartInkHistory(query.code);
+        completedHistory.push({ queryName: query.name, symbols: historyResult.symbols });
+      } catch (error) {
+        failures.push({
+          query: query.name,
+          message: error instanceof Error ? error.message : "Unknown ChartInk backtest error"
+        });
+      }
+      setBacktestProgress({ completed: index + 1, total: queries.length, query: query.name });
+    }
+    setHistory(completedHistory);
+    setHistoryFile("Live ChartInk history · " + new Date().toLocaleString("en-IN"));
+    setBacktestFailures(failures);
+    if (performanceSymbols.length > 0 && completedHistory.length > 0) {
+      const next = evaluateResearch({
+        performanceSymbols,
+        queries,
+        historyByQuery: new Map(completedHistory.map((item) => [item.queryName, item.symbols]))
+      });
+      setResults(next);
+      setHasRun(true);
+    } else {
+      setResults([]);
+      setHasRun(false);
+    }
+    setRunNotice(
+      failures.length > 0
+        ? `Historical backtests finished: ${completedHistory.length}/${queries.length} succeeded; ${failures.length} failed. Failed queries remain unavailable, not 0% matches.`
+        : `Historical backtests completed for all ${queries.length} queries. ${completedHistory.reduce((sum, item) => sum + item.symbols.length, 0).toLocaleString("en-IN")} unique query-symbol memberships collected.`
+    );
+    setBacktestRunning(false);
+  }
+
   function runResearch() {
     if (performanceSymbols.length === 0 || queries.length === 0 || history.length === 0) {
       setRunNotice("Import all three files before evaluating research.");
@@ -177,12 +226,11 @@ function Research() {
       </div>
 
       <section className="research-provider-notice">
-        <strong>ChartInk history scan is not connected yet.</strong>
+        <strong>Historical ChartInk backtests are connected.</strong>
         <span>
-          The desktop uses ChartInk's backtest/process endpoint to collect historical symbols. Browser-origin CORS and session access are still unverified.
-          This screen currently evaluates historical symbol sets imported from JSON; it does not run live scans or silently substitute current scan results.
+          Run the saved query clauses through ChartInk's backtest endpoint using the Cloudflare Worker. The app collects unique symbols across all returned dates, matching the desktop workflow. Queries run sequentially to avoid flooding the provider; failed queries are shown separately.
         </span>
-        <a href="/?diagnostics=providers">Open provider diagnostics ↗</a>
+        <a href="/?diagnostics=providers">Provider diagnostics ↗</a>
       </section>
 
       <section className="research-import-grid">
@@ -225,21 +273,42 @@ function Research() {
 
       <section className="research-workflow">
         <div>
-          <div className="eyebrow">OFFLINE RESEARCH CALCULATION</div>
-          <h2>Evaluate imported history</h2>
-          <p>All three files are processed in your browser. Nothing is uploaded to a server.</p>
+          <div className="eyebrow">HISTORICAL BACKTEST & PERFORMANCE</div>
+          <h2>Build history and evaluate results</h2>
+          <p>ChartInk query clauses are sent to the same-origin Worker for historical backtesting. Your performance CSV and results remain in this browser.</p>
         </div>
         <div className="research-workflow-actions">
+          <button type="button" className="screener-button secondary" disabled={queries.length === 0 || backtestRunning} onClick={() => void runChartInkBacktests()}>
+            {backtestRunning ? `Backtesting ${backtestProgress.completed}/${backtestProgress.total}…` : "Run ChartInk history"}
+          </button>
           <button
             type="button"
             className="screener-button secondary"
             disabled={queries.length === 0}
             onClick={() => downloadText("schcat-historical-matches-template.json", createHistoricalMatchesTemplate(queries), "application/json;charset=utf-8")}
           >Download JSON template</button>
+          <button
+            type="button"
+            className="screener-button secondary"
+            disabled={history.length === 0}
+            onClick={() => downloadText("schcat-historical-matches.json", JSON.stringify(Object.fromEntries(history.map((item) => [item.queryName, item.symbols])), null, 2), "application/json;charset=utf-8")}
+          >Export history JSON</button>
           <button type="button" className="screener-button" onClick={runResearch}>Evaluate research</button>
         </div>
       </section>
       {runNotice && <div className="research-run-notice" role="status">{runNotice}</div>}
+      {backtestRunning && (
+        <div className="research-backtest-progress" role="status">
+          <div><strong>ChartInk backtest progress</strong><span>{backtestProgress.completed}/{backtestProgress.total} queries · {backtestProgress.query || "Preparing first query"}</span></div>
+          <div className="research-backtest-track"><span style={{ width: `${backtestProgress.total ? backtestProgress.completed / backtestProgress.total * 100 : 0}%` }} /></div>
+        </div>
+      )}
+      {backtestFailures.length > 0 && (
+        <details className="research-backtest-failures">
+          <summary>{backtestFailures.length} historical query failure(s)</summary>
+          <ul>{backtestFailures.map((failure) => <li key={failure.query}><strong>{failure.query}</strong> — {failure.message}</li>)}</ul>
+        </details>
+      )}
 
       {hasRun && (
         <>
@@ -299,7 +368,7 @@ function Research() {
         <p>Excel files should be saved as CSV before import. The original workbook with personal Watchlist and Portfolio sheets is not uploaded or published by this feature.</p>
       </section>
 
-      <footer className="page-footer">SCHCATWEB <span>·</span> RESEARCH <span>·</span> STEP 15</footer>
+      <footer className="page-footer">SCHCATWEB <span>·</span> RESEARCH <span>·</span> STEP 34</footer>
     </div>
   );
 }
