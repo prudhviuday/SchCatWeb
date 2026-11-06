@@ -411,3 +411,16 @@ Implemented on main:
 
 Verification:
 - Full GitHub Actions verification passed in run [42226099682](https://github.com/prudhviuday/SchCatWeb/actions/runs/42226099682), including TypeScript compilation, provider regression tests, frontend build and Worker dry-run. A real MarketSmith `details.json` response and Cloudflare publication are not independently confirmed.
+
+
+## Step 29 — Quarterly reported sales history (implemented; CI pending)
+
+Implemented on main:
+- Ported the desktop `util.fetch_Sales_acc_from_full_MS` data selection: reads each quarter's actual `sales` field from MarketSmith `symboldetails.json` and reverses provider newest-first rows into chronological order.
+- Added the reported quarterly sales value beside EPS growth and sales growth in Stock Workspace.
+- The UI deliberately labels the number as a provider-reported value and does not append a currency or scale unit because the legacy desktop method returned the raw `sales` value without defining its unit.
+- Reuses the existing on-demand symbol-details request and browser-local MarketSmith session. No extra API call, credential, backend or persistence.
+- Added parser regression coverage for chronological ordering and exact reported values.
+
+Verification:
+- Full GitHub Actions verification is pending. Actual MarketSmith data and Cloudflare publication remain to be confirmed separately.
