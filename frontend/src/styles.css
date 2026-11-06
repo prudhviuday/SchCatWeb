@@ -1388,3 +1388,18 @@ h2 { font-size: 17px; letter-spacing: -.3px; font-weight: 600; margin: 7px 0 0; 
 .workspace-financial-history-list span, .workspace-financial-history-list small { color: #8190a4; font-size: 8px; }
 .workspace-financial-history-list strong { color: #e6b574; font-size: 11px; font-variant-numeric: tabular-nums; }
 @media (max-width: 720px) { .workspace-financial-history-grid { grid-template-columns: 1fr; } }
+
+
+/* Step 24: NSE delivery history */
+.workspace-delivery-section { min-width: 0; margin: 14px 0; padding: 15px 16px; border: 1px solid var(--border); border-radius: 9px; background: linear-gradient(130deg, #111a26, #0e141e); }
+.workspace-delivery-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px; margin: 13px 0; }
+.workspace-delivery-summary > div { display: grid; gap: 5px; min-width: 0; padding: 11px; border: 1px solid #29374a; border-radius: 6px; background: #0c141f; }
+.workspace-delivery-summary span, .workspace-delivery-summary small { color: #8190a4; font-size: 8px; }
+.workspace-delivery-summary strong { color: #e6b574; font-size: 16px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.workspace-delivery-table-wrap { width: 100%; overflow: auto; border: 1px solid #263346; border-radius: 6px; }
+.workspace-delivery-table { width: 100%; min-width: 620px; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.workspace-delivery-table th { padding: 9px; background: #172231; color: #aab8ca; text-align: right; font-size: 8px; white-space: nowrap; }
+.workspace-delivery-table th:first-child, .workspace-delivery-table td:first-child { text-align: left; }
+.workspace-delivery-table td { padding: 8px 9px; border-top: 1px solid #253244; color: #b7c3d2; text-align: right; font-size: 9px; white-space: nowrap; }
+@media (max-width: 850px) { .workspace-delivery-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 720px) { .workspace-delivery-section { padding: 12px 9px; } }
