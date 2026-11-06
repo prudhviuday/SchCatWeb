@@ -53,3 +53,26 @@ test("intraday labels use Asia/Kolkata market time formatting", () => {
   assert.match(value, /01 Jan/);
   assert.match(value, /09:15/);
 });
+
+
+test("weekly close-volume history matches desktop formula and keeps latest 30 in chronological order", () => {
+  const candles = Array.from({ length: 32 }, (_, index) => ({
+    time: 1_700_000_000 + index * 604_800,
+    open: 10,
+    high: 12,
+    low: 9,
+    close: index + 1,
+    volume: 1_000_000_000
+  })).reverse();
+  const result = prepareWeeklyCloseVolume(candles);
+  assert.equal(result.length, 30);
+  assert.equal(result[0].time, 1_700_000_000 + 2 * 604_800);
+  assert.equal(result[0].value, 3);
+  assert.equal(result[29].value, 32);
+});
+
+test("weekly close-volume history rounds to two decimals and rejects invalid limits", () => {
+  const candles = [{ time: 1, open: 1, high: 1, low: 1, close: 12.345, volume: 1_000_000_000 }];
+  assert.equal(prepareWeeklyCloseVolume(candles)[0].value, 12.35);
+  assert.throws(() => prepareWeeklyCloseVolume(candles, 0), RangeError);
+});
