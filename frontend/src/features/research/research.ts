@@ -143,11 +143,12 @@ function firstNonEmptyCell(row: readonly string[], indices: readonly number[]): 
 
 export function parsePerformanceCsv(input: string): string[] {
   const table = parseCsvTable(input);
-  const symbolColumn = columnIndex(table.headers, ["symbol", "stock"]);
-  if (symbolColumn < 0) {
+  const symbolColumns = columnIndices(table.headers, ["symbol", "stock"]);
+  if (symbolColumns.length === 0) {
     throw new TypeError("Performance CSV must contain a 'symbol' or 'Stock' column");
   }
 
+  const symbolColumn = symbolColumns[0];
   const symbols = uniqueSymbols(table.rows.map((row) => row[symbolColumn]));
   if (symbols.length === 0) {
     throw new RangeError("Performance CSV contains no usable stock symbols");
