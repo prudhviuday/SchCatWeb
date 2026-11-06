@@ -2,8 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  fetchMarketSmithFinanceData,
   fetchMarketSmithStockMetrics,
   fetchMarketSmithUniverse,
+  parseMarketSmithFinanceData,
   parseMarketSmithStockMetrics
 } from "../../.test-dist/data/providers/marketSmithStockData.js";
 
@@ -27,9 +29,9 @@ const samplePayload = {
     },
     quarterlySalesAndEarningsInternational: {
       quarterlySalesAndEarningsOrigin: [
-        { epsPct: "120", salesPct: "100" },
-        { epsPct: "90", salesPct: "80" },
-        { epsPct: "70", salesPct: "75" }
+        { prdYear: "2026", prdQuarter: "Q2", epsPct: "120", salesPct: "100" },
+        { prdYear: "2026", prdQuarter: "Q1", epsPct: "90", salesPct: "80" },
+        { prdYear: "2025", prdQuarter: "Q4", epsPct: "70", salesPct: "75" }
       ]
     }
   }
@@ -50,7 +52,12 @@ test("MarketSmith parser preserves legacy stock fields and FScore calculation", 
     stability: 83,
     livePb: 45,
     cashFlow: 76,
-    currentPrice: 125.5
+    currentPrice: 125.5,
+    quarterlyGrowth: [
+      { period: "2025 Q4", epsPct: 70, salesPct: 75 },
+      { period: "2026 Q1", epsPct: 90, salesPct: 80 },
+      { period: "2026 Q2", epsPct: 120, salesPct: 100 }
+    ]
   });
 });
 
@@ -154,4 +161,53 @@ test("whole-universe fetch rejects missing auth and invalid concurrency", async 
     () => fetchMarketSmithUniverse(records, {}, "auth", { concurrency: 0 }),
     /concurrency must be between 1 and 16/
   );
+});
+
+test("MarketSmith annual EPS history reverses provider order and normalizes like desktop", () => {
+  const result = parseMarketSmithFinanceData({
+    ratiosAnnualData: [
+      { c0: "2025", c20: "30" },
+      { c0: "2024", c20: "20" },
+      { c0: "2023", c20: "10" }
+    ]
+  });
+  assert.deepEqual(result.annualEps, [
+    { year: 2023, eps: 10, normalized: 0 },
+    { year: 2024, eps: 20, normalized: 50 },
+    { year: 2025, eps: 30, normalized: 100 }
+  ]);
+});
+
+test("MarketSmith annual EPS handles a constant series without fabricating normalized values", () => {
+  const result = parseMarketSmithFinanceData({
+    ratiosAnnualData: [
+      { c0: "2025", c20: "10" },
+      { c0: "2024", c20: "10" }
+    ]
+  });
+  assert.deepEqual(result.annualEps.map(point => point.normalized), [null, null]);
+});
+
+test("MarketSmith finance request uses same-origin Worker and browser-saved session", async () => {
+  let requestUrl = "";
+  let requestInit = {};
+  const result = await fetchMarketSmithFinanceData(
+    3159563,
+    "test auth",
+    async (input, init = {}) => {
+      requestUrl = String(input);
+      requestInit = init;
+      return new Response(JSON.stringify({
+        ratiosAnnualData: [
+          { c0: "2025", c20: "30" },
+          { c0: "2024", c20: "20" }
+        ]
+      }), { status: 200 });
+    }
+  );
+  const parsed = new URL(requestUrl, "https://schcatweb.test");
+  assert.equal(parsed.pathname, "/api/marketsmith/finance");
+  assert.equal(parsed.searchParams.get("stockId"), "3159563");
+  assert.equal(requestInit.headers["x-marketsmith-auth"], "test auth");
+  assert.equal(result.annualEps[0].year, 2024);
 });
