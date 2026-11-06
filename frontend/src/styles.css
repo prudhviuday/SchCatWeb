@@ -1452,3 +1452,11 @@ h2 { font-size: 17px; letter-spacing: -.3px; font-weight: 600; margin: 7px 0 0; 
 .right-panel-chart-legend i { display:inline-block; width:13px; height:3px; border-radius:2px; }
 .right-panel-legend-strong { background:#45b987; } .right-panel-legend-moderate { background:#e7a24e; } .right-panel-legend-weak { background:#d66c67; }
 .right-panel-legend-revenue { background:#b58be8; } .right-panel-legend-eps { background:#e7a24e; }
+
+
+/* Step 32: live ChartInk saved-query scans */
+.screener-query-run { padding:5px 8px; border:1px solid #765b37; border-radius:5px; background:#241d14; color:#e9b979; font:inherit; font-size:9px; cursor:pointer; }
+.screener-query-run:disabled { opacity:.55; cursor:wait; }
+.screener-query-run-status { flex-basis:100%; color:#8c9bb0; font-size:9px; line-height:1.5; overflow-wrap:anywhere; }
+.screener-query-run-status.success { color:#71c49b; }
+.screener-query-run-status.error { color:#e58d83; }

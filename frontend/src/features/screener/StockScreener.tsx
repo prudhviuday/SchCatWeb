@@ -6,6 +6,7 @@ import {
 import { loadIndustryList } from "../../data/reference/industries";
 import { loadMarketSmithIds } from "../../data/reference/marketSmithIds";
 import { readStoredMarketSmithAuth } from "../../data/providers/providerDiagnostics";
+import { fetchChartInkScan } from "../../data/providers/chartInk";
 import {
   fetchMarketSmithUniverse,
   type MarketSmithLiveMetrics
@@ -161,6 +162,7 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
   const [queryName, setQueryName] = useState("");
   const [querySymbols, setQuerySymbols] = useState("");
   const [queryError, setQueryError] = useState("");
+  const [queryRuns, setQueryRuns] = useState<Record<string, { status: "loading" | "success" | "error"; message: string }>>({});
   const [selectedStock, setSelectedStock] = useState<MarketUniverseRecord | null>(null);
 
   useEffect(() => { try { saveScreenerLibrary(library); } catch (error) { setWatchlistNotice(error instanceof Error ? error.message : "Unable to save local library."); } }, [library]);
@@ -313,12 +315,37 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
     setPage(0);
   }
 
+  async function runSavedQuery(name: string) {
+    const saved = queries.find((item) => item.name === name);
+    if (!saved || !saved.queryCode.trim() || queryRuns[name]?.status === "loading") return;
+    setQueryRuns((current) => ({ ...current, [name]: { status: "loading", message: "Running ChartInk scan…" } }));
+    try {
+      const result = await fetchChartInkScan(saved.queryCode);
+      setLibrary((current) => upsertSavedQuery(current, { ...saved, symbols: result.symbols }));
+      setSelectedQueries((current) => current.includes(name) ? current : [...current, name]);
+      setPage(0);
+      setQueryRuns((current) => ({
+        ...current,
+        [name]: {
+          status: "success",
+          message: result.symbols.length.toLocaleString("en-IN") + " unique symbols loaded from " + result.rawRows.toLocaleString("en-IN") + " ChartInk rows."
+        }
+      }));
+    } catch (error) {
+      setQueryRuns((current) => ({
+        ...current,
+        [name]: { status: "error", message: error instanceof Error ? error.message : "ChartInk scan failed." }
+      }));
+    }
+  }
+
   function createQuery(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const name = queryName.trim();
     const symbols = parseSymbolList(querySymbols);
-    if (!name || symbols.length === 0) {
-      setQueryError("Enter a query name and at least one symbol.");
+    const clause = queryCode.trim();
+    if (!name || (symbols.length === 0 && !clause)) {
+      setQueryError("Enter a query name and either a symbol list or a ChartInk query clause.");
       return;
     }
     if (queries.some((query) => query.name.toLocaleLowerCase() === name.toLocaleLowerCase())) {
@@ -327,11 +354,11 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
     }
     const knownSymbols = new Set(records.map((record) => record.symbol));
     const matchedSymbols = symbols.filter((symbol) => knownSymbols.has(symbol));
-    if (matchedSymbols.length === 0) {
+    if (symbols.length > 0 && matchedSymbols.length === 0) {
       setQueryError("None of those symbols are in the loaded reference universe.");
       return;
     }
-    setLibrary(current => upsertSavedQuery(current, { name, queryCode: queryCode.trim(), symbols: matchedSymbols }));
+    setLibrary(current => upsertSavedQuery(current, { name, queryCode: clause, symbols: matchedSymbols }));
     setSelectedQueries((current) => [...current, name]);
     setQueryName("");
     setQuerySymbols("");
@@ -457,8 +484,7 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
           <span className="screener-muted">AND logic · saved in this browser</span>
         </div>
         <p className="screener-help">
-          Add named lists of symbols and select multiple lists to show only stocks present in every selected list.
-          ChartInk query text is preserved for backup, but live scans remain disabled until browser-origin access is verified.
+          Save a manual symbol list or a ChartInk clause. Run a saved clause to fetch current matches through the same-origin Cloudflare Worker; selecting multiple queries keeps the existing AND-intersection behaviour.
         </p>
         <form className="screener-query-form" onSubmit={createQuery}>
           <label className="screener-field">
@@ -466,10 +492,10 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
             <input value={queryName} onChange={(event) => setQueryName(event.target.value)} placeholder="e.g. Strong sector names" />
           </label>
           <label className="screener-field screener-query-symbols">
-            <span>Symbols (comma / space separated)</span>
+            <span>Symbols (optional when a ChartInk clause is supplied)</span>
             <input value={querySymbols} onChange={(event) => setQuerySymbols(event.target.value)} placeholder="RELIANCE, TCS, INFY" />
           </label>
-          <label className="screener-field screener-query-symbols"><span>ChartInk query code (saved only; live scan pending)</span><input value={queryCode} onChange={event=>setQueryCode(event.target.value)} placeholder="Paste ChartInk scan clause (optional)"/></label>
+          <label className="screener-field screener-query-symbols"><span>ChartInk query clause (optional; enables Run scan)</span><input value={queryCode} onChange={event=>setQueryCode(event.target.value)} placeholder="Paste ChartInk scan clause (optional)"/></label>
           <button className="screener-button" type="submit">Save query</button>
         </form>
         {queryError && <p className="screener-query-error" role="alert">{queryError}</p>}
@@ -488,8 +514,10 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
                   }}
                 />
                 <span>{query.name}</span>
-                <small>{query.symbols.length} symbols{query.queryCode ? " · code saved" : ""}</small>
-                <button type="button" aria-label={`Remove ${query.name}`} onClick={(event) => { event.preventDefault(); removeQuery(query.name); }}>×</button>
+                <small>{query.symbols.length} symbols{query.queryCode ? " · ChartInk clause saved" : " · manual list"}</small>
+                {query.queryCode && <button type="button" className="screener-query-run" disabled={queryRuns[query.name]?.status === "loading"} onClick={(event) => { event.preventDefault(); event.stopPropagation(); void runSavedQuery(query.name); }}>{queryRuns[query.name]?.status === "loading" ? "Running…" : "Run scan"}</button>}
+                <button type="button" aria-label={`Remove ${query.name}`} onClick={(event) => { event.preventDefault(); event.stopPropagation(); removeQuery(query.name); }}>×</button>
+                {queryRuns[query.name] && <span className={"screener-query-run-status " + queryRuns[query.name].status} role="status">{queryRuns[query.name].message}</span>}
               </label>
             ))}
           </div>

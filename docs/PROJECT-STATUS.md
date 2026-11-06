@@ -463,3 +463,16 @@ User verification:
 4. Confirm NSE delivery history and RS history continue to load independently.
 
 CI must pass before considering Step 31 verified. Actual MarketSmith responses and Cloudflare publication remain separate checks.
+
+
+## Step 32 — Live ChartInk saved-query scans
+
+- Added `frontend/src/data/providers/chartInk.ts` as a typed browser client for the existing same-origin `POST /api/chartink/scan` Worker route. The client submits the saved clause, validates the JSON shape, normalizes/deduplicates NSE symbols and reports HTTP, network and malformed-response errors distinctly.
+- The Stock Screener now allows a saved query to contain a ChartInk clause without requiring a manually supplied symbol list. Each clause-backed query has a **Run scan** action. A successful response replaces that query's current symbol set and selects it, so the existing AND-intersection filtering immediately uses the live result. A failed scan leaves the previous symbol set untouched.
+- Manual symbol-only queries, browser-local storage, import/export and privacy boundaries are unchanged. No ChartInk session cookie, CSRF token or authentication secret is stored in the browser; the Worker performs the bootstrap and POST server-side.
+- The scan mode mirrors `chartink.chartink(query)` from the desktop source. Historical backtest mode is deliberately reserved for the Research step; Market Pulse widget mode remains unchanged.
+- Tests: `npm run test:chartink` covers request shape, normalization, duplicate removal, empty results, malformed payloads, HTTP failures and network errors. CI runs this suite before the build.
+
+**User test:** open Stock Screener, save a query with a name and a valid ChartInk clause (symbols may be left blank), click **Run scan**, and confirm that the returned symbol count appears and the screener filters to those matches. Try two saved scans together to confirm AND intersection. If ChartInk rejects the upstream request, the UI shows the Worker error and keeps the prior results.
+
+**Provider boundary:** unit and Worker-mock tests prove request handling, not live ChartInk availability from Cloudflare. Confirm a successful ChartInk row count on the deployed site before treating the provider as operational.
