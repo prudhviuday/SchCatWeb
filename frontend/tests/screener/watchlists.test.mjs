@@ -51,3 +51,8 @@ test("ChartInk query CSV import and export preserve query clauses", () => {
   assert.deepEqual(imported, [{ name: "Trend setup", queryCode: "close > ema(close,50)", symbols: [] }]);
   assert.deepEqual(parseSavedQueriesCsv(serializeSavedQueriesCsv(imported)), imported);
 });
+
+test("legacy desktop wide-column Watchlist CSV imports each column as a list", () => {
+  const imported = parseWatchlistsCsv('Core,Leaders\r\nABC,TCS\r\nINFY,');
+  assert.deepEqual(imported, [{ name: "Core", symbols: ["ABC", "INFY"] }, { name: "Leaders", symbols: ["TCS"] }]);
+});
