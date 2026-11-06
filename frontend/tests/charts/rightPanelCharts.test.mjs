@@ -17,6 +17,7 @@ test("institution bars keep chronological order, filter invalid rows and cap his
   assert.deepEqual(result.map(point => point.label), ["Q2", "Q3"]);
   assert.deepEqual(result.map(point => point.heightPct), [100, 25]);
   assert.deepEqual(prepareInstitutionBars([{ label: "Q", value: 0 }]), [{ label: "Q", value: 0, heightPct: 0 }]);
+  assert.deepEqual(prepareInstitutionBars([{ label: "Q", value: 1 }], 0), []);
 });
 
 test("revenue and EPS normalized histories align on fiscal year without inventing missing values", () => {

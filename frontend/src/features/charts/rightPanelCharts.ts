@@ -13,7 +13,7 @@ export function prepareInstitutionBars(
   limit = 20
 ): Array<HistoryValuePoint & { heightPct: number }> {
   const safeLimit = Number.isFinite(limit) ? Math.max(0, Math.trunc(limit)) : 20;
-  const valid = points.filter(point => point.label.trim() !== "" && Number.isFinite(point.value)).slice(-safeLimit);
+  const valid = safeLimit === 0 ? [] : points.filter(point => point.label.trim() !== "" && Number.isFinite(point.value)).slice(-safeLimit);
   const maximum = Math.max(0, ...valid.map(point => point.value));
   return valid.map(point => ({ ...point, heightPct: maximum > 0 ? Math.max(0, point.value) / maximum * 100 : 0 }));
 }

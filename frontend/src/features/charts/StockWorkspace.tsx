@@ -23,6 +23,7 @@ import {
   prepareWeeklyCloseVolume,
   type ChartDisplayPoint
 } from "./chartPresentation";
+import { getRoceBand, prepareInstitutionBars, prepareRevenueEpsComparison } from "./rightPanelCharts";
 
 const TIMEFRAMES: ReadonlyArray<{ key: ChartTimeframe; label: string }> = [
   { key: "1W", label: "Weekly" },
@@ -216,11 +217,11 @@ function RevenueEpsHistoryChart({ revenue, eps }: { revenue: Array<{ year:number
   const width=720; const height=190; const left=20; const right=16; const top=16; const bottom=145;
   const x=(index:number)=>left+(points.length===1?(width-left-right)/2:index*(width-left-right)/(points.length-1));
   const y=(value:number)=>bottom-Math.max(0,Math.min(100,value))/100*(bottom-top);
-  const line=(key:"revenueIndex"|"epsIndex")=>points.map((point,index)=>point[key]===null?null:`${x(index).toFixed(1)},${y(point[key] as number).toFixed(1)}`).filter((value):value is string=>value!==null).join(" ");
+  const line=(key:"revenueIndex"|"epsIndex")=>{ let drawing=false; return points.map((point,index)=>{ const value=point[key]; if(value===null){drawing=false;return "";} const command=drawing?"L":"M"; drawing=true; return `${command} ${x(index).toFixed(1)} ${y(value).toFixed(1)}`; }).filter(Boolean).join(" "); };
   return <div className="right-panel-chart"><svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Annual revenue and EPS normalized index comparison by fiscal year">
     {[0,25,50,75,100].map(value=><g key={value}><line x1={left} x2={width-right} y1={y(value)} y2={y(value)} className="chart-grid-line"/><text x={left+3} y={y(value)-4} className="chart-axis-label">{value}</text></g>)}
-    {line("revenueIndex").split(" ").filter(Boolean).length>1&&<polyline points={line("revenueIndex")} className="right-panel-revenue-line"/>}
-    {line("epsIndex").split(" ").filter(Boolean).length>1&&<polyline points={line("epsIndex")} className="right-panel-eps-line"/>}
+    {line("revenueIndex").includes(" L ")&&<path d={line("revenueIndex")} className="right-panel-revenue-line"/>}
+    {line("epsIndex").includes(" L ")&&<path d={line("epsIndex")} className="right-panel-eps-line"/>}
     {points.map((point,index)=><text key={point.year} x={x(index)} y={bottom+18} textAnchor="middle" className="chart-axis-label">{point.year}</text>)}
   </svg><div className="right-panel-chart-legend"><span><i className="right-panel-legend-revenue"/> Revenue index</span><span><i className="right-panel-legend-eps"/> EPS index</span></div><p className="workspace-chart-note">Uses the existing legacy-normalized 0–100 series. Missing fiscal years remain gaps; raw revenue and EPS units are not mixed on one axis.</p></div>;
 }
