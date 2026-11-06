@@ -67,5 +67,8 @@ jobs:
       - name: Build static website
         working-directory: frontend
         run: npm run build
+      - name: Run production integration smoke tests
+        working-directory: frontend
+        run: npm run test:integration
       - name: Verify static build output and deployment config
         run: test -s frontend/dist/index.html && test -s wrangler.toml && test -s frontend/dist/data/marketSmithIds.json && test -s frontend/dist/data/marketUniverse.json && test -s frontend/dist/data/industries.json && test -s frontend/dist/data/manifest.json
