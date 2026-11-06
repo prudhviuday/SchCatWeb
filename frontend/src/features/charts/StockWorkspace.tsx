@@ -225,7 +225,8 @@ function RevenueEpsHistoryChart({ revenue, eps }: { revenue: Array<{ year:number
     {points.map((point,index)=><text key={point.year} x={x(index)} y={bottom+18} textAnchor="middle" className="chart-axis-label">{point.year}</text>)}
   </svg><div className="right-panel-chart-legend"><span><i className="right-panel-legend-revenue"/> Revenue index</span><span><i className="right-panel-legend-eps"/> EPS index</span></div><p className="workspace-chart-note">Uses the existing legacy-normalized 0–100 series. Missing fiscal years remain gaps; raw revenue and EPS units are not mixed on one axis.</p></div>;
 }
-\nfunction StockWorkspace({
+
+function StockWorkspace({
   initialRecord,
   onBack
 }: {
