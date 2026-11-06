@@ -7,6 +7,7 @@ import {
   aggregateHourlyToFourHour,
   buildCloseVolumeHistory,
   buildYahooChartUrl,
+  buildYahooProxyUrl,
   makeStockGoldSeries,
   mergeStockWithGold,
   parseYahooChartPayload
@@ -43,6 +44,45 @@ test("Yahoo chart URL supports a diagnostic range override and rejects unsafe sy
   assert.equal(url.searchParams.get("range"), "5d");
   assert.throws(() => buildYahooChartUrl("../bad", "1D"), TypeError);
   assert.throws(() => buildYahooChartUrl("", "1D"), TypeError);
+});
+
+
+test("Yahoo chart runtime URL is a same-origin Worker route", () => {
+  const url = new URL(buildYahooProxyUrl("reliance", "1D"), "https://schcatweb.test");
+  assert.equal(url.origin, "https://schcatweb.test");
+  assert.equal(url.pathname, "/api/yahoo/chart");
+  assert.equal(url.searchParams.get("symbol"), "RELIANCE.NS");
+  assert.equal(url.searchParams.get("interval"), "1d");
+  assert.equal(url.searchParams.get("range"), "2y");
+});
+
+test("chart fetches use the same-origin Worker rather than calling Yahoo from the browser", async () => {
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (input, init = {}) => {
+    calls.push({ url: String(input), init });
+    return new Response(JSON.stringify({
+      chart: {
+        result: [{
+          timestamp: [100],
+          indicators: { quote: [{ open: [10], high: [12], low: [9], close: [11], volume: [100] }] }
+        }],
+        error: null
+      }
+    }), { status: 200, headers: { "content-type": "application/json" } });
+  };
+
+  try {
+    const rows = await (await import("../../.test-dist/data/providers/chartData.js"))
+      .fetchChartData("RELIANCE", "1D");
+    assert.equal(rows.length, 1);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].url.startsWith("/api/yahoo/chart?"), true);
+    assert.equal(calls[0].init.mode, "same-origin");
+    assert.equal(calls[0].init.credentials, "same-origin");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test("Yahoo chart payload is converted to ascending OHLCV and zero-volume candles are omitted", () => {
