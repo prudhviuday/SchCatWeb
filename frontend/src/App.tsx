@@ -1,15 +1,23 @@
 import { useState } from "react";
 import ProviderDiagnostics from "./features/diagnostics/ProviderDiagnostics";
 import StockScreener from "./features/screener/StockScreener";
+import StockWorkspace from "./features/charts/StockWorkspace";
+import type { MarketUniverseRecord } from "./data/reference/marketUniverse";
 
-type Page = "overview" | "screener";
+type Page = "overview" | "screener" | "workspace";
 
 function App() {
   const [activePage, setActivePage] = useState<Page>("overview");
+  const [selectedStock, setSelectedStock] = useState<MarketUniverseRecord | null>(null);
 
   if (new URLSearchParams(window.location.search).get("diagnostics") === "providers") {
     return <ProviderDiagnostics />;
   }
+
+  const openStock = (record: MarketUniverseRecord) => {
+    setSelectedStock(record);
+    setActivePage("workspace");
+  };
 
   return (
     <main className="terminal-shell">
@@ -28,7 +36,9 @@ function App() {
           <button type="button" className={"nav-item " + (activePage === "screener" ? "active" : "")} onClick={() => setActivePage("screener")}>
             <span className="nav-icon">⌕</span> Stock Screener
           </button>
-          <div className="nav-item nav-coming-soon"><span className="nav-icon">◫</span> Charts</div>
+          <button type="button" className={"nav-item " + (activePage === "workspace" ? "active" : "")} onClick={() => setActivePage("workspace")}>
+            <span className="nav-icon">◫</span> Charts & Workspace
+          </button>
           <div className="nav-item nav-coming-soon"><span className="nav-icon">▤</span> Industry Analysis</div>
           <div className="nav-item nav-coming-soon"><span className="nav-icon">⌁</span> Research</div>
           <div className="nav-item nav-coming-soon"><span className="nav-icon">◷</span> Market Pulse</div>
@@ -36,18 +46,20 @@ function App() {
         </nav>
         <div className="sidebar-footer">
           <span className="status-dot" />
-          {activePage === "screener" ? "SCREENER ONLINE" : "MIGRATION IN PROGRESS"}
+          {activePage === "screener" ? "SCREENER ONLINE" : activePage === "workspace" ? "WORKSPACE ONLINE" : "MIGRATION IN PROGRESS"}
         </div>
       </aside>
 
       <section className="main-panel">
         <header className="topbar">
-          <div className="breadcrumb">SCHCAT <span>/</span> {activePage === "screener" ? "STOCK SCREENER" : "OVERVIEW"}</div>
+          <div className="breadcrumb">SCHCAT <span>/</span> {activePage === "screener" ? "STOCK SCREENER" : activePage === "workspace" ? "CHARTS & WORKSPACE" : "OVERVIEW"}</div>
           <div className="topbar-right"><span className="market-status"><i /> LOCAL WORKSPACE</span><div className="avatar">U</div></div>
         </header>
 
         {activePage === "screener" ? (
-          <StockScreener />
+          <StockScreener onOpenStock={openStock} />
+        ) : activePage === "workspace" ? (
+          <StockWorkspace initialRecord={selectedStock} onBack={() => setActivePage("screener")} />
         ) : (
           <div className="content">
             <div className="eyebrow">PERSONAL MARKET WORKSPACE</div>
@@ -58,13 +70,13 @@ function App() {
               <div className="notice-icon">✳</div>
               <div>
                 <div className="notice-title">SchCatWeb foundation is live</div>
-                <p>The static terminal is now connected to the imported stock universe. Screener functionality is available; provider-dependent metrics and other modules are being migrated in stages.</p>
+                <p>The static terminal now includes a stock screener and a multi-timeframe chart workspace. Provider-dependent fundamentals and remaining modules are being migrated in stages.</p>
               </div>
-              <span className="step-tag">STEP 12</span>
+              <span className="step-tag">STEP 13</span>
             </div>
 
             <div className="section-heading">
-              <div><div className="eyebrow">WORKSPACE MODULES</div><h2>Coming online in stages</h2></div>
+              <div><div className="eyebrow">WORKSPACE MODULES</div><h2>Available modules</h2></div>
               <span className="muted-label">MIGRATION IN PROGRESS</span>
             </div>
             <div className="module-grid">
@@ -73,8 +85,12 @@ function App() {
                 <div><h3>Stock Screener</h3><p>Universe, filters and query intersections</p></div>
                 <span className="module-arrow">↗</span>
               </button>
+              <button type="button" className="module-card module-card-button" onClick={() => setActivePage("workspace")}>
+                <span className="module-number">02</span>
+                <div><h3>Charts & Workspace</h3><p>Weekly, daily, hourly and 5-minute charts</p></div>
+                <span className="module-arrow">↗</span>
+              </button>
               {[
-                ["02", "Charts & Workspace", "Price action and technical studies"],
                 ["03", "Industry Analysis", "Industry strength and participation"],
                 ["04", "Research", "Historical query performance"],
                 ["05", "Market Pulse", "Market breadth and signal dashboard"],
