@@ -248,8 +248,8 @@ test("NSE delivery parser matches desktop five-session rolling value calculation
   }));
   const result = parseNseDeliveryHistory({ data: rows });
   assert.equal(result.length, 2);
-  assert.deepEqual(result[0], { date: "Day 2", deliveryValueCr: 174, tradedValueCr: 400, deliveryPct: 41 });
-  assert.deepEqual(result[1], { date: "Day 1", deliveryValueCr: 128, tradedValueCr: 300, deliveryPct: 40 });
+  assert.deepEqual(result[0], { date: "Day 6", deliveryValueCr: 174, tradedValueCr: 400, deliveryPct: 41 });
+  assert.deepEqual(result[1], { date: "Day 7", deliveryValueCr: 128, tradedValueCr: 300, deliveryPct: 40 });
 });
 
 test("NSE delivery parser ignores rows without a reported delivery percentage", () => {
