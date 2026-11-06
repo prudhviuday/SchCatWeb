@@ -4,7 +4,7 @@ import {
   type MarketUniverseRecord
 } from "../../data/reference/marketUniverse";
 import { loadIndustryList } from "../../data/reference/industries";
-import { addSymbolToWatchlist, loadScreenerLibrary, mergeScreenerLibraries, parseScreenerLibraryJson, parseWatchlistsCsv, removeSavedQuery, saveScreenerLibrary, serializeScreenerLibrary, serializeWatchlistsCsv, upsertSavedQuery, type ScreenerLibrary } from "./watchlists";
+import { addSymbolToWatchlist, loadScreenerLibrary, mergeScreenerLibraries, parseScreenerLibraryJson, parseWatchlistsCsv, removeSavedQuery, removeSymbolFromWatchlist, saveScreenerLibrary, serializeScreenerLibrary, serializeWatchlistsCsv, upsertSavedQuery, type ScreenerLibrary } from "./watchlists";
 import {
   applyScreenerFilters,
   parseSymbolList,
@@ -95,6 +95,7 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
   const [library, setLibrary] = useState<ScreenerLibrary>(() => loadScreenerLibrary());
   const queries = library.queries;
   const [activeWatchlist, setActiveWatchlist] = useState("");
+  const [watchlistTarget, setWatchlistTarget] = useState("");
   const [newWatchlist, setNewWatchlist] = useState("");
   const [watchlistNotice, setWatchlistNotice] = useState("");
   const [queryCode, setQueryCode] = useState("");
@@ -301,12 +302,13 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
         </div>
         <div className="screener-filter-grid">
           <label className="screener-field"><span>Filter by watchlist</span><select value={activeWatchlist} onChange={event=>{setActiveWatchlist(event.target.value);setPage(0);}}><option value="">All stocks</option>{library.watchlists.map(item=><option key={item.name} value={item.name}>{item.name} ({item.symbols.length})</option>)}</select></label>
+          <label className="screener-field"><span>Add stocks to this watchlist</span><select value={watchlistTarget} onChange={event=>setWatchlistTarget(event.target.value)}><option value="">Choose target</option>{library.watchlists.map(item=><option key={item.name} value={item.name}>{item.name}</option>)}</select></label>
           <label className="screener-field"><span>New watchlist name</span><input value={newWatchlist} onChange={event=>setNewWatchlist(event.target.value)} placeholder="e.g. Breakout candidates"/></label>
           <button type="button" className="screener-button" onClick={()=>{const name=newWatchlist.trim();if(!name){setWatchlistNotice("Enter a watchlist name first.");return;}if(library.watchlists.some(x=>x.name.toLowerCase()===name.toLowerCase())){setWatchlistNotice("That watchlist already exists.");return;}setLibrary(current=>({...current,watchlists:[...current.watchlists,{name,symbols:[]}]}));setNewWatchlist("");setWatchlistNotice("Watchlist created.");}}>Create watchlist</button>
           <label className="screener-field"><span>JSON import mode</span><select value={libraryMode} onChange={event=>setLibraryMode(event.target.value as "merge"|"replace")}><option value="merge">Merge / update matching names</option><option value="replace">Replace local library</option></select></label>
         </div>
         {watchlistNotice && <p className="screener-help" role="status">{watchlistNotice}</p>}
-        {library.watchlists.map(item=><div className="screener-query-chip" key={item.name}><strong>{item.name}</strong><small>{item.symbols.length} stocks</small><span>{item.symbols.slice(0,8).join(", ")}{item.symbols.length>8?" …":""}</span><button type="button" onClick={()=>{setLibrary(current=>({...current,watchlists:current.watchlists.filter(x=>x.name!==item.name)}));if(activeWatchlist===item.name)setActiveWatchlist("");}}>Delete</button></div>)}
+        {library.watchlists.map(item=><div className="screener-query-chip" key={item.name}><strong>{item.name}</strong><small>{item.symbols.length} stocks</small><span>{item.symbols.length ? item.symbols.map(symbol=><span className="screener-watchlist-symbol" key={symbol}>{symbol}<button type="button" aria-label={"Remove "+symbol+" from "+item.name} onClick={()=>setLibrary(current=>removeSymbolFromWatchlist(current,item.name,symbol))}>×</button></span>) : <span className="screener-muted">Empty watchlist</span>}</span><button type="button" onClick={()=>{setLibrary(current=>({...current,watchlists:current.watchlists.filter(x=>x.name!==item.name)}));if(activeWatchlist===item.name)setActiveWatchlist("");if(watchlistTarget===item.name)setWatchlistTarget("");}}>Delete</button></div>)}
       </section>
 
       <section className="screener-panel screener-query-panel">
@@ -316,7 +318,7 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
         </div>
         <p className="screener-help">
           Add named lists of symbols and select multiple lists to show only stocks present in every selected list.
-          Select multiple saved symbol sets to show only stocks present in every selected set. ChartInk query text is preserved for backup, but live scans remain disabled until browser-origin access is verified.
+          ChartInk query text is preserved for backup, but live scans remain disabled until browser-origin access is verified.
         </p>
         <form className="screener-query-form" onSubmit={createQuery}>
           <label className="screener-field">
@@ -369,8 +371,8 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
           <div className="screener-selected">
             <div><strong>{selectedStock.symbol}</strong><span>{selectedStock.industry ?? "Industry unavailable"} · {selectedStock.sector ?? "Sector unavailable"}</span></div>
             <span>MarketSmith ID: {selectedStock.instrumentId ?? "—"}</span>
-            <select aria-label="Select watchlist" value={activeWatchlist} onChange={event=>setActiveWatchlist(event.target.value)}><option value="">Select watchlist</option>{library.watchlists.map(item=><option key={item.name} value={item.name}>{item.name}</option>)}</select>
-            <button type="button" onClick={()=>{if(!activeWatchlist){setWatchlistNotice("Create or select a watchlist first.");return;}setLibrary(current=>addSymbolToWatchlist(current,activeWatchlist,selectedStock.symbol));setWatchlistNotice(selectedStock.symbol+" added to "+activeWatchlist);}}>Add to watchlist</button>
+            <select aria-label="Select watchlist" value={watchlistTarget} onChange={event=>setWatchlistTarget(event.target.value)}><option value="">Select watchlist</option>{library.watchlists.map(item=><option key={item.name} value={item.name}>{item.name}</option>)}</select>
+            <button type="button" onClick={()=>{if(!watchlistTarget){setWatchlistNotice("Create or select a target watchlist first.");return;}setLibrary(current=>addSymbolToWatchlist(current,watchlistTarget,selectedStock.symbol));setWatchlistNotice(selectedStock.symbol+" added to "+watchlistTarget);}}>Add to watchlist</button>
             <button type="button" onClick={() => setSelectedStock(null)}>Close</button>
           </div>
         )}
@@ -398,7 +400,7 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
                   <td className="numeric">{numberValue(record.pb)}</td>
                   <td className="numeric">{numberValue(record.roce)}</td>
                   <td className="numeric">{numberValue(record.nikScore)}</td>
-                  <td><button type="button" className="screener-industry" disabled={!activeWatchlist} title={activeWatchlist ? "Add to selected watchlist" : "Select a watchlist above"} onClick={()=>{setLibrary(current=>addSymbolToWatchlist(current,activeWatchlist,record.symbol));setWatchlistNotice(record.symbol+" added to "+activeWatchlist);}}>+ Save</button></td>
+                  <td><button type="button" className="screener-industry" disabled={!watchlistTarget} title={watchlistTarget ? "Add to selected watchlist" : "Select a target watchlist above"} onClick={()=>{setLibrary(current=>addSymbolToWatchlist(current,watchlistTarget,record.symbol));setWatchlistNotice(record.symbol+" added to "+watchlistTarget);}}>+ Save</button></td>
                 </tr>
               ))}
               {!loading && pageRecords.length === 0 && (
