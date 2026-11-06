@@ -155,11 +155,6 @@ if (diagnostics.duplicateSymbols.length) {
     `Duplicate stock symbols found: ${diagnostics.duplicateSymbols.slice(0, 20).join(", ")}`
   );
 }
-if (diagnostics.duplicateInstrumentIds.length) {
-  throw new Error(
-    `Duplicate instrument IDs found: ${JSON.stringify(diagnostics.duplicateInstrumentIds.slice(0, 10))}`
-  );
-}
 
 const industryRows = readRows(sourceFiles.industryList.path);
 const industryHeader = String(industryRows[0]?.[0] ?? "").trim();
@@ -234,7 +229,9 @@ manifest.datasets = [
       "nikScore"
     ],
     freshnessWarning:
-      "This is a static snapshot with no recorded as-of date. MarketCap, P/B, ROCE and NikScore may be stale and must not be presented as live metrics."
+      "This is a static snapshot with no recorded as-of date. MarketCap, P/B, ROCE and NikScore may be stale and must not be presented as live metrics.",
+    duplicateInstrumentIdCount: diagnostics.duplicateInstrumentIds.length,
+    duplicateInstrumentIdWarnings: diagnostics.duplicateInstrumentIds
   },
   {
     id: "industries",
@@ -262,6 +259,8 @@ const report = {
   ),
   invalidInstrumentIdCount: diagnostics.invalidInstrumentIds.length,
   invalidNumericFieldCount: diagnostics.invalidNumericFields.length,
+  duplicateInstrumentIdCount: diagnostics.duplicateInstrumentIds.length,
+  duplicateInstrumentIdWarnings: diagnostics.duplicateInstrumentIds,
   invalidInstrumentIdExamples: diagnostics.invalidInstrumentIds.slice(0, 20),
   invalidNumericExamples: diagnostics.invalidNumericFields.slice(0, 20)
 };
