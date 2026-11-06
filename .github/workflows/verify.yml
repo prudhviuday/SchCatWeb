@@ -36,6 +36,9 @@ jobs:
       - name: Run technical indicator parity tests
         working-directory: frontend
         run: npm run test:indicators
+      - name: Run static reference data tests
+        working-directory: frontend
+        run: npm run test:reference
       - name: Build static website
         working-directory: frontend
         run: npm run build
