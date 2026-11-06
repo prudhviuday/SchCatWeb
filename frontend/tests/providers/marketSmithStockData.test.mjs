@@ -55,6 +55,16 @@ test("MarketSmith parser preserves legacy stock fields and FScore calculation", 
     livePb: 45,
     cashFlow: 76,
     currentPrice: 125.5,
+    institutionalOwnership: [
+      { period: "01-2025", value: 0, normalized: null },
+      { period: "01-2026", value: 0, normalized: null },
+      { period: "01-2026", value: 0, normalized: null }
+    ],
+    institutionalCost: [
+      { period: "01-2025", value: 0, normalized: null },
+      { period: "01-2026", value: 0, normalized: null },
+      { period: "01-2026", value: 0, normalized: null }
+    ],
     quarterlyGrowth: [
       { period: "2025 Q4", epsPct: 70, salesPct: 75 },
       { period: "2026 Q1", epsPct: 90, salesPct: 80 },
