@@ -31,7 +31,13 @@ export interface MarketSmithAnnualEpsPoint {
   normalized: number | null;
 }
 
-export interface MarketSmithInstitutionPoint {\n  period: string;\n  value: number;\n  normalized: number | null;\n}\n\nexport interface MarketSmithQuarterlyGrowthPoint {
+export interface MarketSmithInstitutionPoint {
+  period: string;
+  value: number;
+  normalized: number | null;
+}
+
+export interface MarketSmithQuarterlyGrowthPoint {
   period: string;
   epsPct: number;
   salesPct: number;
