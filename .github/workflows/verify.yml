@@ -49,6 +49,9 @@ jobs:
       - name: Run chart workspace tests
         working-directory: frontend
         run: npm run test:workspace
+      - name: Run industry analysis tests
+        working-directory: frontend
+        run: npm run test:industry
       - name: Build static website
         working-directory: frontend
         run: npm run build
