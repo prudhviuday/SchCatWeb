@@ -2,23 +2,33 @@
 
 A static React + TypeScript web migration of the existing SchCat desktop stock-analysis application.
 
-## Architecture decision
+## Architecture
 
-SchCatWeb is a **static website**. It has no runtime backend, database, Cloudflare Worker script, R2 bucket, Python service or server process.
+SchCatWeb uses a **React frontend plus a same-origin Cloudflare Worker API**.
 
-- `frontend/`: React + TypeScript + Vite. All UI, calculations and browser-compatible data workflows run here.
-- Root `wrangler.toml`: deploys only `frontend/dist` to Cloudflare Workers Static Assets.
-- Browser APIs: provider requests are made directly from TypeScript when the provider permits browser access (including CORS) and does not require a protected secret.
-- Local data: static JSON assets and browser storage (localStorage/IndexedDB) are used where appropriate.
-- Build tools: Node.js/npm are used only to install dependencies, build the website and run optional development-time data conversion scripts. Node is not needed to serve the deployed website.
+- `frontend/`: React + TypeScript + Vite. UI, calculations, chart shaping and analysis run here.
+- `worker/index.js`: server-side API gateway for Yahoo Finance, MarketSmith, ChartInk and NSE. Provider requests originate from Cloudflare, not the visitor's browser, so browser CORS enforcement no longer blocks those requests.
+- Root `wrangler.toml`: deploys the Worker script and `frontend/dist` as one Cloudflare Worker. The Worker handles `/api/*`; the static asset binding serves the website and SPA routes.
+- Local data: non-sensitive reference JSON remains static. Personal holdings, watchlists and settings remain browser-local unless a later sync feature is explicitly approved.
+- Node.js/npm are used for development and builds. The deployed API runs on the Cloudflare Workers runtime; no always-on Node server or Python process is required.
 
-The old Hono API, R2 integration and backend importer were an exploratory implementation and have been superseded by this static-first decision. Do not recreate them by default.
+This restores the useful part of the old desktop architecture: a server-side process makes provider requests and returns JSON to the UI. It does **not** reproduce a VPN. No VPN or proxy configuration was found in the old Node request code. If a provider blocks Cloudflare's outbound network, we may need a separate Node host with an approved network route.
 
-## Provider API rule
+## Provider API and security
 
-For every existing provider integration, first reproduce the original URL, query parameters, headers and response parsing in browser TypeScript and test it from the deployed origin.
+The browser calls same-origin `/api/*` endpoints. The Worker exposes fixed, validated provider routes; it is not an arbitrary URL proxy.
 
-A browser may block an API that worked in Node because of CORS, browser security rules, authentication or provider restrictions. Do not assume direct browser access will work. Do not put private API keys, session cookies or credentials in frontend code. If a particular provider genuinely requires a protected server-side request, document that exact exception and ask before introducing any proxy or backend.
+- Yahoo Finance chart requests: `GET /api/yahoo/chart` (short edge cache; timeframe and symbol allowlists).
+- MarketSmith finance and symbol details: `GET /api/marketsmith/finance` and `GET /api/marketsmith/symbol`.
+- ChartInk scans: `POST /api/chartink/scan`. The Worker obtains the CSRF page and session cookie, then performs the scan POST server-side.
+- NSE historical delivery: `GET /api/nse/delivery`.
+- Health: `GET /api/health`.
+
+The Worker validates symbols, instrument IDs, intervals, ranges and dates; applies upstream timeouts; returns provider HTTP status; and caches successful read-only GET responses briefly. ChartInk scans are not cached. Provider access is still subject to each provider's own authentication, anti-bot and network policies. Cloudflare Worker requests bypass browser CORS, but do not bypass provider-side IP blocks or login requirements.
+
+**Secrets:** no session cookie, password or MarketSmith auth value is hard-coded in the frontend or committed to the Worker source. The Worker can read an optional Cloudflare secret named `MARKETSMITH_AUTH`; only configure it if you have a valid value you are authorized to use. Set it with `npx wrangler secret put MARKETSMITH_AUTH` from the repository root. Never paste it into chat or commit it.
+
+For production, configure a Cloudflare rate-limiting/WAF rule for `/api/*` before exposing the service to significant public traffic. Do not treat this provider gateway as a general-purpose proxy.
 
 ## Requirements
 
@@ -64,7 +74,7 @@ Run deterministic tests for Yahoo chart-response parsing, timeframe URL mapping,
 npm run test:charts
 ```
 
-The chart data client is `src/data/providers/chartData.ts`. It calls Yahoo Finance directly from the browser with credentials omitted. The old local Node service at `127.0.0.1:3000` is not used by the static site. Live Yahoo CORS availability must still be checked in the browser.
+The chart data client is `src/data/providers/chartData.ts`. It calls the same-origin `/api/yahoo/chart` Worker route; the Worker fetches Yahoo server-side and caches successful responses briefly. The old local Node service at `127.0.0.1:3000` is not used by the deployed site. Live Cloudflare-to-Yahoo connectivity must still be checked after deployment.
 
 ## Technical indicator tests (Step 10)
 
