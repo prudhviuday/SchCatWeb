@@ -235,6 +235,26 @@ Freshness/provider boundaries:
 
 Run `npm run test:screener`; the CI verification workflow also runs the suite before the production build.
 
+### Step 13 — Charts and Stock Workspace (complete)
+
+Implemented under:
+- `frontend/src/features/charts/StockWorkspace.tsx`: symbol workspace, independent fetch state and retry controls, responsive four-chart layout, candles, volume, OHLC details, view-range controls and reference-fundamentals panel.
+- `frontend/src/features/charts/chartPresentation.ts`: chronological ordering, IST date/time labels, full-series EMA20/EMA50 calculations aligned to source candles, RSI-21 summary and visible-window slicing.
+- `frontend/tests/charts/chartPresentation.test.mjs`: pure presentation tests run by `npm run test:workspace`.
+
+Legacy mapping:
+- `Tabs/chartpanel.py`: four independent requests for Weekly (1W), Daily (1D), Hourly (1H) and 5-minute (5m), ported using the existing `fetchChartData` adapter and Yahoo Finance request mapping.
+- `chartwidget.py`: candlestick wick/body rendering, up/down candle colours, volume pane, last-N-candle view and sparse date labels are reproduced in browser SVG. EMA20/EMA50 overlays and visible-candle range controls are added to the browser workspace.
+- Screener symbol selection now opens the stock workspace; the separate navigation entry supports direct symbol entry.
+- Legacy `RightPanel` labels are represented only where a reference field exists. The workspace shows Industry, Sector, Market Cap, P/B, ROCE, NikScore and MarketSmith ID from the static universe, with a visible undated-snapshot warning.
+
+Not yet ported / intentionally withheld:
+- The legacy `RightPanelWorker` requires MarketSmith finance/symbol details for ROCE, institution ownership, quarterly sales and EPS. The live browser-origin diagnostics/authentication results are still pending; no fake series or legacy catch defaults are displayed.
+- Yahoo Finance access from the live Cloudflare origin also remains unverified. Each chart timeframe reports its own network/CORS/HTTP/no-data error and can be retried. Passing parser tests does not prove provider CORS.
+- The legacy local Node service at `127.0.0.1:3000`, hard-coded MarketSmith `ms-auth` values and any proxy are not used.
+
+Run `npm run test:workspace`. Full CI including all parity suites, this chart workspace suite, production TypeScript/Vite build and static output checks passed on commit `a195a3b8690b4cb93873371e6e72cf4eb551eb26`: https://github.com/prudhviuday/SchCatWeb/actions/runs/42151901859. Cloudflare publication of this commit remains unverified.
+
 ## 7. Industry Analysis
 
 Legacy workflow:
@@ -280,4 +300,4 @@ Holdings contain stock, quantity and buy price. Legacy chart calculates each hol
 
 ## 12. Migration sequence
 
-See `docs/PROJECT-STATUS.md` for the binding 20-step plan. Steps 7–11 cover core calculations, provider diagnostics, browser chart-data transformations, technical-indicator parity and static reference-data conversion. Step 12 (browser stock screener) is implemented; see the Step 12 section above. Live browser CORS checks for the required external providers remain open. The previous backend endpoint proposals are superseded; app-internal workflows should be TypeScript functions, not HTTP routes.
+See `docs/PROJECT-STATUS.md` for the binding 20-step plan. Steps 7–11 cover core calculations, provider diagnostics, browser chart-data transformations, technical-indicator parity and static reference-data conversion. Steps 12 (Stock Screener) and 13 (Charts & Stock Workspace) are implemented; see their sections above. Live browser CORS checks for the required external providers remain open. The previous backend endpoint proposals are superseded; app-internal workflows should be TypeScript functions, not HTTP routes.
