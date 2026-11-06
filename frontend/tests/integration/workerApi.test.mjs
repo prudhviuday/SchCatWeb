@@ -66,11 +66,15 @@ test("MarketSmith finance endpoint builds a fixed provider URL", async () => {
   };
   const response = await worker.fetch(
     new Request("https://schcatweb.test/api/marketsmith/finance?stockId=3159563"),
-    { ASSETS: { fetch: async () => new Response("asset") } }
+    {
+      ASSETS: { fetch: async () => new Response("asset") },
+      MARKETSMITH_AUTH: "test auth token"
+    }
   );
   assert.equal(response.status, 200);
   assert.match(requestedUrl, /^https:\/\/marketsmithindia\.com\/gateway\/simple-api/);
   assert.match(requestedUrl, /3159563\/financeDetails\.json/);
+  assert.equal(new URL(requestedUrl).searchParams.get("ms-auth"), "test auth token");
 });
 
 test("ChartInk route performs CSRF bootstrap and posts a scan with the token", async () => {
@@ -148,4 +152,47 @@ test("ChartInk rejects a non-object body without making an upstream request", as
   );
   assert.equal(response.status, 400);
   assert.equal(called, false);
+});
+
+
+test("MarketSmith endpoints fail clearly when no Worker secret is configured", async () => {
+  let called = false;
+  globalThis.fetch = async () => {
+    called = true;
+    return new Response("{}");
+  };
+  const response = await worker.fetch(
+    new Request("https://schcatweb.test/api/marketsmith/finance?stockId=3159563"),
+    { ASSETS: { fetch: async () => new Response("asset") } }
+  );
+  assert.equal(response.status, 503);
+  assert.equal(called, false);
+  assert.equal((await response.json()).error, "marketsmith_auth_not_configured");
+});
+
+test("NSE delivery route bootstraps an anonymous session before requesting history", async () => {
+  const calls = [];
+  globalThis.fetch = async (input, init = {}) => {
+    calls.push({ url: String(input), init });
+    if (calls.length === 1) {
+      return new Response("home", {
+        status: 200,
+        headers: { "set-cookie": "nse_session=sample; Path=/; Secure" }
+      });
+    }
+    return new Response(JSON.stringify({ data: [{ mTIMESTAMP: "06-Nov-2026" }] }), {
+      status: 200,
+      headers: { "content-type": "application/json" }
+    });
+  };
+  const response = await worker.fetch(
+    new Request("https://schcatweb.test/api/nse/delivery?symbol=RELIANCE&from=01-11-2026&to=06-11-2026"),
+    { ASSETS: { fetch: async () => new Response("asset") } }
+  );
+  assert.equal(response.status, 200);
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0].url, "https://www.nseindia.com/");
+  assert.match(calls[1].url, /generateSecurityWiseHistoricalData/);
+  assert.match(calls[1].init.headers.cookie, /nse_session=sample/);
+  assert.equal((await response.json()).data.length, 1);
 });
