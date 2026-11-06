@@ -3,7 +3,8 @@ import test from "node:test";
 
 import {
   formatChartTime,
-  prepareChartView
+  prepareChartView,
+  prepareWeeklyCloseVolume
 } from "../../.test-dist/features/charts/chartPresentation.js";
 
 const candles = (count) => Array.from({ length: count }, (_, index) => ({
