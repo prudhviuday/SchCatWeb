@@ -389,7 +389,7 @@ Implemented on main:
 - Full CI and live MarketSmith response availability remain to be confirmed; Cloudflare publication is not assumed.
 
 
-## Step 27 — Weekly close × volume history (implemented; CI pending)
+## Step 27 — Weekly close × volume history (implemented; CI passed)
 
 Implemented on main:
 - Ported desktop `util.fetch_closexvol_for_stock` into the chart presentation layer.
@@ -410,4 +410,4 @@ Implemented on main:
 - Added tests for null substitution, chronological reversal and same-origin authenticated requests.
 
 Verification:
-- GitHub Actions and a real MarketSmith response must pass/be checked before treating the provider path as fully verified. Cloudflare publication is not assumed.
+- Full GitHub Actions verification passed in run [42226099682](https://github.com/prudhviuday/SchCatWeb/actions/runs/42226099682), including TypeScript compilation, provider regression tests, frontend build and Worker dry-run. A real MarketSmith `details.json` response and Cloudflare publication are not independently confirmed.
