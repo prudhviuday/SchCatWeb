@@ -1,4 +1,4 @@
-import { calculateEarningsSalesScore } from "../../domain/analysis/fundamentalMetrics.js";
+import { calculateEarningsSalesScore, normalizeSeries } from "../../domain/analysis/fundamentalMetrics.js";
 import {
   getMarketSmithId,
   type MarketSmithIdMap
@@ -20,6 +20,22 @@ export interface MarketSmithLiveMetrics {
   livePb: number | null;
   cashFlow: number | null;
   currentPrice: number | null;
+}
+
+export interface MarketSmithAnnualEpsPoint {
+  year: number;
+  eps: number;
+  normalized: number | null;
+}
+
+export interface MarketSmithQuarterlyGrowthPoint {
+  period: string;
+  epsPct: number;
+  salesPct: number;
+}
+
+export interface MarketSmithFinanceData {
+  annualEps: MarketSmithAnnualEpsPoint[];
 }
 
 export interface MarketSmithFetchFailure {
@@ -174,6 +190,87 @@ export async function fetchMarketSmithStockMetrics(
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
       throw new Error(`${safeSymbol}: MarketSmith request timed out`);
+    }
+    throw error;
+  } finally {
+    globalThis.clearTimeout(timeout);
+  }
+}
+
+/**
+ * Parse the legacy financeDetails ratiosAnnualData series. The desktop reverses
+ * MarketSmith's newest-first rows, then applies util.normalize to annual EPS.
+ */
+export function parseMarketSmithFinanceData(payload: unknown): MarketSmithFinanceData {
+  const root = asRecord(payload);
+  const rows = Array.isArray(root?.ratiosAnnualData)
+    ? root.ratiosAnnualData.map(asRecord).filter((item): item is Record<string, unknown> => item !== null)
+    : [];
+  const chronological = rows.map((row) => ({
+    year: finiteNumber(row.c0),
+    eps: finiteNumber(row.c20)
+  })).filter((row): row is { year: number; eps: number } => row.year !== null && row.eps !== null);
+
+  let normalized: number[] = [];
+  if (chronological.length > 1) {
+    try {
+      normalized = normalizeSeries(chronological.map((row) => row.eps));
+    } catch {
+      normalized = [];
+    }
+  }
+
+  return {
+    annualEps: chronological.map((row, index) => ({
+      year: row.year,
+      eps: row.eps,
+      normalized: normalized[index] ?? null
+    }))
+  };
+}
+
+export async function fetchMarketSmithFinanceData(
+  stockId: number | string,
+  authValue: string,
+  fetcher: typeof fetch = fetch
+): Promise<MarketSmithFinanceData> {
+  const id = String(stockId).trim();
+  if (!/^\\d{1,12}$/.test(id)) throw new TypeError("MarketSmith instrument ID must contain digits only");
+  if (!authValue.trim()) throw new Error("MarketSmith session is not configured in this browser");
+
+  const controller = new AbortController();
+  const timeout = globalThis.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    const response = await fetcher(`/api/marketsmith/finance?stockId=${encodeURIComponent(id)}`, {
+      method: "GET",
+      mode: "same-origin",
+      credentials: "same-origin",
+      headers: {
+        Accept: "application/json",
+        "x-marketsmith-auth": authValue.trim()
+      },
+      signal: controller.signal
+    });
+    const body = await response.text();
+    let payload: unknown;
+    try {
+      payload = JSON.parse(body) as unknown;
+    } catch {
+      throw new TypeError("MarketSmith returned invalid finance JSON");
+    }
+    if (!response.ok) {
+      const data = asRecord(payload);
+      const message = typeof data?.message === "string"
+        ? data.message
+        : typeof data?.error === "string"
+          ? data.error
+          : "Provider request failed";
+      throw new Error(`MarketSmith finance HTTP ${response.status} — ${message}`);
+    }
+    return parseMarketSmithFinanceData(payload);
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error("MarketSmith finance request timed out");
     }
     throw error;
   } finally {
