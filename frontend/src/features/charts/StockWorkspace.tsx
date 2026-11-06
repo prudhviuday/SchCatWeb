@@ -522,12 +522,12 @@ function StockWorkspace({
               return <>
                 <div className="workspace-delivery-summary">
                   <div><span>Latest delivery %</span><strong>{latest.deliveryPct.toFixed(2)}%</strong><small>{latest.date}</small></div>
-                  <div><span>5-session avg delivery value</span><strong>{latest.deliveryValueCr.toFixed(2)} Cr</strong><small>Rolling mean</small></div>
-                  <div><span>5-session avg traded value</span><strong>{latest.tradedValueCr.toFixed(2)} Cr</strong><small>Rolling mean</small></div>
+                  <div><span>5-session avg delivery value</span><strong>{latest.deliveryValueCr.toFixed(2)}</strong><small>Rolling mean</small></div>
+                  <div><span>5-session avg traded value</span><strong>{latest.tradedValueCr.toFixed(2)}</strong><small>Rolling mean</small></div>
                   <div><span>Change vs prior session</span><strong>{previous ? (latest.deliveryPct - previous.deliveryPct >= 0 ? "+" : "") + (latest.deliveryPct - previous.deliveryPct).toFixed(2) + " pp" : "—"}</strong><small>Daily delivery percentage</small></div>
                 </div>
                 <div className="workspace-delivery-table-wrap"><table className="workspace-delivery-table">
-                  <thead><tr><th>Date</th><th>Delivery %</th><th>Avg delivery value (Cr)</th><th>Avg traded value (Cr)</th></tr></thead>
+                  <thead><tr><th>Date</th><th>Delivery %</th><th>Avg delivery value</th><th>Avg traded value</th></tr></thead>
                   <tbody>{deliveryHistory.slice(-12).reverse().map((point) => <tr key={point.date}><td>{point.date}</td><td>{point.deliveryPct.toFixed(2)}%</td><td>{point.deliveryValueCr.toFixed(2)}</td><td>{point.tradedValueCr.toFixed(2)}</td></tr>)}</tbody>
                 </table></div>
                 {deliveryUpdatedAt && <span className="workspace-chart-note">Last refreshed: {deliveryUpdatedAt} · Source: NSE India</span>}
