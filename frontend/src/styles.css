@@ -1251,7 +1251,7 @@ h2 { font-size: 17px; letter-spacing: -.3px; font-weight: 600; margin: 7px 0 0; 
 .portfolio-chart-title span { color: #8392a7; font-size: 8px; }
 .portfolio-chart-empty { display: grid; place-items: center; min-height: 155px; color: #77889d; font-size: 9px; text-align: center; }
 .portfolio-chart-graphic svg { width: 100%; height: auto; display: block; }
-.portfolio-chart-grid { stroke: #263447; stroke-width: 1; }
+.portfolio-chart-gridline { stroke: #263447; stroke-width: 1; }
 .portfolio-chart-zero { stroke: #d9a05d; stroke-width: 1.1; stroke-dasharray: 4 4; opacity: .8; }
 .portfolio-chart-positive-wick { stroke: #4fc49a; stroke-width: 1.2; opacity: .75; }
 .portfolio-chart-negative-wick { stroke: #e17f83; stroke-width: 1.2; opacity: .75; }
@@ -1262,3 +1262,6 @@ h2 { font-size: 17px; letter-spacing: -.3px; font-weight: 600; margin: 7px 0 0; 
 .portfolio-footnote { margin: 12px 1px 0; color: #718198; font-size: 8px; line-height: 1.6; }
 @media (max-width: 1050px) { .portfolio-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 720px) { .portfolio-content { padding: 24px 12px 20px; } .portfolio-heading, .portfolio-panel-heading { align-items: flex-start; flex-direction: column; } .portfolio-management-grid, .portfolio-chart-grid { grid-template-columns: 1fr; } .portfolio-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .portfolio-panel { padding: 12px 9px; } .portfolio-form-row { grid-template-columns: 1fr; } }
+
+.portfolio-chart-positive-body { fill: #319b78; stroke: #4fc49a; stroke-width: .8; }
+.portfolio-chart-negative-body { fill: #a95059; stroke: #e17f83; stroke-width: .8; }
