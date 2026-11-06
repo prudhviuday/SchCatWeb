@@ -45,6 +45,7 @@ test("legacy symbols and IDs are preserved exactly", () => {
   const validated = parseMarketSmithIds(sourceData);
 
   assert.equal(getMarketSmithId(validated, "RELIANCE"), 3023127);
+  assert.equal(getMarketSmithId(validated, "RVNL"), 3159563);
   assert.equal(getMarketSmithId(validated, " reliance "), 3023127);
   assert.equal(getMarketSmithId(validated, "BAJAJ - AUTO"), 3102893);
   assert.equal(getMarketSmithId(validated, "BAJAJ-AUTO"), null);
