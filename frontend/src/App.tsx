@@ -108,11 +108,19 @@ function App() {
                 ["05", "Market Pulse", "Market breadth and signal dashboard"],
                 ["06", "Portfolio", "Holdings and P&L analytics"]
               ].map(([number, title, description]) => (
-                <article className="module-card" key={number}>
-                  <span className="module-number">{number}</span>
-                  <div><h3>{title}</h3><p>{description}</p></div>
-                  <span className="module-arrow">↗</span>
-                </article>
+                {number === "06" ? (
+                  <button type="button" className="module-card module-card-button" key={number} onClick={() => setActivePage("portfolio")}>
+                    <span className="module-number">{number}</span>
+                    <div><h3>{title}</h3><p>{description}</p></div>
+                    <span className="module-arrow">↗</span>
+                  </button>
+                ) : (
+                  <article className="module-card" key={number}>
+                    <span className="module-number">{number}</span>
+                    <div><h3>{title}</h3><p>{description}</p></div>
+                    <span className="module-arrow">↗</span>
+                  </article>
+                )}
               ))}
             </div>
             <footer className="page-footer">SCHCATWEB <span>·</span> PERSONAL BUILD <span>·</span> FOUNDATION</footer>
