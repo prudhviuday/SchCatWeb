@@ -25,16 +25,16 @@ test("MarketSmith finance URL preserves the legacy endpoint and consolidation fl
 
 test("MarketSmith symbol URL preserves source parameters without publishing ms-auth", () => {
   const url = new URL(buildMarketSmithSymbolDetailsUrl("3159563", "RVNL"));
-  assert.equal(url.origin, "https://msi-gcloud-prod.appspot.com");
+  assert.equal(url.origin, "https://marketsmithindia.com");
   assert.equal(
     url.pathname,
     "/gateway/simple-api/ms-india/instr/0/3159563/symboldetails.json"
   );
-  assert.equal(url.searchParams.get("s"), "20190810");
-  assert.equal(url.searchParams.get("e"), "20250810");
+  assert.equal(url.searchParams.get("s"), "20211106");
+  assert.equal(url.searchParams.get("e"), "20261106");
   assert.equal(url.searchParams.get("text"), "RVNL");
   assert.equal(url.searchParams.get("lang"), "en");
-  assert.equal(url.searchParams.get("isConsolidated"), "0");
+  assert.equal(url.searchParams.get("isConsolidated"), "1");
   assert.equal(url.searchParams.has("ms-auth"), false);
 });
 
