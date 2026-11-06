@@ -476,7 +476,7 @@ export async function fetchMarketSmithRelativeStrength(
 ): Promise<MarketSmithRelativeStrengthPoint[]> {
   const id = String(stockId).trim();
   const safeSymbol = symbol.trim().toUpperCase();
-  if (!/^\\d{1,12}$/.test(id)) throw new TypeError("MarketSmith instrument ID must contain digits only");
+  if (!/^\d{1,12}$/.test(id)) throw new TypeError("MarketSmith instrument ID must contain digits only");
   if (!/^[A-Z0-9&._-]{1,30}$/.test(safeSymbol)) throw new TypeError("MarketSmith symbol contains unsupported characters");
   if (!authValue.trim()) throw new Error("MarketSmith session is not configured in this browser");
   const params = new URLSearchParams({ stockId: id, symbol: safeSymbol });
