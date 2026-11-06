@@ -292,56 +292,76 @@ async function probeMarketSmith(
 
 async function probeChartInk(): Promise<ProviderProbeResult[]> {
   const provider = "ChartInk" as const;
-  const title = "ChartInk server-side CSRF session + scan POST";
-  const attempt = await requestText(
-    "chartink-scan-post",
+  const title = "ChartInk direct browser CSRF session + scan POST";
+  const bootstrap = await requestText(
+    "chartink-browser-bootstrap",
     provider,
     title,
-    "/api/chartink/scan",
-    {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        mode: "scan",
-        query: "( {cash} ( latest close > 0 ) )"
-      })
-    }
+    "https://chartink.com/screener/process",
+    { headers: { Accept: "text/html,application/xhtml+xml" } },
+    { mode: "cors", credentials: "include" }
   );
+  if (!bootstrap.ok) return [bootstrap.result];
 
-  if (!attempt.ok) return [attempt.result];
-  const { response, body, elapsedMs } = attempt.value;
-  if (!response.ok) {
-    return [httpFailure("chartink-scan-post", provider, title, response, elapsedMs)];
-  }
-  try {
-    const data: unknown = JSON.parse(body);
-    const rows =
-      data && typeof data === "object" && Array.isArray((data as { data?: unknown }).data)
-        ? (data as { data: unknown[] }).data.length
-        : null;
+  const csrf = extractCsrfToken(bootstrap.value.body);
+  if (!csrf) {
     return [{
-      id: "chartink-scan-post",
-      provider,
-      title,
-      status: rows === null ? "invalid-response" : "success",
-      httpStatus: response.status,
-      message: rows === null
-        ? "Worker reached ChartInk, but the scan response did not contain the expected data array."
-        : `Worker completed the ChartInk CSRF + scan flow (${rows} rows).`,
-      elapsedMs
-    }];
-  } catch {
-    return [{
-      id: "chartink-scan-post",
+      id: "chartink-browser-bootstrap",
       provider,
       title,
       status: "invalid-response",
-      httpStatus: response.status,
-      message: "Worker returned a response that was not valid JSON.",
-      elapsedMs
+      httpStatus: bootstrap.value.response.status,
+      message: "The browser reached ChartInk, but the CSRF token was not readable in the response.",
+      elapsedMs: bootstrap.value.elapsedMs
+    }];
+  }
+
+  const form = new URLSearchParams({ scan_clause: "( {cash} ( latest close > 0 ) )" });
+  const scan = await requestText(
+    "chartink-browser-scan",
+    provider,
+    title,
+    "https://chartink.com/screener/process",
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json,text/plain,*/*",
+        "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+        "X-CSRF-TOKEN": csrf,
+        Origin: "https://chartink.com",
+        Referer: "https://chartink.com/screener/"
+      },
+      body: form.toString()
+    },
+    { mode: "cors", credentials: "include" }
+  );
+  if (!scan.ok) return [scan.result];
+  if (!scan.value.response.ok) {
+    return [httpFailure("chartink-browser-scan", provider, title, scan.value.response, scan.value.elapsedMs)];
+  }
+  try {
+    const data = JSON.parse(scan.value.body) as { data?: unknown[] };
+    const rows = Array.isArray(data.data) ? data.data.length : null;
+    return [{
+      id: "chartink-browser-scan",
+      provider,
+      title,
+      status: rows === null ? "invalid-response" : "success",
+      httpStatus: scan.value.response.status,
+      message: rows === null
+        ? "The browser reached ChartInk, but the scan response did not contain the expected data array."
+        : `Direct browser CSRF + scan flow succeeded (${rows} rows).`,
+      elapsedMs: bootstrap.value.elapsedMs + scan.value.elapsedMs
+    }];
+  } catch {
+    return [{
+      id: "chartink-browser-scan",
+      provider,
+      title,
+      status: "invalid-response",
+      httpStatus: scan.value.response.status,
+      message: "ChartInk returned a response that was not valid JSON.",
+      elapsedMs: bootstrap.value.elapsedMs + scan.value.elapsedMs
     }];
   }
 }
