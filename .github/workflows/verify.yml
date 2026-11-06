@@ -52,6 +52,9 @@ jobs:
       - name: Run industry analysis tests
         working-directory: frontend
         run: npm run test:industry
+      - name: Run Research tests
+        working-directory: frontend
+        run: npm run test:research
       - name: Build static website
         working-directory: frontend
         run: npm run build
