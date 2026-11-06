@@ -106,6 +106,11 @@ function displayScreenerValue(value: string | number | null | undefined): string
   return typeof value === "number" ? numberValue(value) : value;
 }
 
+function displayScreenerRecordValue(record: ScreenerRow, key: keyof ScreenerRow): string {
+  const value = record[key];
+  return displayScreenerValue(typeof value === "string" || typeof value === "number" ? value : null);
+}
+
 function toNumber(value: string): number | undefined {
   if (!value.trim()) return undefined;
   const parsed = Number(value);
