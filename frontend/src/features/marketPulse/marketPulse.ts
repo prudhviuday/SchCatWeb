@@ -96,7 +96,7 @@ export async function fetchMarketPulse(signal?: AbortSignal): Promise<{ rows: Ma
   } catch (error) {
     if (signal?.aborted) throw new Error("Market Pulse refresh was cancelled.");
     if (error instanceof DOMException && error.name === "AbortError") throw new Error("ChartInk did not respond within 15 seconds.");
-    if (error instanceof TypeError) throw new Error("The browser could not access ChartInk. This may be CORS, network, or browser privacy policy; check DevTools Console.");
+    if (error instanceof TypeError && /fetch|network|load failed/i.test(error.message)) throw new Error("The browser could not access ChartInk. This may be CORS, network, or browser privacy policy; check DevTools Console.");
     throw error instanceof Error ? error : new Error("Market Pulse could not be loaded.");
   } finally {
     globalThis.clearTimeout(timeout);
