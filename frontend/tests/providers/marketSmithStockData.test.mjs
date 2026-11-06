@@ -33,9 +33,9 @@ const samplePayload = {
     },
     quarterlySalesAndEarningsInternational: {
       quarterlySalesAndEarningsOrigin: [
-        { prdYear: "2026", prdQuarter: "Q2", epsPct: "120", salesPct: "100" },
-        { prdYear: "2026", prdQuarter: "Q1", epsPct: "90", salesPct: "80" },
-        { prdYear: "2025", prdQuarter: "Q4", epsPct: "70", salesPct: "75" }
+        { prdYear: "2026", prdQuarter: "Q2", epsPct: "120", salesPct: "100", sales: "1250.5" },
+        { prdYear: "2026", prdQuarter: "Q1", epsPct: "90", salesPct: "80", sales: "1100" },
+        { prdYear: "2025", prdQuarter: "Q4", epsPct: "70", salesPct: "75", sales: "900" }
       ]
     }
   }
@@ -68,9 +68,9 @@ test("MarketSmith parser preserves legacy stock fields and FScore calculation", 
       { period: "01-2026", value: 0, normalized: null }
     ],
     quarterlyGrowth: [
-      { period: "2025 Q4", epsPct: 70, salesPct: 75 },
-      { period: "2026 Q1", epsPct: 90, salesPct: 80 },
-      { period: "2026 Q2", epsPct: 120, salesPct: 100 }
+      { period: "2025 Q4", epsPct: 70, salesPct: 75, salesValue: 900 },
+      { period: "2026 Q1", epsPct: 90, salesPct: 80, salesValue: 1100 },
+      { period: "2026 Q2", epsPct: 120, salesPct: 100, salesValue: 1250.5 }
     ]
   });
 });
