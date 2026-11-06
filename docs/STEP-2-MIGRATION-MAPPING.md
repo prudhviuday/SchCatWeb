@@ -361,6 +361,19 @@ Personal holdings are stored in versioned browser localStorage and never placed 
 
 Provider boundary: latest prices and OHLC history reuse the existing direct-browser Yahoo adapter. No backend/proxy, database or secret credentials. Actual Yahoo CORS/provider access from the deployed website origin remains unverified; errors are surfaced and unavailable symbols are excluded rather than replaced with sample prices.
 
+### Step 18 — Watchlists and saved queries
+
+Desktop source:
+- helper.py: multi-query toggle, watchlist toggle, refresh, AND intersection/filtering, keyboard shortcut and watchlist insertion.
+- util.py: getAllQueries() reads the QUERIES sheet's second and third columns as query name and query clause; getAllWatchlists() reads each Watchlist sheet column as a separate list; addStToWatchlists() appends a symbol to the selected column.
+
+Browser port:
+- A versioned localStorage library stores named watchlists and named query definitions. Each saved query retains its ChartInk clause and an optional resolved symbol set.
+- Multiple selected symbol sets intersect with AND semantics. Watchlist filtering is independent from the target watchlist used to save a row.
+- Add/remove symbols, create/delete watchlists, create/delete saved queries, JSON backup/restore, watchlist CSV and query CSV export are browser-local.
+- CSV import accepts both the desktop's wide-column watchlist sheet and normalized Watchlist,Symbol rows. Query CSV accepts QueryName,QueryCode or Name,Query headers.
+- Imported ChartInk clauses are preserved but not executed. Live scan access remains gated on the provider-origin diagnostics; no server proxy, session cookie or secret was introduced.
+
 ## 11. Known issues to verify
 
 1. MarketSmith `ms-auth` query values may be session credentials; do not copy into public frontend code.
