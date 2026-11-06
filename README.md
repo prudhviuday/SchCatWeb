@@ -138,7 +138,7 @@ The screen requests the desktop app's four chart periods independently:
 
 Charts render candlesticks and volume, with EMA 20/50 overlays calculated on the full returned series and aligned to their candle positions. The daily panel shows last close, change against the previous daily candle, and RSI(21). Visible chart history can be set to 100, 200 or 500 candles. Time labels use Asia/Kolkata.
 
-The selected-stock reference panel displays only the existing workbook fields (Market Cap, P/B, ROCE and NikScore) with the same explicit undated-snapshot warning as the screener. Provider-only fundamentals and the legacy ROCE, institutional ownership, quarterly sales and EPS charts have not been fabricated; they remain pending validated MarketSmith/NSE browser access. Yahoo Finance CORS from the deployed origin also remains unverified, so individual chart cards show their own provider error and retry control when access fails. No server proxy, local Node service, API key or session token has been added.
+The selected-stock reference panel displays only the existing workbook fields (Market Cap, P/B, ROCE and NikScore) with the same explicit undated-snapshot warning as the screener. Provider-only fundamentals and the legacy ROCE, institutional ownership, quarterly sales and EPS charts have not been fabricated; they remain pending validated MarketSmith/NSE connectivity through the Worker API. Yahoo chart requests now use the server-side Worker route, but Cloudflare-to-Yahoo connectivity must still be checked after deployment. Individual chart cards show their own provider error and retry control when access fails.
 
 Run chart view tests with:
 
@@ -154,7 +154,7 @@ The **Industry Analysis** screen is available from the left navigation. It group
 
 The screen can import a saved JSON file from the desktop application's `data/IndustryAnalysis` folder and render the four legacy series: institutional value, delivery percentage, close×volume, and market-cap-weighted industry RS. The old five-array structure is preserved on export. The import is done locally in the browser; the file is not uploaded to the website.
 
-**Live industry analysis is intentionally disabled** until the direct browser provider checks are completed. The desktop worker requires MarketSmith institutional value and RS data, Yahoo weekly OHLCV for close×volume, and NSE delivery/traded values. Do not treat request-shape tests as evidence of live CORS/authentication access.
+**Live industry analysis is intentionally disabled** until MarketSmith, Yahoo and NSE connectivity through the Worker API is verified. The desktop worker requires MarketSmith institutional value and RS data, Yahoo weekly OHLCV for close×volume, and NSE delivery/traded values. Do not treat request-shape tests as evidence of live provider connectivity.
 
 The exact desktop aggregation kernels are in `src/features/industry/industryAnalysis.ts`:
 - Institutional value, close×volume and weighted RS use first-value left padding, then sum.
@@ -186,7 +186,7 @@ The browser calculates:
 
 The desktop deliberately uses different denominators for the displayed Total and Match %. Both are displayed separately in SchCatWeb so the percentage calculation is transparent. Results can be exported as CSV. Files are read in the browser and are not uploaded. Excel workbooks should be saved as CSV for import; the personal Watchlist and Portfolio sheets in the original workbook are not required.
 
-**Live ChartInk historical scans are not connected yet.** The desktop uses ChartInk's `backtest/process` endpoint and combines symbols across its returned dates. Browser-origin CORS/session access has not yet been verified. This screen therefore evaluates imported historical match sets only; it does not run live scans or substitute current scan data.
+**Live ChartInk historical scans are not yet connected to the Research UI.** The Worker API now supports the `backtest/process` flow, but this screen still evaluates imported historical match sets only. Cloudflare-to-ChartInk connectivity and the actual response shape must be validated before wiring the live history workflow.
 
 Run Research tests:
 
@@ -213,7 +213,7 @@ npm run test:integration
 
 This starts Vite's production preview locally and verifies SPA fallback for deep links, the compiled bundle's six workspace modules and provider diagnostics, public reference-data availability/counts against the manifest, Worker API routes, and the Cloudflare Worker/static-asset configuration. CI runs this suite after `npm run build`.
 
-These tests do not contact external market-data providers and do not prove that the latest commit has been deployed to Cloudflare. Live provider CORS/authentication and production-origin verification are part of the final release step.
+These tests do not contact external market-data providers and do not prove that the latest commit has been deployed to Cloudflare. Live Cloudflare-to-provider connectivity, authentication and production-origin verification remain part of the final release step.
 
 ## Cloudflare Workers Builds
 
