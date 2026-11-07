@@ -710,3 +710,32 @@ User test:
 3. Check that Stock and Industry keep more horizontal space, numeric text is larger and readable, and rows remain compact.
 4. Confirm there is still no horizontal scrollbar and all columns remain available at wide desktop width.
 5. Sort by Group Rank or EPS Rank and confirm click/selection behaviour is unchanged.
+
+
+## Step 45 — Finviz-style scrollable Industry Stocks chart gallery (2026-11-07)
+
+User feedback: Industry Stocks was displaying two very small closing-price polylines per ticker and did not look like a real stock-chart gallery. The requested reference is Finviz's Screener Charts view: multiple stock charts in a scrollable grid, with controls for range, layout and chart size.
+
+Implemented on `main`:
+- Replaced the tiny weekly/daily close-only sparklines with a scrollable chart gallery containing one larger chart card per constituent.
+- Candlesticks are now the default chart style, using the existing Yahoo OHLCV data already fetched by the app. Up/down candle bodies and wicks are shown with volume bars below the price panel. A Line option remains available.
+- Added shared Daily / Weekly interval controls. Switching intervals updates every card together, while preserving the already-fetched daily and weekly histories.
+- Added date-range presets appropriate to the available data: Daily supports 3M, 6M, 1Y and 2Y; Weekly supports 1Y, 2Y and 5Y.
+- Added chart-grid density controls (2 / 3 / 4 columns), Compact / Normal / Large chart heights, a visible-bar slider, and SMA 50 / EMA 50 / EMA 200 overlays.
+- Technical indicators are calculated against the full loaded history before the selected visible range and bar count are applied, so changing the visible window does not restart the moving-average warm-up.
+- Each card shows the last close, change against the previous visible candle, OHLC, volume and candle date. Clicking the ticker opens its full Chart workspace.
+- Retained exact Industry/Sector constituent filtering, manual substring search, keyboard industry cycling, the maximum of 12 constituents, and the existing four-stock request batches. No new provider endpoint or paid chart library was introduced.
+
+Verification:
+- Added unit tests for Daily/Weekly range presets and range cutoffs.
+- Extended the production integration smoke test to verify the gallery, candlestick bodies, overlays and ticker-to-Chart navigation UI are included in the build.
+- Full CI build, calculation/provider/feature tests, production integration smoke tests and Wrangler validation must pass before treating this step as complete.
+
+User test:
+1. From Stocks, click an Industry cell. Industry Stocks should show a grid of separate ticker cards, not the old tiny line plots.
+2. Check that each chart has real green/red OHLC candles and volume bars. Use Daily and Weekly to switch every chart together.
+3. Try 3M/6M/1Y/2Y for Daily and 1Y/2Y/5Y for Weekly; change the visible bar count.
+4. Change the grid to 2, 3 and 4 columns and chart height to Compact, Normal and Large. The gallery should remain vertically scrollable when all 12 constituents are displayed.
+5. Toggle SMA 50, EMA 50 and EMA 200. Confirm the overlays appear/disappear across all charts.
+6. Click a ticker at the top of any card. It should open the single-stock Chart tab for that symbol.
+7. Confirm exact industry constituents, manual substring search, Right Arrow / period industry cycling and the 12-stock limit still work.

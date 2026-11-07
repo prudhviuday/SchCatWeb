@@ -49,7 +49,7 @@ test("built application bundle contains the desktop-style tabs and integrated wo
   const response = await fetch(new URL(scriptPath, origin));
   assert.equal(response.status, 200);
   const bundle = await response.text();
-  for (const label of ["Stocks", "Chart", "Industry Stocks", "Industry Analysis", "Querys", "Market", "Portfolio", "Settings & Library", "Annual ROCE", "Institutional ownership", "Revenue / EPS", "INSTITUTIONAL OWNERSHIP", "INDUSTRY STOCK GRAPHS", "Open Industry Stocks and load all charts for this industry", "screener-header-label", "screener-header-line", "screener-sort-indicator", "data-column"]) {
+  for (const label of ["Stocks", "Chart", "Industry Stocks", "Industry Analysis", "Querys", "Market", "Portfolio", "Settings & Library", "Annual ROCE", "Institutional ownership", "Revenue / EPS", "INSTITUTIONAL OWNERSHIP", "INDUSTRY STOCK GRAPHS", "Open Industry Stocks and load all charts for this industry", "Candlestick chart gallery", "Scrollable stock chart gallery", "analysis-chart-controls", "analysis-chart-svg", "analysis-candle-body-up", "analysis-candle-body-down", "analysis-indicator-sma", "analysis-indicator-ema200", "analysis-ticker-button", "screener-header-label", "screener-header-line", "screener-sort-indicator", "data-column"]) {
     assert.ok(bundle.includes(label), "production bundle should include " + label);
   }
   assert.ok(bundle.includes("Provider connectivity diagnostics"), "provider diagnostics view should be bundled");

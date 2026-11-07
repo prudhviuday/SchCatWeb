@@ -46,3 +46,13 @@ test("industry navigation also supports a sector label when no industry label is
   const sectorOnly = [{ ...records[3], symbol: "SECTOR1", sector: "Industrials", industry: null }];
   assert.deepEqual(filterAnalysisStocksByIndustry(sectorOnly, "Industrials").map(row => row.symbol), ["SECTOR1"]);
 });
+
+
+test("daily and weekly chart gallery ranges are bounded to their provider history", async () => {
+  const { getAnalysisChartRanges, getAnalysisRangeStart } = await import("../../.test-dist/features/analysis/multiStockAnalysis.js");
+  assert.deepEqual(getAnalysisChartRanges("1D"), ["3M", "6M", "1Y", "2Y"]);
+  assert.deepEqual(getAnalysisChartRanges("1W"), ["1Y", "2Y", "5Y"]);
+  const now = Date.UTC(2026, 10, 7);
+  assert.equal(getAnalysisRangeStart("3M", now), Math.floor(now / 1000) - 90 * 24 * 60 * 60);
+  assert.equal(getAnalysisRangeStart("5Y", now), Math.floor(now / 1000) - 1825 * 24 * 60 * 60);
+});

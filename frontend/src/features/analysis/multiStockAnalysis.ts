@@ -41,3 +41,27 @@ export function filterAnalysisStocksByIndustry(
     (record.sector ?? "").trim().toLocaleLowerCase() === target
   ).slice(0, MAX_ANALYSIS_STOCKS);
 }
+
+
+export type AnalysisChartTimeframe = "1D" | "1W";
+export type AnalysisChartRange = "3M" | "6M" | "1Y" | "2Y" | "5Y";
+
+const ANALYSIS_RANGE_DAYS: Record<AnalysisChartRange, number> = {
+  "3M": 90,
+  "6M": 180,
+  "1Y": 365,
+  "2Y": 730,
+  "5Y": 1825
+};
+
+/** Date ranges mirror the daily/weekly history available through the existing Yahoo chart route. */
+export function getAnalysisChartRanges(timeframe: AnalysisChartTimeframe): readonly AnalysisChartRange[] {
+  return timeframe === "1D"
+    ? ["3M", "6M", "1Y", "2Y"]
+    : ["1Y", "2Y", "5Y"];
+}
+
+/** Return an epoch-seconds cutoff for the gallery's selected visible range. */
+export function getAnalysisRangeStart(range: AnalysisChartRange, nowMs = Date.now()): number {
+  return Math.floor(nowMs / 1000) - ANALYSIS_RANGE_DAYS[range] * 24 * 60 * 60;
+}

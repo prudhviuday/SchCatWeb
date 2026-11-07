@@ -99,7 +99,7 @@ function App() {
           {visitedPages.has("workspace") && <StockWorkspace initialRecord={selectedStock} onBack={() => switchToPage("screener")} />}
         </div>
         <div className="desktop-module-page" hidden={activePage !== "analysis"}>
-          {visitedPages.has("analysis") && <MultiStockAnalysis initialIndustry={industryNavigation} />}
+          {visitedPages.has("analysis") && <MultiStockAnalysis initialIndustry={industryNavigation} onOpenStock={openStock} />}
         </div>
         <div className="desktop-module-page" hidden={activePage !== "industry"}>
           {visitedPages.has("industry") && <IndustryAnalysis onOpenStock={openStock} />}
