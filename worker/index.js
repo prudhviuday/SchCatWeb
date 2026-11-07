@@ -326,17 +326,22 @@ async function chartInkScan(request) {
     });
   } catch (error) {
     return json({
-      error: "chartink_bootstrap_failed",
-      message: error instanceof Error ? error.message : "Network error"
+      error: error instanceof Error && error.name === "AbortError" ? "chartink_bootstrap_timeout" : "chartink_bootstrap_failed",
+      message: error instanceof Error && error.name === "AbortError" ? "ChartInk did not respond within 12 seconds." : "The Worker could not establish a ChartInk session."
     }, 502);
   }
-  if (!bootstrap.ok) {
-    return json({ error: "chartink_bootstrap_http_error", upstreamStatus: bootstrap.status }, 502);
-  }
+  if (!bootstrap.ok) return json(
+    { error: "chartink_bootstrap_http_error", upstreamStatus: bootstrap.status },
+    502,
+    { "x-schcat-upstream-status": String(bootstrap.status) }
+  );
 
   const html = await bootstrap.text();
   const csrf = extractCsrf(html);
-  if (!csrf) return json({ error: "chartink_csrf_token_missing" }, 502);
+  if (!csrf) return json(
+    { error: "chartink_csrf_token_missing", message: "ChartInk did not provide its CSRF token. Retry later." },
+    502
+  );
 
   const endpoint = mode === "history"
     ? "https://chartink.com/backtest/process"
@@ -370,8 +375,8 @@ async function chartInkScan(request) {
     });
   } catch (error) {
     return json({
-      error: "chartink_scan_failed",
-      message: error instanceof Error ? error.message : "Network error"
+      error: error instanceof Error && error.name === "AbortError" ? "chartink_scan_timeout" : "chartink_scan_failed",
+      message: error instanceof Error && error.name === "AbortError" ? "ChartInk did not complete the scan within 12 seconds." : "The Worker could not complete the ChartInk request."
     }, 502);
   }
 
@@ -388,11 +393,11 @@ async function chartInkScan(request) {
 
 async function handleApi(request, env) {
   const url = new URL(request.url);
-  if (url.pathname === "/api/health") {
+  if (request.method === "GET" && url.pathname === "/api/health") {
     return json({
       ok: true,
       service: "schcatweb-api",
-      version: "2",
+      version: "3",
       providers: ["yahoo", "marketsmith", "chartink", "nse"],
       routes: [
         "GET /api/yahoo/chart",
@@ -428,12 +433,10 @@ async function handleApi(request, env) {
   if (request.method === "POST" && url.pathname === "/api/chartink/scan") {
     return chartInkScan(request);
   }
-  if (request.method === "GET" && url.pathname.startsWith("/api/")) {
-    return json({ error: "api_route_not_found" }, 404);
+  if (url.pathname.startsWith("/api/") && request.method !== "GET" && request.method !== "POST") {
+    return json({ error: "method_not_allowed", message: "This API route does not support the requested method." }, 405, { allow: "GET, POST" });
   }
-  if (request.method !== "GET" && url.pathname.startsWith("/api/")) {
-    return json({ error: "method_not_allowed" }, 405, { allow: "GET, POST" });
-  }
+  if (url.pathname.startsWith("/api/")) return json({ error: "api_route_not_found" }, 404);
   return null;
 }
 
@@ -441,8 +444,12 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (url.pathname.startsWith("/api/")) {
-      const response = await handleApi(request, env);
-      return response || json({ error: "api_route_not_found" }, 404);
+      try {
+        const response = await handleApi(request, env);
+        return response || json({ error: "api_route_not_found" }, 404);
+      } catch {
+        return json({ error: "worker_api_error", message: "The SchCatWeb Worker could not complete this API request. Please retry." }, 502);
+      }
     }
     return env.ASSETS.fetch(request);
   }

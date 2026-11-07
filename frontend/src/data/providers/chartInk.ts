@@ -25,12 +25,16 @@ export async function fetchChartInkScan(
       method: "POST",
       credentials: "same-origin",
       headers: { "content-type": "application/json", accept: "application/json" },
-      body: JSON.stringify({ mode: "scan", query: clause })
+      body: JSON.stringify({ mode: "scan", query: clause }),
+      signal: controller.signal
     });
   } catch (error) {
-    throw new Error(error instanceof Error
-      ? "Could not reach the SchCatWeb Worker: " + error.message
-      : "Could not reach the SchCatWeb Worker.");
+    const timedOut = error instanceof Error && error.name === "AbortError";
+    throw new Error(timedOut
+      ? "ChartInk scan timed out while waiting for the SchCatWeb Worker."
+      : error instanceof Error ? "Could not reach the SchCatWeb Worker: " + error.message : "Could not reach the SchCatWeb Worker.");
+  } finally {
+    globalThis.clearTimeout(timeoutId);
   }
 
   let payload: unknown;

@@ -45,6 +45,7 @@ test("history request uses same-origin Worker and explicit history mode", async 
   assert.equal(request.url, "/api/chartink/scan");
   assert.equal(request.init.method, "POST");
   assert.equal(request.init.credentials, "same-origin");
+  assert.ok(request.init.signal instanceof AbortSignal, "history request has a cancellation signal");
   assert.deepEqual(JSON.parse(request.init.body), { mode: "history", query: "close > ema(20)" });
   assert.deepEqual(result.symbols, ["TCS", "INFY", "RELIANCE"]);
 });
@@ -63,4 +64,11 @@ test("reports HTTP, malformed JSON and network failures clearly", async () => {
     /Could not reach/
   );
   await assert.rejects(fetchChartInkHistory("  "), /no ChartInk query clause/);
+});
+
+test("a cancelled history request reports a timeout clearly", async () => {
+  await assert.rejects(fetchChartInkHistory("close > 1", async (_url, init) => {
+    const error = new Error("aborted"); error.name = "AbortError";
+    assert.ok(init.signal instanceof AbortSignal); throw error;
+  }), /historical backtest timed out/);
 });

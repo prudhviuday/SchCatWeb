@@ -17,7 +17,7 @@ test("health endpoint reports the server-side provider API", async () => {
   const body = await response.json();
   assert.equal(body.ok, true);
   assert.deepEqual(body.providers, ["yahoo", "marketsmith", "chartink", "nse"]);
-  assert.equal(body.version, "2");
+  assert.equal(body.version, "3");
   assert.deepEqual(body.routes, [
     "GET /api/yahoo/chart", "GET /api/marketsmith/finance",
     "GET /api/marketsmith/symbol", "GET /api/marketsmith/relative-strength",
@@ -340,4 +340,18 @@ test("MarketSmith relative-strength route validates inputs and requires a sessio
   assert.equal(missing.status, 503);
   assert.equal((await missing.json()).error, "marketsmith_auth_not_configured");
   assert.equal(called, false);
+});
+
+test("health endpoint rejects non-GET methods", async () => {
+  const response = await worker.fetch(new Request("https://schcatweb.test/api/health", { method: "POST" }), { ASSETS: { fetch: async () => new Response("asset") } });
+  assert.equal(response.status, 405);
+  assert.equal((await response.json()).error, "method_not_allowed");
+});
+
+test("unexpected Worker API exceptions return a stable JSON error", async () => {
+  const brokenBody = new ReadableStream({ start(controller) { controller.error(new Error("upstream stream exploded")); } });
+  globalThis.fetch = async () => new Response(brokenBody, { status: 200 });
+  const response = await worker.fetch(new Request("https://schcatweb.test/api/yahoo/chart?symbol=RELIANCE.NS&interval=1d&range=2y"), { ASSETS: { fetch: async () => new Response("asset") } });
+  assert.equal(response.status, 502);
+  assert.deepEqual(await response.json(), { error: "worker_api_error", message: "The SchCatWeb Worker could not complete this API request. Please retry." });
 });

@@ -1484,3 +1484,18 @@ h2 { font-size: 17px; letter-spacing: -.3px; font-weight: 600; margin: 7px 0 0; 
 .research-backtest-failures summary { color: #ef9d9d; cursor: pointer; font-weight: 600; }
 .research-backtest-failures ul { margin: 9px 0 0; padding-left: 18px; line-height: 1.7; overflow-wrap: anywhere; }
 .research-backtest-failures strong { color: #f0c5c5; }
+
+
+/* Step 39: keep asynchronous diagnostics failures readable on narrow screens. */
+.diagnostics-run-error {
+  margin: 12px 0;
+  padding: 12px 14px;
+  border: 1px solid #754b42;
+  border-radius: 9px;
+  background: #2a1d1b;
+  color: #f0b2a5;
+  font-size: 11px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+.diagnostic-meta { flex-wrap: wrap; overflow-wrap: anywhere; }

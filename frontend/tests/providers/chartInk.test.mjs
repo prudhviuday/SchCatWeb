@@ -15,6 +15,7 @@ test("scan posts the exact saved clause to the same-origin Worker", async () => 
   assert.equal(request.url, "/api/chartink/scan");
   assert.equal(request.init.method, "POST");
   assert.equal(request.init.credentials, "same-origin");
+  assert.ok(request.init.signal instanceof AbortSignal, "scan request has a cancellation signal");
   assert.deepEqual(JSON.parse(request.init.body), { mode: "scan", query: "( {cash} ( latest close > 100 ) )" });
   assert.deepEqual(result, { symbols: ["TCS", "INFY"], rawRows: 2 });
 });
@@ -40,4 +41,11 @@ test("network errors and malformed symbols fail clearly", async () => {
   await assert.rejects(fetchChartInkScan("close > 1", async () => { throw new Error("offline"); }), /Could not reach the SchCatWeb Worker: offline/);
   await assert.rejects(fetchChartInkScan("close > 1", async () => response({ data: [{ nsecode: "!!!" }] })), /none contained a valid NSE symbol/);
   await assert.rejects(fetchChartInkScan("   ", async () => response({ data: [] })), /no ChartInk query clause/);
+});
+
+test("a cancelled scan reports a timeout instead of a generic network error", async () => {
+  await assert.rejects(fetchChartInkScan("close > 1", async (_url, init) => {
+    const error = new Error("aborted"); error.name = "AbortError";
+    assert.ok(init.signal instanceof AbortSignal); throw error;
+  }), /ChartInk scan timed out/);
 });

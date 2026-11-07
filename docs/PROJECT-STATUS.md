@@ -554,3 +554,25 @@ Implemented on `main`:
 - Diagnostics now include MarketSmith relative-strength access and the Worker health check. They display Worker HTTP status and upstream HTTP status separately when the Worker exposes it.
 - Added integration tests for the RS route and its credential/input requirements, health route inventory, malformed 200 payloads and separate upstream status reporting.
 - Automated tests validate request routing and mocked upstream behavior. The live Cloudflare origin was not independently reachable from this verification environment, so actual Yahoo/MarketSmith/ChartInk/NSE provider availability still must be confirmed in the diagnostics page after the Worker deployment completes.
+
+
+## Step 39 — Integration, error handling and browser compatibility (2026-11-07)
+
+Implemented on `main`:
+- Added a stable JSON error boundary around every Worker `/api/*` request. Unexpected failures while reading an upstream response or handling a route now return HTTP 502 with a safe retry-oriented message instead of an unhandled Worker exception.
+- Tightened the health route to GET only and made unsupported API methods return a consistent JSON 405 response. Worker health version is now 3; the provider route inventory is unchanged.
+- ChartInk scan and historical-backtest browser clients now use 45-second abortable requests, clear timers on every outcome, and distinguish cancellation/timeouts from ordinary network failures. The Worker still caps each upstream hop at 12 seconds.
+- ChartInk bootstrap HTTP failures expose upstream status to diagnostics. Missing CSRF tokens return an actionable message; upstream timeout errors have explicit codes.
+- Provider Diagnostics catches unexpected orchestration failures and displays them in an accessible alert.
+- Corrected Overview copy to describe Worker-backed provider access. Added narrow-screen wrapping for diagnostics error/status text.
+- Added deterministic tests for Worker method handling, stable API error responses, and ChartInk timeout/cancellation handling.
+
+Verification:
+- Run `npm run test:integration`, `npm run test:chartink`, `npm run test:chartink-history`, and `npm run build` from `frontend/`.
+- Full GitHub Actions verification is required before Step 39 is considered complete. Tests mock upstream services; live Cloudflare publication and actual provider availability remain Step 40 / user-side checks.
+
+User test:
+1. Open `https://schcatweb.prudhviuday.workers.dev/api/health`; confirm Worker version 3 and all six provider routes.
+2. Open `https://schcatweb.prudhvi123143.workers.dev/?diagnostics=providers`; run all seven checks and confirm failures display readable Worker/upstream status rather than a blank page.
+3. Run a saved ChartInk scan and a Research historical run. If a request is cancelled or exceeds timeout, confirm a clear timeout message appears and the UI becomes usable for retry.
+4. On a phone-sized viewport, check diagnostics result cards and long error messages do not overflow horizontally.

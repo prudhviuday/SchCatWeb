@@ -417,3 +417,8 @@ The original standard CRIP4 route applies SMA 50, EMA 50, EMA 200 and RSI 21 to 
 ### Step 38 — provider/API verification
 
 Verified the live clients against the Worker route inventory. The MarketSmith relative-strength worker function existed but was not registered; `GET /api/marketsmith/relative-strength` is now exposed and used for both Workspace and Industry Analysis. The health endpoint publishes a versioned list of required routes. Diagnostics checks Worker health, MarketSmith finance/symbol/RS, ChartInk scan, NSE delivery and Yahoo OHLCV. Results validate expected JSON shapes and display Worker and upstream HTTP statuses separately. CI mocks upstream services and does not establish live third-party availability.
+
+
+### Step 39 — Integration, API failure boundaries and browser compatibility
+
+The Worker now returns a stable JSON 502 for unexpected exceptions on `/api/*`, rejects unsupported methods consistently, and exposes health version 3. ChartInk scan and historical requests are abortable from the browser with a 45-second client timeout; each Worker upstream request remains capped at 12 seconds. Provider Diagnostics handles unexpected orchestration errors in an accessible alert. Mobile diagnostics status/error text wraps rather than forcing horizontal overflow. This hardening does not retry non-idempotent ChartInk POSTs automatically and does not manufacture empty/zero provider data.

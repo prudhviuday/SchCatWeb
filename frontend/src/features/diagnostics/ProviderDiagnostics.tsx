@@ -60,6 +60,7 @@ function ProviderDiagnostics() {
   const [results, setResults] = useState<ProviderProbeResult[]>([]);
   const [running, setRunning] = useState(false);
   const [startedAt, setStartedAt] = useState<string | null>(null);
+  const [runError, setRunError] = useState("");
 
   const saveMarketSmithAuth = () => {
     try {
@@ -93,6 +94,7 @@ function ProviderDiagnostics() {
     }
     setRunning(true);
     setResults([]);
+    setRunError("");
     setStartedAt(new Date().toLocaleString());
 
     try {
@@ -102,6 +104,8 @@ function ProviderDiagnostics() {
         marketSmithAuth: savedAuth
       });
       setResults(nextResults);
+    } catch (error) {
+      setRunError(error instanceof Error ? error.message : "Diagnostics could not complete. Check the site connection and retry.");
     } finally {
       setRunning(false);
     }
@@ -201,6 +205,8 @@ function ProviderDiagnostics() {
           )}
         </div>
       )}
+
+      {runError && <div className="diagnostics-run-error" role="alert">{runError}</div>}
 
       <section className="diagnostics-results" aria-live="polite">
         {results.length === 0 && !running ? (
