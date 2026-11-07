@@ -1,0 +1,66 @@
+name: SchCatWeb branch preview
+
+on:
+  push:
+    branches-ignore:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: schcatweb-preview-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy-preview:
+    name: Build and deploy branch preview
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build website
+        working-directory: frontend
+        run: npm run build
+
+      - name: Validate Cloudflare credentials
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo "::error::Add the CLOUDFLARE_API_TOKEN repository secret."; exit 1; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "::error::Add the CLOUDFLARE_ACCOUNT_ID repository secret."; exit 1; }
+
+      - name: Create a unique preview Worker name
+        id: preview
+        env:
+          BRANCH_NAME: ${{ github.ref_name }}
+        run: |
+          SLUG="$(printf '%s' "$BRANCH_NAME" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9-]+/-/g; s/^-+//; s/-+$//; s/-+/-/g' | cut -c1-40)"
+          test -n "$SLUG" || SLUG="branch"
+          echo "worker_name=schcatweb-preview-$SLUG" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy isolated preview Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          WORKER_NAME: ${{ steps.preview.outputs.worker_name }}
+        run: |
+          npx --yes wrangler deploy --config ./wrangler.toml --name "$WORKER_NAME"
+
+      - name: Report preview URL
+        env:
+          WORKER_NAME: ${{ steps.preview.outputs.worker_name }}
+        run: echo "Preview URL: https://$WORKER_NAME.${{ vars.CLOUDFLARE_WORKERS_SUBDOMAIN }}.workers.dev"
