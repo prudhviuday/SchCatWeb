@@ -632,3 +632,30 @@ User test:
 5. Set a search/filter in Stocks, switch to Chart, then return to Stocks. The search, filter and selected row should remain as they were.
 6. In Settings, visit Watchlists and Data; verify local import/export and NikScore/MarketSmith refresh actions remain reachable.
 7. Check a 1366×768 desktop viewport and a narrow/mobile viewport. The results table should scroll inside its panel; the selected-stock panel should stack below it on mobile; the settings dialog should fit the viewport.
+
+
+## Step 42 — 60/40 screener split, no horizontal table bar and live right-panel graphs (2026-11-07)
+
+User feedback: the Stocks workspace was still wasting width, the results table required horizontal scrolling, and the Python right panel's three judgement graphs were missing from the web screener.
+
+Implemented on main:
+- Changed the desktop Stocks workspace to a 60/40 split (three parts stock table, two parts selected-stock panel).
+- Removed the horizontal scrollbar from the stock table. The table now fits its pane with fixed compact column widths, ellipsis for long values and fewer secondary columns at intermediate/mobile widths. Vertical scrolling remains within the results pane.
+- Restored the three original right-panel histories beside the selected stock: annual ROCE (MarketSmith finance history), institutional ownership (MarketSmith company details), and annual Revenue/EPS (legacy-normalized comparison).
+- Reused the exact chart renderers already used in the Chart workspace; the Stocks and Chart tabs therefore show the same ROCE thresholds, institutional holding bars and revenue/EPS indices.
+- Selecting a row automatically fetches MarketSmith finance and (when not already cached by Fetch Data) company details. No extra click is needed. Results are cached per stock for the active browser session; quickly switching rows ignores late responses for the previous selection.
+- The ROCE quick metric prefers the latest live annual ROCE when it has been fetched; the undated workbook ROCE is only a fallback and remains clearly separated by the ROCE (live) label.
+- MarketSmith session authentication remains browser-local; without a saved session, the right panel explains that Provider Diagnostics must be configured instead of displaying invented graph values.
+- Original calculations, MarketSmith routes and data parsing are reused; no new provider endpoint was added.
+
+Verification:
+- Full existing calculation, provider, screener, chart, right-panel and integration tests plus production build and Wrangler dry-run in GitHub Actions.
+- Automated tests continue to cover the legacy ROCE thresholds, ownership history normalization and annual Revenue/EPS year alignment.
+
+User test:
+1. Open Stocks at a 1366×768 desktop width. The left table should occupy about 60% and the right panel about 40%.
+2. Confirm the left table does not show a horizontal scrollbar. Stock and Industry remain readable; other long values are clipped rather than widening the table.
+3. Click different stock rows. The right panel should update to that symbol, show the live ROCE graph, institutional ownership graph, and Revenue/EPS graph, and show a loading/partial/error message when the provider has no usable data.
+4. If live graphs say a session is required, open Provider Diagnostics, save the current MarketSmith session, return to Stocks and select a stock again.
+5. Select a stock, switch tabs and return; the Stocks tab and selected stock should remain mounted. Verify no stale previous-stock graphs flash after selecting a new row.
+6. Check 1024px and mobile widths. Secondary columns should collapse rather than create a horizontal scrollbar; the detail panel should stack below the table on narrow screens.

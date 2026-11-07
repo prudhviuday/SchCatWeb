@@ -7,9 +7,10 @@ import { loadIndustryList } from "../../data/reference/industries";
 import { loadMarketSmithIds } from "../../data/reference/marketSmithIds";
 import { readStoredMarketSmithAuth } from "../../data/providers/providerDiagnostics";
 import { fetchChartInkScan } from "../../data/providers/chartInk";
-import { fetchMarketSmithFinanceData, fetchMarketSmithStockMetrics } from "../../data/providers/marketSmithStockData";
+import { fetchMarketSmithFinanceData, fetchMarketSmithStockMetrics, type MarketSmithFinanceData } from "../../data/providers/marketSmithStockData";
 import { getMarketSmithId } from "../../data/reference/marketSmithIds";
 import { calculateNikScoreFromMarketSmith } from "./nikScore";
+import SelectedStockGraphs from "./SelectedStockGraphs";
 import {
   fetchMarketSmithUniverse,
   type MarketSmithLiveMetrics
@@ -126,6 +127,24 @@ function toNumber(value: string): number | undefined {
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
+type SelectedStockResearchState = {
+  symbol: string;
+  status: "idle" | "loading" | "ready" | "partial" | "auth-required" | "error";
+  finance: MarketSmithFinanceData | null;
+  metrics: MarketSmithLiveMetrics | null;
+  message: string;
+  updatedAt: string | null;
+};
+
+const emptySelectedStockResearch = (symbol = ""): SelectedStockResearchState => ({
+  symbol,
+  status: symbol ? "loading" : "idle",
+  finance: null,
+  metrics: null,
+  message: "",
+  updatedAt: null
+});
+
 function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRecord) => void }) {
   const [records, setRecords] = useState<ScreenerRow[]>([]);
   const [liveMetrics, setLiveMetrics] = useState<Record<string, MarketSmithLiveMetrics>>({});
@@ -178,6 +197,8 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
   const [settingsSection, setSettingsSection] = useState<"filters" | "queries" | "watchlists" | "data">("filters");
   const [queryMenuOpen, setQueryMenuOpen] = useState(false);
   const [queryDraft, setQueryDraft] = useState<string[]>([]);
+  const [selectedStockResearch, setSelectedStockResearch] = useState<SelectedStockResearchState>(() => emptySelectedStockResearch());
+  const selectedStockResearchCache = useRef(new Map<string, SelectedStockResearchState>());
 
   useEffect(() => { try { saveScreenerLibrary(library); } catch (error) { setWatchlistNotice(error instanceof Error ? error.message : "Unable to save local library."); } }, [library]);
 
@@ -197,6 +218,105 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
       });
     return () => { cancelled = true; };
   }, []);
+
+  // Selecting a stock automatically loads its original desktop right-panel histories.
+  // Results are cached for this browser session so revisiting a row does not refetch them.
+  const selectedLiveMetrics = selectedStock ? liveMetrics[selectedStock.symbol] : undefined;
+  useEffect(() => {
+    if (!selectedStock) {
+      setSelectedStockResearch(emptySelectedStockResearch());
+      return;
+    }
+
+    const symbol = selectedStock.symbol;
+    const cached = selectedStockResearchCache.current.get(symbol);
+    if (cached) {
+      const refreshed = cached.metrics || !selectedLiveMetrics
+        ? cached
+        : { ...cached, metrics: selectedLiveMetrics };
+      if (refreshed !== cached) selectedStockResearchCache.current.set(symbol, refreshed);
+      setSelectedStockResearch(refreshed);
+      return;
+    }
+
+    let cancelled = false;
+    const auth = readStoredMarketSmithAuth();
+    if (!auth) {
+      setSelectedStockResearch({
+        symbol,
+        status: "auth-required",
+        finance: null,
+        metrics: selectedLiveMetrics ?? null,
+        message: "Save your current MarketSmith session in Provider Diagnostics to load the live ROCE, institutional ownership and Revenue/EPS histories.",
+        updatedAt: null
+      });
+      return () => { cancelled = true; };
+    }
+
+    setSelectedStockResearch({
+      ...emptySelectedStockResearch(symbol),
+      status: "loading",
+      metrics: selectedLiveMetrics ?? null,
+      message: "Loading annual ROCE, institutional ownership and Revenue/EPS history from MarketSmith…"
+    });
+
+    void (async () => {
+      try {
+        const ids = selectedStock.instrumentId ? null : await loadMarketSmithIds();
+        const stockId = selectedStock.instrumentId ?? (ids ? getMarketSmithId(ids, symbol) : null);
+        if (stockId === null) throw new Error("No MarketSmith instrument ID is available for " + symbol + ".");
+
+        const [financeResult, metricsResult] = await Promise.allSettled([
+          fetchMarketSmithFinanceData(stockId, auth),
+          selectedLiveMetrics
+            ? Promise.resolve(selectedLiveMetrics)
+            : fetchMarketSmithStockMetrics(stockId, symbol, auth)
+        ]);
+        if (cancelled) return;
+
+        const finance = financeResult.status === "fulfilled" ? financeResult.value : null;
+        const metrics = metricsResult.status === "fulfilled" ? metricsResult.value : selectedLiveMetrics ?? null;
+        if (metrics) {
+          setLiveMetrics((current) => current[symbol] ? current : { ...current, [symbol]: metrics });
+        }
+
+        const errors = [
+          financeResult.status === "rejected"
+            ? (financeResult.reason instanceof Error ? financeResult.reason.message : "MarketSmith finance history failed.")
+            : "",
+          metricsResult.status === "rejected"
+            ? (metricsResult.reason instanceof Error ? metricsResult.reason.message : "MarketSmith company details failed.")
+            : ""
+        ].filter(Boolean);
+        if (!finance && !metrics) throw new Error(errors.join(" · ") || "MarketSmith returned no usable stock history.");
+
+        const result: SelectedStockResearchState = {
+          symbol,
+          status: errors.length ? "partial" : "ready",
+          finance,
+          metrics,
+          message: errors.length
+            ? "Some histories could not be loaded: " + errors.join(" · ")
+            : "Live company histories loaded from MarketSmith.",
+          updatedAt: new Date().toLocaleString("en-IN")
+        };
+        selectedStockResearchCache.current.set(symbol, result);
+        setSelectedStockResearch(result);
+      } catch (error) {
+        if (cancelled) return;
+        setSelectedStockResearch({
+          symbol,
+          status: "error",
+          finance: null,
+          metrics: selectedLiveMetrics ?? null,
+          message: error instanceof Error ? error.message : "Unable to load selected-stock histories.",
+          updatedAt: null
+        });
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [selectedStock?.symbol, selectedStock?.instrumentId, selectedLiveMetrics]);
 
   const queryMatches = useMemo(
     () => new Map(queries.map((query) => [query.name, query.symbols])),
@@ -486,7 +606,12 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
     [records]
   );
 
-  const selectedMetrics = selectedStock ? liveMetrics[selectedStock.symbol] : undefined;
+  const activeSelectedResearch = selectedStock && selectedStockResearch.symbol === selectedStock.symbol
+    ? selectedStockResearch
+    : selectedStock ? emptySelectedStockResearch(selectedStock.symbol) : emptySelectedStockResearch();
+  const selectedMetrics = selectedStock
+    ? activeSelectedResearch.metrics ?? liveMetrics[selectedStock.symbol]
+    : undefined;
   const activeAdvancedFilterCount =
     (sector ? 1 : 0) +
     (industry ? 1 : 0) +
@@ -752,7 +877,7 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
               </div>
               <div className="screener-detail-primary">
                 <div><span>Market Cap</span><strong>{compactNumber(selectedStock.marketCap)}</strong></div>
-                <div><span>ROCE</span><strong>{displayScreenerValue(selectedStock.roce)}</strong></div>
+                <div><span>ROCE (live)</span><strong>{displayScreenerValue(activeSelectedResearch.finance?.annualRoce.at(-1)?.value ?? selectedStock.roce)}</strong></div>
                 <div><span>NikScore</span><strong>{displayScreenerValue(selectedStock.nikScore)}</strong></div>
               </div>
               <div className="screener-detail-grid">
@@ -776,6 +901,15 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
                   </div>
                 ))}
               </div>
+              <SelectedStockGraphs
+                symbol={selectedStock.symbol}
+                status={activeSelectedResearch.status}
+                finance={activeSelectedResearch.finance}
+                metrics={activeSelectedResearch.metrics}
+                message={activeSelectedResearch.message}
+                updatedAt={activeSelectedResearch.updatedAt}
+              />
+
               <div className="screener-detail-actions">
                 <select aria-label="Watchlist target" value={watchlistTarget} onChange={(event) => setWatchlistTarget(event.target.value)}>
                   <option value="">Choose watchlist</option>
