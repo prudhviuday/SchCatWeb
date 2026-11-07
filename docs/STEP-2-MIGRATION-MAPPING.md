@@ -422,3 +422,9 @@ Verified the live clients against the Worker route inventory. The MarketSmith re
 ### Step 39 — Integration, API failure boundaries and browser compatibility
 
 The Worker now returns a stable JSON 502 for unexpected exceptions on `/api/*`, rejects unsupported methods consistently, and exposes health version 3. ChartInk scan and historical requests are abortable from the browser with a 45-second client timeout; each Worker upstream request remains capped at 12 seconds. Provider Diagnostics handles unexpected orchestration errors in an accessible alert. Mobile diagnostics status/error text wraps rather than forcing horizontal overflow. This hardening does not retry non-idempotent ChartInk POSTs automatically and does not manufacture empty/zero provider data. CI passed for code commit `804006b8fad06ab49f4b6f2084854fba2209328c` (GitHub Actions run `42329248667`), including the production build, integration smoke tests and Worker bundle validation.
+
+### Step 40 — final release and Cloudflare deployment verification
+
+The repository-side release check confirms the current `main` head, successful GitHub Actions verification, Worker version 3 route inventory, and the root Wrangler static-assets/SPA configuration. The latest functional code commit is `804006b8fad06ab49f4b6f2084854fba2209328c`; the current documentation/handover head is `9b0c07542f9141e48b0e334992e2f7ae87c85381`.
+
+The production hostname and health endpoint were not reachable from the verification environment, and Cloudflare deployment records were not available through the connected GitHub access. Consequently this step does not claim a live deploy or provider success. The user must verify the correct URL, `https://schcatweb.prudhvi123143.workers.dev`, using the checklist in `docs/PROJECT-STATUS.md`. The migration is repository/CI complete but the final production release gate remains pending until those checks are confirmed.

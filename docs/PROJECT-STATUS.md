@@ -572,10 +572,33 @@ Verification:
 - GitHub Actions passed for code commit `804006b8fad06ab49f4b6f2084854fba2209328c`: https://github.com/prudhviuday/SchCatWeb/actions/runs/42329248667. All calculation/provider/feature suites, TypeScript/Vite production build, production integration smoke tests, and Cloudflare Worker bundle/config validation passed. Tests mock upstream services; live Cloudflare publication and actual provider availability remain Step 40 / user-side checks.
 
 User test:
-1. Open `https://schcatweb.prudhviuday.workers.dev/api/health`; confirm Worker version 3 and all six provider routes.
+1. Open `https://schcatweb.prudhvi123143.workers.dev/api/health`; confirm Worker version 3 and all six provider routes.
 2. Open `https://schcatweb.prudhvi123143.workers.dev/?diagnostics=providers`; run all seven checks and confirm failures display readable Worker/upstream status rather than a blank page.
 3. Run a saved ChartInk scan and a Research historical run. If a request is cancelled or exceeds timeout, confirm a clear timeout message appears and the UI becomes usable for retry.
 4. On a phone-sized viewport, check diagnostics result cards and long error messages do not overflow horizontally.
 
 
-Step 39 code verification is complete on `main`. The latest functional code commit is `804006b8fad06ab49f4b6f2084854fba2209328c`; its GitHub Actions run passed. Do not start Step 40 until the user explicitly asks for the next step.
+## Step 40 — Final release and Cloudflare deployment verification (2026-11-07)
+
+Repository and CI verification:
+- Confirmed `main` points to `9b0c07542f9141e48b0e334992e2f7ae87c85381`; this is the Step 39 handover/documentation commit. The latest functional Worker/frontend code is `804006b8fad06ab49f4b6f2084854fba2209328c`.
+- GitHub Actions run `42329395696` completed successfully for the current `main` head. The functional-code verification run `42329248667` also passed.
+- Re-checked `wrangler.toml`: Worker name `schcatweb`, entry point `worker/index.js`, static assets `frontend/dist`, SPA fallback, and Worker-first handling for `/api/*`.
+- Re-checked the Worker health handler in source: version 3 and six routes (Yahoo chart, MarketSmith finance/symbol/relative-strength, ChartInk scan, NSE delivery).
+- Re-checked the verification workflow: all calculation/provider/feature suites, TypeScript/Vite build, production integration smoke tests, and Wrangler dry-run validation are included.
+- Corrected the health-test URL typo in the Step 39 instructions. The correct production hostname is `schcatweb.prudhvi123143.workers.dev`.
+
+Production deployment status:
+- The production root and health URL could not be reached from this verification environment, and the available GitHub connection did not expose Cloudflare deployment records. Therefore the live deployment SHA, static-site response, and actual upstream provider availability are **not independently verified** here.
+- Do not treat a successful GitHub Actions run or Wrangler dry-run as proof that Cloudflare has published the current Worker.
+- Step 40 is therefore **code/repository verification complete; production verification pending user confirmation**. Do not mark the overall migration fully released until the browser checks below pass.
+
+User production checklist:
+1. Open `https://schcatweb.prudhvi123143.workers.dev/api/health`. It should return JSON with `ok: true`, `version: "3"`, and all six routes listed above.
+2. Open `https://schcatweb.prudhvi123143.workers.dev/`. Confirm the application loads, not a 404, raw HTML, or JavaScript MIME error. Hard-refresh once to test SPA asset loading.
+3. Open `https://schcatweb.prudhvi123143.workers.dev/?diagnostics=providers`. Run all seven diagnostics. Check actual Worker/upstream statuses; a passing Worker route alone does not prove all four external providers are operational.
+4. With a current authorized MarketSmith session saved in that browser, test a stock's fundamentals/relative-strength data. Then test one ChartInk saved-query scan, one Research historical query, one Yahoo chart load and one NSE delivery request.
+5. If any check fails, send the exact health JSON or diagnostic error/status. Do not send the raw `ms-auth` value, cookies, or other credentials.
+6. Confirm the site on a narrow/mobile viewport, especially the diagnostics panel and long error messages.
+
+Final release gate: after the user confirms the live checks, update this handover with the observed production result and deployed version. No further feature step is included in the original 40-step migration plan; optional legacy utilities can be scoped separately only if requested.
