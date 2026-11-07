@@ -475,7 +475,7 @@ function MultiStockAnalysis({
         <div className="analysis-empty">No stocks found for “{submittedQuery}”. Try a broader industry name or symbol.</div>
       ) : (
         <div className="analysis-gallery-scroll" aria-label="Scrollable stock chart gallery" tabIndex={0}>
-          <div className="analysis-grid" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
+          <div className="analysis-grid" data-columns={columns}>
             {matches.map(record => (
               <StockChartCard
                 key={record.symbol}
