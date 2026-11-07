@@ -620,8 +620,9 @@ Implemented on \`main\`:
 - Kept the original PyQt application untouched. No branch was created.
 
 Verification:
-- Full existing screener/provider/calculation/feature tests and production build run in GitHub Actions.
-- Production browser smoke test and Worker dry-run are required after the new main commit. These do not replace user-side verification of external provider connectivity.
+- GitHub Actions passed for the final UI/tab-shell code commit `46feaf87e386730c219a328dda816d108a57c34b`: https://github.com/prudhviuday/SchCatWeb/actions/runs/42333209045.
+- The passing run includes the full calculation/provider/feature suites, TypeScript/Vite production build, production SPA/bundle smoke tests (including all seven desktop-style tabs), and Wrangler Worker/static-assets validation.
+- The automated smoke test validates the built local preview. It does not prove Cloudflare has published this commit or that live third-party providers are reachable; those remain user-side production checks.
 
 User test:
 1. Open the app. It should start on Stocks and show the seven top tabs; the left sidebar and Overview landing page should be gone.
