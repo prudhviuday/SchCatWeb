@@ -985,7 +985,18 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
                   <div className="screener-settings-list">
                     {library.watchlists.length > 0 ? library.watchlists.map((item) => (
                       <div className="screener-settings-list-row" key={item.name}>
-                        <div><strong>{item.name}</strong><small>{item.symbols.length} stocks · {item.symbols.slice(0, 8).join(", ")}{item.symbols.length > 8 ? "…" : ""}</small></div>
+                        <div>
+                          <strong>{item.name}</strong>
+                          <small>{item.symbols.length} stocks</small>
+                          <div className="screener-watchlist-symbols">
+                            {item.symbols.map((symbol) => (
+                              <span className="screener-watchlist-symbol" key={symbol}>
+                                {symbol}
+                                <button type="button" aria-label={"Remove " + symbol + " from " + item.name} onClick={() => setLibrary((current) => removeSymbolFromWatchlist(current, item.name, symbol))}>×</button>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
                         <button type="button" className="screener-button secondary" onClick={() => {
                           setLibrary((current) => ({ ...current, watchlists: current.watchlists.filter((watchlist) => watchlist.name !== item.name) }));
                           if (activeWatchlist === item.name) setActiveWatchlist("");
@@ -1014,7 +1025,7 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
                   </div>
                   <div className="screener-data-status">
                     <strong>MarketSmith</strong>
-                    <span>{marketSmithRefresh.status === "idle" ? "Not fetched in this session." : marketSmithRefresh.message}</span>
+                    <span>{marketSmithRefresh.status === "idle" ? "Not fetched in this session." : marketSmithRefresh.message}{liveUpdatedAt ? " · Updated " + liveUpdatedAt : ""}</span>
                     {marketSmithRefresh.status === "loading" && <progress value={marketSmithRefresh.completed} max={Math.max(1, marketSmithRefresh.total)} />}
                   </div>
                   <div className="screener-data-status">
