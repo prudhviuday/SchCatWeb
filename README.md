@@ -215,28 +215,40 @@ This starts Vite's production preview locally and verifies SPA fallback for deep
 
 These tests do not contact external market-data providers and do not prove that the latest commit has been deployed to Cloudflare. Live Cloudflare-to-provider connectivity, authentication and production-origin verification remain part of the final release step.
 
-## Cloudflare Workers Builds
+## Cloudflare Workers Builds and automatic branch previews
 
-Configure the existing Cloudflare Worker `schcatweb` as follows:
+The repository uses one Cloudflare Worker for both the static React site and the same-origin `/api/*` provider gateway. Do not replace this with a Pages-only deployment: the Worker routes are required by the application.
+
+Configure the connected Cloudflare Worker `schcatweb` once:
 
 - Root directory: repository root (blank).
+- Production branch: `main`.
 - Build command:
 
 ```bash
 cd frontend && npm install && npm run build
 ```
 
-- Deploy command:
+- Production deploy command:
 
 ```bash
-npx wrangler deploy --config ./wrangler.toml
+cd frontend && npx wrangler deploy --config ../wrangler.toml
 ```
 
-- Build watch paths: `frontend/**`, `worker/**` and `wrangler.toml`.
+- Preview command:
 
-The root Wrangler config publishes `./frontend/dist` as static assets. It intentionally has no `main` entry point, Worker script, API route, R2 binding or database. Keep the Worker name as `schcatweb` to match the existing Cloudflare deployment.
+```bash
+cd frontend && npx wrangler preview --config ../wrangler.toml
+```
 
-Cloudflare executes the build and deploy commands in separate shell sessions. The deploy command therefore runs from the repository root and reads the root `wrangler.toml`; it does not depend on the build command's working directory.
+- Enable **Preview Builds** for non-production branches.
+- Complete Cloudflare's one-time **Set up Worker Previews** switch if the project is still using the legacy preview model.
+
+Wrangler is pinned in `frontend/package.json` to version `4.135.0`, which supports Worker Previews. The root `wrangler.toml` contains the shared `[previews]` base block. Static assets remain configured at the top level; the Worker API and static asset binding therefore remain available to branch previews without duplicating configuration.
+
+After this one-time dashboard setup, every push to `main` deploys production, and every push to any other branch creates or updates that branch's own preview URL. No per-branch Worker names, configuration files, or deploy commands are needed.
+
+Build watch paths: `frontend/**`, `worker/**` and `wrangler.toml`.
 
 ## Data and privacy
 
