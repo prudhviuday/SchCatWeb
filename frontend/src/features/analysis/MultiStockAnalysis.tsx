@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { fetchChartData, type ChartCandle, type ChartTimeframe } from "../../data/providers/chartData";
 import { loadMarketUniverse, type MarketUniverseRecord } from "../../data/reference/marketUniverse";
-import { filterAnalysisStocks, getAnalysisIndustries, nextAnalysisIndustry, MAX_ANALYSIS_STOCKS } from "./multiStockAnalysis";
+import { filterAnalysisStocks, filterAnalysisStocksByIndustry, getAnalysisIndustries, nextAnalysisIndustry, MAX_ANALYSIS_STOCKS } from "./multiStockAnalysis";
 
 type PairState = { weekly: ChartCandle[]; daily: ChartCandle[]; weeklyError: string; dailyError: string; loading: boolean };
 
@@ -20,15 +20,25 @@ function MiniChart({ title, candles, error, loading }: { title: string; candles:
   return <div className="analysis-mini-chart"><h3>{title}</h3><svg viewBox="0 0 100 90" role="img" aria-label={title + " close-price history"}><line x1="0" x2="100" y1="82" y2="82" stroke="#344256" strokeWidth=".7" /><polyline points={points} fill="none" stroke="#e5a45c" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" /></svg><p>Last close · {last.toLocaleString("en-IN", { maximumFractionDigits: 2 })} · {candles.length} candles</p></div>;
 }
 
-function MultiStockAnalysis() {
+function MultiStockAnalysis({ initialIndustry }: { initialIndustry?: { name: string; request: number } | null }) {
   const [records, setRecords] = useState<MarketUniverseRecord[]>([]);
   const [query, setQuery] = useState("");
   const [submittedQuery, setSubmittedQuery] = useState("");
+  const [exactIndustry, setExactIndustry] = useState<string | null>(null);
   const [status, setStatus] = useState("Loading stock universe…");
   const [stockStates, setStockStates] = useState<Record<string, PairState>>({});
   const [refresh, setRefresh] = useState(0);
   const industries = useMemo(() => getAnalysisIndustries(records), [records]);
-  const matches = useMemo(() => filterAnalysisStocks(records, submittedQuery), [records, submittedQuery]);
+  const matches = useMemo(() => exactIndustry
+    ? filterAnalysisStocksByIndustry(records, exactIndustry)
+    : filterAnalysisStocks(records, submittedQuery), [records, submittedQuery, exactIndustry]);
+
+  useEffect(() => {
+    if (!initialIndustry?.name) return;
+    setExactIndustry(initialIndustry.name);
+    setQuery(initialIndustry.name);
+    setSubmittedQuery(initialIndustry.name);
+  }, [initialIndustry?.request]);
 
   useEffect(() => {
     let active = true;
@@ -60,7 +70,7 @@ function MultiStockAnalysis() {
     return () => { active = false; };
   }, [matches, refresh]);
 
-  function runSearch(value = query) { setQuery(value); setSubmittedQuery(value.trim()); }
+  function runSearch(value = query) { setExactIndustry(null); setQuery(value); setSubmittedQuery(value.trim()); }
   function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
     if (event.target instanceof HTMLInputElement || event.target instanceof HTMLButtonElement) return;
     if (event.key === "ArrowRight" || event.key === ".") {
@@ -71,14 +81,14 @@ function MultiStockAnalysis() {
   }
 
   return <div className="analysis-content" onKeyDown={handleKeyDown}>
-    <div className="eyebrow">SCHCAT / MULTI-STOCK ANALYSIS</div>
-    <div className="analysis-heading"><div><h1>Multi-Stock Analysis</h1><p className="intro">Scan an industry or symbol substring and compare weekly and daily price action across up to 12 stocks.</p></div><button className="screener-button secondary" type="button" onClick={() => setRefresh(value => value + 1)} disabled={!matches.length}>Refresh charts</button></div>
+    <div className="eyebrow">SCHCAT / INDUSTRY STOCK GRAPHS</div>
+    <div className="analysis-heading"><div><h1>{exactIndustry ?? "Multi-Stock Analysis"}</h1><p className="intro">{exactIndustry ? "All matching stocks in this industry, with weekly and daily charts. The legacy desktop view displays up to 12 constituents." : "Scan an industry or symbol substring and compare weekly and daily price action across up to 12 stocks."}</p></div><button className="screener-button secondary" type="button" onClick={() => setRefresh(value => value + 1)} disabled={!matches.length}>Refresh charts</button></div>
     <form className="analysis-search-panel" onSubmit={event => { event.preventDefault(); runSearch(); }}>
       <label>Industry / Stock (substring)<input list="analysis-industries" value={query} onChange={event => setQuery(event.target.value)} placeholder="e.g. Electrical Equipment or ABB" /><datalist id="analysis-industries">{industries.map(industry => <option key={industry} value={industry} />)}</datalist></label>
       <button className="screener-button" type="submit">Go</button>
       <div className="analysis-status" aria-live="polite">{status}<br />Right Arrow or “.” cycles industries when focus is outside the search field.</div>
     </form>
-    {!submittedQuery ? <div className="analysis-empty">Enter an industry or stock substring to load charts.</div> : matches.length === 0 ? <div className="analysis-empty">No stocks found for “{submittedQuery}”. Try a broader industry name or symbol.</div> : <div className="analysis-grid">{matches.map(record => {
+    {!submittedQuery ? <div className="analysis-empty">Select an industry in the Stocks table or enter an industry / stock substring to load charts.</div> : matches.length === 0 ? <div className="analysis-empty">No stocks found for “{submittedQuery}”. Try a broader industry name or symbol.</div> : <div className="analysis-grid">{matches.map(record => {
       const state = stockStates[record.symbol] ?? { weekly: [], daily: [], weeklyError: "", dailyError: "", loading: true };
       return <article className="analysis-stock-card" key={record.symbol}><div className="analysis-stock-title"><strong>{record.symbol}</strong><span>{record.industry ?? "Industry unavailable"}</span></div><div className="analysis-chart-pair"><MiniChart title="WEEKLY" candles={state.weekly} error={state.weeklyError} loading={state.loading} /><MiniChart title="DAILY" candles={state.daily} error={state.dailyError} loading={state.loading} /></div></article>;
     })}</div>}

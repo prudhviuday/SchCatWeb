@@ -27,6 +27,7 @@ function App() {
   // Like QTabWidget, visited pages remain mounted so their filters and UI state survive tab changes.
   const [visitedPages, setVisitedPages] = useState<Set<Page>>(() => new Set(["screener"]));
   const [selectedStock, setSelectedStock] = useState<MarketUniverseRecord | null>(null);
+  const [industryNavigation, setIndustryNavigation] = useState<{ name: string; request: number } | null>(null);
 
   const switchToPage = (page: Page) => {
     setVisitedPages((current) => {
@@ -45,6 +46,13 @@ function App() {
   const openStock = (record: MarketUniverseRecord) => {
     setSelectedStock(record);
     switchToPage("workspace");
+  };
+
+  const openIndustry = (industry: string) => {
+    const name = industry.trim();
+    if (!name) return;
+    setIndustryNavigation((current) => ({ name, request: (current?.request ?? 0) + 1 }));
+    switchToPage("analysis");
   };
 
   return (
@@ -85,13 +93,13 @@ function App() {
 
       <section className="main-panel desktop-tab-panel">
         <div className="desktop-module-page" hidden={activePage !== "screener"}>
-          {visitedPages.has("screener") && <StockScreener onOpenStock={openStock} />}
+          {visitedPages.has("screener") && <StockScreener onOpenStock={openStock} onOpenIndustry={openIndustry} />}
         </div>
         <div className="desktop-module-page" hidden={activePage !== "workspace"}>
           {visitedPages.has("workspace") && <StockWorkspace initialRecord={selectedStock} onBack={() => switchToPage("screener")} />}
         </div>
         <div className="desktop-module-page" hidden={activePage !== "analysis"}>
-          {visitedPages.has("analysis") && <MultiStockAnalysis />}
+          {visitedPages.has("analysis") && <MultiStockAnalysis initialIndustry={industryNavigation} />}
         </div>
         <div className="desktop-module-page" hidden={activePage !== "industry"}>
           {visitedPages.has("industry") && <IndustryAnalysis onOpenStock={openStock} />}

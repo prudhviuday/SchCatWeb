@@ -659,3 +659,28 @@ User test:
 4. If live graphs say a session is required, open Provider Diagnostics, save the current MarketSmith session, return to Stocks and select a stock again.
 5. Select a stock, switch tabs and return; the Stocks tab and selected stock should remain mounted. Verify no stale previous-stock graphs flash after selecting a new row.
 6. Check 1024px and mobile widths. Secondary columns should collapse rather than create a horizontal scrollbar; the detail panel should stack below the table on narrow screens.
+
+
+## Step 43 — Python-style row actions and industry-to-stock chart navigation (2026-11-07)
+
+User workflow requirement: clicking a stock row should select it and populate the live ROCE / right-panel histories; clicking the stock symbol should open the single-stock Chart tab; clicking the Industry value should open the Industry Stocks tab and display the charts for that exact industry.
+
+Implemented on main:
+- A click anywhere in an ordinary stock row selects that stock, updating the live right panel and its ROCE, institutional ownership and Revenue/EPS graphs. The former double-click-to-open-chart behavior has been removed.
+- Clicking the Stock symbol is now a separate action: it selects the stock and opens the Chart tab immediately. Event propagation is stopped so it does not behave like an ordinary row click.
+- Clicking the Industry cell opens the Industry Stocks tab and routes the exact industry name into that tab. It no longer requires a double-click or merely changes a screener filter.
+- Industry Stocks now supports an exact-constituent mode for screener navigation, rather than substring matches that could include similarly named industries. Manual searches continue to use the original substring matching.
+- The Industry Stocks tab loads weekly and daily charts for the exact industry's constituents. The existing desktop-compatible maximum of 12 charts per search is preserved; requests continue in batches of four.
+- Repeatedly clicking the same industry still re-runs the navigation request. Users can return to manual symbol/industry substring search at any time.
+
+Verification:
+- Added unit coverage for exact industry membership, exclusion of similarly named industries and the 12-stock legacy limit.
+- Production smoke test checks that the new industry navigation labels/actions are included in the bundle.
+- Full CI build, test and Wrangler validation required before considering this step complete.
+
+User test:
+1. In Stocks, click a numeric cell in a stock row: the right panel must change to that symbol and begin loading its three histories.
+2. Click the stock symbol: the Chart tab must open for that stock.
+3. Return to Stocks and click its Industry name: Industry Stocks must open with that exact industry selected and its weekly/daily charts loading.
+4. Check an industry with a similar name; only exact constituents should be displayed.
+5. Try a manual substring search in Industry Stocks; the original search behaviour should still work.

@@ -27,3 +27,15 @@ export function nextAnalysisIndustry(industries: readonly string[], current: str
   const index = industries.findIndex((industry) => industry.toLocaleLowerCase() === current.trim().toLocaleLowerCase());
   return industries[index < 0 ? 0 : (index + 1) % industries.length];
 }
+
+
+/** Exact industry routing from the screener; preserves the legacy twelve-chart limit. */
+export function filterAnalysisStocksByIndustry(
+  records: readonly MarketUniverseRecord[],
+  industry: string
+): MarketUniverseRecord[] {
+  const target = industry.trim().toLocaleLowerCase();
+  if (!target) return [];
+  return records.filter((record) => (record.industry ?? "").trim().toLocaleLowerCase() === target)
+    .slice(0, MAX_ANALYSIS_STOCKS);
+}

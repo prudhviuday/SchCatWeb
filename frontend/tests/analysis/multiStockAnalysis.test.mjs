@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { filterAnalysisStocks, getAnalysisIndustries, nextAnalysisIndustry } from "../../.test-dist/features/analysis/multiStockAnalysis.js";
+import { filterAnalysisStocks, filterAnalysisStocksByIndustry, getAnalysisIndustries, nextAnalysisIndustry } from "../../.test-dist/features/analysis/multiStockAnalysis.js";
 
 const records = [
   { symbol: "ABB", instrumentId: 1, marketCap: null, sector: "Industrials", industry: "Electrical Equipment", pb: null, roce: null, nikScore: null },
@@ -30,4 +30,13 @@ test("industry cycling starts at the first match and wraps around", () => {
   assert.equal(nextAnalysisIndustry(industries, ""), "Electrical Equipment");
   assert.equal(nextAnalysisIndustry(industries, "Electrical Equipment"), "IT Services");
   assert.equal(nextAnalysisIndustry(industries, "IT Services"), "Electrical Equipment");
+});
+
+
+test("industry navigation loads only exact constituents and caps charts at the legacy twelve", () => {
+  const extended = [...records, { ...records[0], symbol: "ABB2", industry: "Electrical Equipment Plus" }];
+  assert.deepEqual(filterAnalysisStocksByIndustry(extended, "Electrical Equipment").map(row => row.symbol), ["ABB", "BHEL"]);
+  const many = Array.from({ length: 20 }, (_, i) => ({ ...records[0], symbol: "E" + i }));
+  assert.equal(filterAnalysisStocksByIndustry(many, "Electrical Equipment").length, 12);
+  assert.deepEqual(filterAnalysisStocksByIndustry(records, "IT Services").map(row => row.symbol), ["TCS"]);
 });

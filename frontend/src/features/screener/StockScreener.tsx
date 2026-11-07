@@ -21,9 +21,7 @@ import {
   parseSymbolList,
   SCREENER_COLUMNS,
   sortScreenerRecords,
-  toggleIndustryDrilldown,
   resolveWatchlistShortcut,
-  type IndustryDrilldownState,
   type ScreenerNumericField,
   type ScreenerSortField,
   type ScreenerRow
@@ -145,7 +143,7 @@ const emptySelectedStockResearch = (symbol = ""): SelectedStockResearchState => 
   updatedAt: null
 });
 
-function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRecord) => void }) {
+function StockScreener({ onOpenStock, onOpenIndustry }: { onOpenStock: (record: MarketUniverseRecord) => void; onOpenIndustry: (industry: string) => void }) {
   const [records, setRecords] = useState<ScreenerRow[]>([]);
   const [liveMetrics, setLiveMetrics] = useState<Record<string, MarketSmithLiveMetrics>>({});
   const [marketSmithRefresh, setMarketSmithRefresh] = useState<{
@@ -173,7 +171,6 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
   const [search, setSearch] = useState("");
   const [sector, setSector] = useState("");
   const [industry, setIndustry] = useState("");
-  const [industryDrilldown, setIndustryDrilldown] = useState<IndustryDrilldownState | null>(null);
   const [ranges, setRanges] = useState<RangeInputs>(EMPTY_RANGES);
   const [sortField, setSortField] = useState<ScreenerSortField>("symbol");
   const [ascending, setAscending] = useState(true);
@@ -494,7 +491,6 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
     setSearch("");
     setSector("");
     setIndustry("");
-    setIndustryDrilldown(null);
     setRanges(EMPTY_RANGES);
     setSelectedQueries([]);
     setActiveWatchlist("");
@@ -806,28 +802,21 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
                     className={selectedStock?.symbol === record.symbol ? "selected" : ""}
                     aria-selected={selectedStock?.symbol === record.symbol}
                     onClick={() => setSelectedStock(record)}
-                    onDoubleClick={(event) => {
-                      if ((event.target as HTMLElement).closest("[data-industry-cell]")) return;
-                      onOpenStock(record);
-                    }}
                   >
                     {SCREENER_COLUMNS.map((column) => (
                       <td className={column.numeric ? "numeric" : undefined} key={column.key}>
                         {column.key === "symbol" ? (
-                          <button type="button" className="screener-symbol" onClick={() => { setSelectedStock(record); onOpenStock(record); }}>{record.symbol}</button>
+                          <button type="button" className="screener-symbol" onClick={(event) => { event.stopPropagation(); setSelectedStock(record); onOpenStock(record); }}>{record.symbol}</button>
                         ) : column.key === "industry" ? (
                           <button
                             type="button"
                             className="screener-industry"
                             data-industry-cell
-                            onDoubleClick={(event) => {
+                            onClick={(event) => {
                               event.stopPropagation();
-                              const next = toggleIndustryDrilldown(industry, record.industry ?? "", industryDrilldown);
-                              setIndustry(next.industry);
-                              setIndustryDrilldown(next.state);
-                              setPage(0);
+                              onOpenIndustry(record.industry ?? record.sector ?? "");
                             }}
-                            title="Double-click to filter this industry; double-click an industry again to restore the previous filter"
+                            title="Open Industry Stocks and load all charts for this industry"
                           >{record.industry ?? "—"}</button>
                         ) : column.key === "marketCap" ? (
                           compactNumber(record.marketCap)
@@ -859,7 +848,7 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
 
           <div className="screener-table-footer">
             <span>Showing {filteredRecords.length === 0 ? 0 : page * pageSize + 1}–{Math.min((page + 1) * pageSize, filteredRecords.length)} of {filteredRecords.length}</span>
-            <span>Double-click a stock to open its charts · double-click Industry to drill down</span>
+            <span>Click a row for live fundamentals · Stock opens Chart · Industry opens its stock charts</span>
             <span>→ saves to selected watchlist · keys 1–9 use watchlist order</span>
           </div>
         </section>
