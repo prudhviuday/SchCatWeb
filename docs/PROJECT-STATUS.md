@@ -602,3 +602,30 @@ User production checklist:
 6. Confirm the site on a narrow/mobile viewport, especially the diagnostics panel and long error messages.
 
 Final release gate: after the user confirms the live checks, update this handover with the observed production result and deployed version. No further feature step is included in the original 40-step migration plan; optional legacy utilities can be scoped separately only if requested.
+
+
+
+## Step 41 — Desktop-style tabbed workflow and screener density (2026-11-07)
+
+User feedback: the web app must preserve the original desktop application's decision-making workflow, not simply fetch and chart data. The original PyQt main window uses a top QTabWidget and opens directly on Stocks. Its Stocks toolbar keeps fetch, search, Settings, Download, Query and Watchlist controls together. Advanced numeric filtering opens a compact Filter Settings dialog. Selecting one row updates the right-hand stock panel; double-clicking a stock opens Chart.
+
+Implemented on \`main\`:
+- Replaced the permanent left sidebar and Overview landing page with a horizontal top tab strip in the original desktop order: Stocks, Chart, Industry Stocks, Industry Analysis, Querys, Market and Portfolio. The web app now opens directly on Stocks.
+- Reworked the screener into a compact command bar: Fetch Data, symbol search, gear/filter settings, Download, multi-select Query dropdown with Go, Watchlist selector with Go, and Library access.
+- Moved sector/industry and all twelve min/max filters into a modal Settings & Library window with compact Filters, Queries, Watchlists and Data sections. The active filter count appears on the gear button. Filter changes continue to update the table immediately.
+- Removed the always-visible explanatory/status cards and large query/watchlist management panels from the main stock-selection view. Their functionality remains available from the modal.
+- Restored a two-pane stock-selection layout: sortable results table on the left and selected-stock quick fundamentals on the right. The quick panel uses already-loaded local and MarketSmith values; it makes no additional provider requests. Double-click a stock or use the chart button to open the existing Chart workspace.
+- Kept existing MarketSmith, NikScore, ChartInk, query intersection, watchlist, import/export and keyboard-shortcut logic; this pass changes presentation/workflow only.
+- Kept the original PyQt application untouched. No branch was created.
+
+Verification:
+- Full existing screener/provider/calculation/feature tests and production build run in GitHub Actions.
+- Production browser smoke test and Worker dry-run are required after the new main commit. These do not replace user-side verification of external provider connectivity.
+
+User test:
+1. Open the app. It should start on Stocks and show the seven top tabs; the left sidebar and Overview landing page should be gone.
+2. In Stocks, check that the command bar fits without forcing the main screen to scroll. Search a symbol; use the gear to open Filters; set and clear a couple of limits; confirm the result count/table changes immediately and the gear shows the active count.
+3. Open Query, select multiple saved queries and press Go. Run one ChartInk-backed query and confirm its result/status appears. Use Manage to create/delete a query.
+4. Pick a Watchlist and press Go to filter; select a stock and use the arrow shortcut or Add to watchlist. Confirm row selection updates the right detail panel; double-click a stock to open Chart.
+5. In Settings, visit Watchlists and Data; verify local import/export and NikScore/MarketSmith refresh actions remain reachable.
+6. Check a 1366×768 desktop viewport and a narrow/mobile viewport. The results table should scroll inside its panel; the selected-stock panel should stack below it on mobile; the settings dialog should fit the viewport.
