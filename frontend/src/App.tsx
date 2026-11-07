@@ -105,7 +105,7 @@ function App() {
         <div className="desktop-module-page" hidden={activePage !== "portfolio"}>
           {visitedPages.has("portfolio") && <Portfolio />}
         </div>
-      </section>ction>
+      </section>
     </main>
   );
 }
