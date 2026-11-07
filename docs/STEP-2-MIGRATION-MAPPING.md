@@ -432,3 +432,5 @@ The production hostname and health endpoint were not reachable from the verifica
 ### Step 41 — Desktop-style tabbed workflow and screener density
 
 The React shell now mirrors the original PyQt tab workflow with top tabs and Stocks as the default. The stock screener has a compact command bar, a gear-opened modal for filters/queries/watchlists/data, a table plus quick-detail split pane, and a Chart tab for the existing full stock workspace. The right quick panel uses the current in-memory reference/MarketSmith values only; it does not issue new provider requests. The original Python application and all calculation/provider/chart workflows remain unchanged. See the Step 41 section in \`docs/PROJECT-STATUS.md\` for exact user tests and the verification boundary.
+
+The tab shell also keeps a tab mounted after the first visit, rather than destroying its component on every switch. This mirrors the original Qt tab widget and preserves the current screener selection/filter state when the user moves to Chart or another workspace and returns.

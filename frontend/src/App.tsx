@@ -24,7 +24,19 @@ const WORKSPACE_TABS: ReadonlyArray<{ page: Page; label: string }> = [
 function App() {
   // The first tab mirrors the original QTabWidget: open directly on Stocks.
   const [activePage, setActivePage] = useState<Page>("screener");
+  // Like QTabWidget, visited pages remain mounted so their filters and UI state survive tab changes.
+  const [visitedPages, setVisitedPages] = useState<Set<Page>>(() => new Set(["screener"]));
   const [selectedStock, setSelectedStock] = useState<MarketUniverseRecord | null>(null);
+
+  const switchToPage = (page: Page) => {
+    setVisitedPages((current) => {
+      if (current.has(page)) return current;
+      const next = new Set(current);
+      next.add(page);
+      return next;
+    });
+    setActivePage(page);
+  };
 
   if (new URLSearchParams(window.location.search).get("diagnostics") === "providers") {
     return <ProviderDiagnostics />;
@@ -32,7 +44,7 @@ function App() {
 
   const openStock = (record: MarketUniverseRecord) => {
     setSelectedStock(record);
-    setActivePage("workspace");
+    switchToPage("workspace");
   };
 
   return (
@@ -41,7 +53,7 @@ function App() {
         <button
           type="button"
           className="desktop-brand"
-          onClick={() => setActivePage("screener")}
+          onClick={() => switchToPage("screener")}
           aria-label="SchCat home — Stocks tab"
         >
           <span className="brand-mark">SC</span>
@@ -58,7 +70,7 @@ function App() {
               key={tab.page}
               className={"desktop-tab" + (activePage === tab.page ? " active" : "")}
               aria-current={activePage === tab.page ? "page" : undefined}
-              onClick={() => setActivePage(tab.page)}
+              onClick={() => switchToPage(tab.page)}
             >
               {tab.label}
             </button>
@@ -72,22 +84,28 @@ function App() {
       </header>
 
       <section className="main-panel desktop-tab-panel">
-        {activePage === "analysis" ? (
-          <MultiStockAnalysis />
-        ) : activePage === "portfolio" ? (
-          <Portfolio />
-        ) : activePage === "pulse" ? (
-          <MarketPulse />
-        ) : activePage === "research" ? (
-          <Research />
-        ) : activePage === "industry" ? (
-          <IndustryAnalysis onOpenStock={openStock} />
-        ) : activePage === "workspace" ? (
-          <StockWorkspace initialRecord={selectedStock} onBack={() => setActivePage("screener")} />
-        ) : (
-          <StockScreener onOpenStock={openStock} />
-        )}
-      </section>
+        <div className="desktop-module-page" hidden={activePage !== "screener"}>
+          {visitedPages.has("screener") && <StockScreener onOpenStock={openStock} />}
+        </div>
+        <div className="desktop-module-page" hidden={activePage !== "workspace"}>
+          {visitedPages.has("workspace") && <StockWorkspace initialRecord={selectedStock} onBack={() => switchToPage("screener")} />}
+        </div>
+        <div className="desktop-module-page" hidden={activePage !== "analysis"}>
+          {visitedPages.has("analysis") && <MultiStockAnalysis />}
+        </div>
+        <div className="desktop-module-page" hidden={activePage !== "industry"}>
+          {visitedPages.has("industry") && <IndustryAnalysis onOpenStock={openStock} />}
+        </div>
+        <div className="desktop-module-page" hidden={activePage !== "research"}>
+          {visitedPages.has("research") && <Research />}
+        </div>
+        <div className="desktop-module-page" hidden={activePage !== "pulse"}>
+          {visitedPages.has("pulse") && <MarketPulse />}
+        </div>
+        <div className="desktop-module-page" hidden={activePage !== "portfolio"}>
+          {visitedPages.has("portfolio") && <Portfolio />}
+        </div>
+      </section>ction>
     </main>
   );
 }

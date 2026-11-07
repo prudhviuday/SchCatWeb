@@ -612,6 +612,7 @@ User feedback: the web app must preserve the original desktop application's deci
 Implemented on \`main\`:
 - Replaced the permanent left sidebar and Overview landing page with a horizontal top tab strip in the original desktop order: Stocks, Chart, Industry Stocks, Industry Analysis, Querys, Market and Portfolio. The web app now opens directly on Stocks.
 - Reworked the screener into a compact command bar: Fetch Data, symbol search, gear/filter settings, Download, multi-select Query dropdown with Go, Watchlist selector with Go, and Library access.
+- Tabs initialise lazily but remain mounted after first visit, matching QTabWidget state retention: moving from Stocks to Chart and back does not reset the screener filters, query selection, watchlist target or selected row.
 - Moved sector/industry and all twelve min/max filters into a modal Settings & Library window with compact Filters, Queries, Watchlists and Data sections. The active filter count appears on the gear button. Filter changes continue to update the table immediately.
 - Removed the always-visible explanatory/status cards and large query/watchlist management panels from the main stock-selection view. Their functionality remains available from the modal.
 - Restored a two-pane stock-selection layout: sortable results table on the left and selected-stock quick fundamentals on the right. The quick panel uses already-loaded local and MarketSmith values; it makes no additional provider requests. Double-click a stock or use the chart button to open the existing Chart workspace.
@@ -627,5 +628,6 @@ User test:
 2. In Stocks, check that the command bar fits without forcing the main screen to scroll. Search a symbol; use the gear to open Filters; set and clear a couple of limits; confirm the result count/table changes immediately and the gear shows the active count.
 3. Open Query, select multiple saved queries and press Go. Run one ChartInk-backed query and confirm its result/status appears. Use Manage to create/delete a query.
 4. Pick a Watchlist and press Go to filter; select a stock and use the arrow shortcut or Add to watchlist. Confirm row selection updates the right detail panel; double-click a stock to open Chart.
-5. In Settings, visit Watchlists and Data; verify local import/export and NikScore/MarketSmith refresh actions remain reachable.
-6. Check a 1366×768 desktop viewport and a narrow/mobile viewport. The results table should scroll inside its panel; the selected-stock panel should stack below it on mobile; the settings dialog should fit the viewport.
+5. Set a search/filter in Stocks, switch to Chart, then return to Stocks. The search, filter and selected row should remain as they were.
+6. In Settings, visit Watchlists and Data; verify local import/export and NikScore/MarketSmith refresh actions remain reachable.
+7. Check a 1366×768 desktop viewport and a narrow/mobile viewport. The results table should scroll inside its panel; the selected-stock panel should stack below it on mobile; the settings dialog should fit the viewport.
