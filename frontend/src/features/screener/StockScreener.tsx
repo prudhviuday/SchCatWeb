@@ -1032,6 +1032,5 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
     </div>
   );
 }
-}
 
 export default StockScreener;
