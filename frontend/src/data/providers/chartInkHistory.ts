@@ -53,6 +53,8 @@ export async function fetchChartInkHistory(
   const clause = query.trim();
   if (!clause) throw new Error("This research query has no ChartInk query clause.");
   let response: Response;
+  const controller = new AbortController();
+  const timeoutId = globalThis.setTimeout(() => controller.abort(), 45000);
   try {
     response = await fetcher("/api/chartink/scan", {
       method: "POST",
