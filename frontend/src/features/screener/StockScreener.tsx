@@ -975,7 +975,7 @@ function StockScreener({ onOpenStock, onOpenIndustry }: { onOpenStock: (record: 
                     </label>
                     <label className="screener-field">
                       <span>Industry</span>
-                      <select value={industry} onChange={(event) => { setIndustry(event.target.value); setIndustryDrilldown(null); setPage(0); }}>
+                      <select value={industry} onChange={(event) => { setIndustry(event.target.value); setPage(0); }}>
                         <option value="">All industries</option>
                         {industries.map((value) => <option key={value} value={value}>{value}</option>)}
                       </select>
