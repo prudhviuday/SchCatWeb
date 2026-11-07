@@ -60,6 +60,15 @@ const RANGE_LABELS: Record<ScreenerNumericField, string> = {
   accDis: "Acc/Dis"
 };
 
+const SCREENER_HEADER_LINES: Partial<Record<ScreenerSortField, readonly string[]>> = {
+  groupRank: ["Group", "Rank"],
+  epsRank: ["EPS", "Rank"],
+  masterScore: ["Master", "Score"],
+  accDis: ["Acc/", "Dis"],
+  marketCap: ["Market", "Cap*"],
+  nikScore: ["Nik", "Score*"]
+};
+
 function numberValue(value: number | null): string {
   return value === null
     ? "—"
@@ -785,14 +794,20 @@ function StockScreener({ onOpenStock, onOpenIndustry }: { onOpenStock: (record: 
             <table className="screener-table">
               <thead>
                 <tr>
-                  {SCREENER_COLUMNS.map((column) => (
-                    <th key={column.key} aria-sort={sortField === column.key ? (ascending ? "ascending" : "descending") : "none"}>
-                      <button type="button" onClick={() => toggleSort(column.key)}>
-                        {column.label}{sortField === column.key ? (ascending ? " ↑" : " ↓") : ""}
-                      </button>
-                    </th>
-                  ))}
-                  <th>Save</th>
+                  {SCREENER_COLUMNS.map((column) => {
+                    const headerLines = SCREENER_HEADER_LINES[column.key] ?? [column.label];
+                    return (
+                      <th data-column={column.key} key={column.key} aria-sort={sortField === column.key ? (ascending ? "ascending" : "descending") : "none"}>
+                        <button type="button" onClick={() => toggleSort(column.key)}>
+                          <span className="screener-header-label">
+                            {headerLines.map((line, index) => <span className="screener-header-line" key={index}>{line}</span>)}
+                          </span>
+                          {sortField === column.key && <span className="screener-sort-indicator" aria-hidden="true">{ascending ? "↑" : "↓"}</span>}
+                        </button>
+                      </th>
+                    );
+                  })}
+                  <th data-column="save" className="screener-save-heading">Save</th>
                 </tr>
               </thead>
               <tbody>
@@ -804,7 +819,7 @@ function StockScreener({ onOpenStock, onOpenIndustry }: { onOpenStock: (record: 
                     onClick={() => setSelectedStock(record)}
                   >
                     {SCREENER_COLUMNS.map((column) => (
-                      <td className={column.numeric ? "numeric" : undefined} key={column.key}>
+                      <td data-column={column.key} className={column.numeric ? "numeric" : undefined} key={column.key}>
                         {column.key === "symbol" ? (
                           <button type="button" className="screener-symbol" onClick={(event) => { event.stopPropagation(); setSelectedStock(record); onOpenStock(record); }}>{record.symbol}</button>
                         ) : column.key === "industry" ? (
@@ -825,7 +840,7 @@ function StockScreener({ onOpenStock, onOpenIndustry }: { onOpenStock: (record: 
                         )}
                       </td>
                     ))}
-                    <td>
+                    <td data-column="save">
                       <button
                         type="button"
                         className="screener-industry"

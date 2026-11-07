@@ -686,3 +686,27 @@ User test:
 5. Try a manual substring search in Industry Stocks; the original search behaviour should still work.
 
 - Follow-up parity detail: if a row has no Industry value, its Sector label is shown and routes to exact Sector constituents as well; exact matching accepts either the industry or sector field.
+
+
+## Step 44 — Screener column density and readable typography (2026-11-07)
+
+User feedback: the 60/40 layout was correct, but the stock table text had become too small and wide headings such as Group Rank and EPS Rank occupied more horizontal space than their short numeric values required.
+
+Implemented on `main`:
+- Kept the existing 60/40 table/details split and the no-horizontal-scroll behaviour.
+- Increased screener row values from 8px to approximately 10px and made numeric values use tabular figures for easier scanning.
+- Replaced the old evenly-spread column widths with value-aware widths: Stock and Industry receive most of the space, Market Cap receives a larger numeric lane, and rank/score/multiple columns use narrow lanes sized for the actual values.
+- Wrapped Group Rank, EPS Rank, Master Score, Acc/Dis, Market Cap and NikScore headings onto two lines instead of widening their columns.
+- Kept the complete existing wide-desktop column set, sort controls, click-to-select behaviour, Stock-to-Chart navigation, Industry-to-Industry-Stocks navigation and Save action.
+- Did not alter data, sorting, filters, graph loading, provider calls or the 60/40 split.
+
+Verification:
+- Production integration smoke test now checks that the compact two-line header elements are included in the built application bundle.
+- Full CI must pass the TypeScript/Vite build, all feature/provider tests, static SPA integration tests and Wrangler validation.
+
+User test:
+1. Hard-refresh the Stocks tab at desktop width. The left panel should remain about 60% of the window and the right details panel about 40%.
+2. Check that Group Rank and EPS Rank headings use two lines and their number columns are much narrower.
+3. Check that Stock and Industry keep more horizontal space, numeric text is larger and readable, and rows remain compact.
+4. Confirm there is still no horizontal scrollbar and all columns remain available at wide desktop width.
+5. Sort by Group Rank or EPS Rank and confirm click/selection behaviour is unchanged.
