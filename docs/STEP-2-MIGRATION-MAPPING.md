@@ -444,3 +444,5 @@ The selected-stock panel now occupies 40% of the desktop Stocks workspace, with 
 ### Step 43 — Python-style row actions and industry-to-stock chart navigation
 
 Stock-table row clicks select the row and populate the right-side live histories. Clicking the Stock symbol opens the single-stock Chart tab; clicking Industry opens Industry Stocks with exact industry membership and weekly/daily charts (legacy cap: 12 stocks, batched four at a time). Manual Industry Stocks searches retain substring behaviour. See Step 43 in docs/PROJECT-STATUS.md for tests.
+
+If a stock has no industry label, the table shows its sector instead; the same exact constituent filter supports either field.

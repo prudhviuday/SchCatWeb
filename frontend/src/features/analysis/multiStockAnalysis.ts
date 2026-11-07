@@ -36,6 +36,8 @@ export function filterAnalysisStocksByIndustry(
 ): MarketUniverseRecord[] {
   const target = industry.trim().toLocaleLowerCase();
   if (!target) return [];
-  return records.filter((record) => (record.industry ?? "").trim().toLocaleLowerCase() === target)
-    .slice(0, MAX_ANALYSIS_STOCKS);
+  return records.filter((record) =>
+    (record.industry ?? "").trim().toLocaleLowerCase() === target ||
+    (record.sector ?? "").trim().toLocaleLowerCase() === target
+  ).slice(0, MAX_ANALYSIS_STOCKS);
 }

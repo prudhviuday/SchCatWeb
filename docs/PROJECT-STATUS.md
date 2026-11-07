@@ -684,3 +684,5 @@ User test:
 3. Return to Stocks and click its Industry name: Industry Stocks must open with that exact industry selected and its weekly/daily charts loading.
 4. Check an industry with a similar name; only exact constituents should be displayed.
 5. Try a manual substring search in Industry Stocks; the original search behaviour should still work.
+
+- Follow-up parity detail: if a row has no Industry value, its Sector label is shown and routes to exact Sector constituents as well; exact matching accepts either the industry or sector field.

@@ -40,3 +40,9 @@ test("industry navigation loads only exact constituents and caps charts at the l
   assert.equal(filterAnalysisStocksByIndustry(many, "Electrical Equipment").length, 12);
   assert.deepEqual(filterAnalysisStocksByIndustry(records, "IT Services").map(row => row.symbol), ["TCS"]);
 });
+
+
+test("industry navigation also supports a sector label when no industry label is clicked", () => {
+  const sectorOnly = [{ ...records[3], symbol: "SECTOR1", sector: "Industrials", industry: null }];
+  assert.deepEqual(filterAnalysisStocksByIndustry(sectorOnly, "Industrials").map(row => row.symbol), ["SECTOR1"]);
+});

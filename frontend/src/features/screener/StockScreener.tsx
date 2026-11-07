@@ -817,7 +817,7 @@ function StockScreener({ onOpenStock, onOpenIndustry }: { onOpenStock: (record: 
                               onOpenIndustry(record.industry ?? record.sector ?? "");
                             }}
                             title="Open Industry Stocks and load all charts for this industry"
-                          >{record.industry ?? "—"}</button>
+                          >{record.industry ?? record.sector ?? "—"}</button>
                         ) : column.key === "marketCap" ? (
                           compactNumber(record.marketCap)
                         ) : (
