@@ -569,10 +569,13 @@ Implemented on `main`:
 
 Verification:
 - Run `npm run test:integration`, `npm run test:chartink`, `npm run test:chartink-history`, and `npm run build` from `frontend/`.
-- Full GitHub Actions verification is required before Step 39 is considered complete. Tests mock upstream services; live Cloudflare publication and actual provider availability remain Step 40 / user-side checks.
+- GitHub Actions passed for code commit `804006b8fad06ab49f4b6f2084854fba2209328c`: https://github.com/prudhviuday/SchCatWeb/actions/runs/42329248667. All calculation/provider/feature suites, TypeScript/Vite production build, production integration smoke tests, and Cloudflare Worker bundle/config validation passed. Tests mock upstream services; live Cloudflare publication and actual provider availability remain Step 40 / user-side checks.
 
 User test:
 1. Open `https://schcatweb.prudhviuday.workers.dev/api/health`; confirm Worker version 3 and all six provider routes.
 2. Open `https://schcatweb.prudhvi123143.workers.dev/?diagnostics=providers`; run all seven checks and confirm failures display readable Worker/upstream status rather than a blank page.
 3. Run a saved ChartInk scan and a Research historical run. If a request is cancelled or exceeds timeout, confirm a clear timeout message appears and the UI becomes usable for retry.
 4. On a phone-sized viewport, check diagnostics result cards and long error messages do not overflow horizontally.
+
+
+Step 39 code verification is complete on `main`. The latest functional code commit is `804006b8fad06ab49f4b6f2084854fba2209328c`; its GitHub Actions run passed. Do not start Step 40 until the user explicitly asks for the next step.
