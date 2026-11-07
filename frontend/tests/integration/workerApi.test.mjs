@@ -346,6 +346,7 @@ test("health endpoint rejects non-GET methods", async () => {
   const response = await worker.fetch(new Request("https://schcatweb.test/api/health", { method: "POST" }), { ASSETS: { fetch: async () => new Response("asset") } });
   assert.equal(response.status, 405);
   assert.equal((await response.json()).error, "method_not_allowed");
+  assert.equal(response.headers.get("allow"), "GET");
 });
 
 test("unexpected Worker API exceptions return a stable JSON error", async () => {

@@ -393,6 +393,9 @@ async function chartInkScan(request) {
 
 async function handleApi(request, env) {
   const url = new URL(request.url);
+  if (url.pathname === "/api/health" && request.method !== "GET") {
+    return json({ error: "method_not_allowed", message: "The health endpoint only supports GET." }, 405, { allow: "GET" });
+  }
   if (request.method === "GET" && url.pathname === "/api/health") {
     return json({
       ok: true,
@@ -415,26 +418,28 @@ async function handleApi(request, env) {
     });
   }
 
+  if (url.pathname === "/api/yahoo/chart" && request.method !== "GET") return json({ error: "method_not_allowed" }, 405, { allow: "GET" });
   if (request.method === "GET" && url.pathname === "/api/yahoo/chart") {
     return yahooChart(url);
   }
+  if (url.pathname === "/api/marketsmith/finance" && request.method !== "GET") return json({ error: "method_not_allowed" }, 405, { allow: "GET" });
   if (request.method === "GET" && url.pathname === "/api/marketsmith/finance") {
     return marketSmithFinance(url, env, request);
   }
+  if (url.pathname === "/api/marketsmith/symbol" && request.method !== "GET") return json({ error: "method_not_allowed" }, 405, { allow: "GET" });
   if (request.method === "GET" && url.pathname === "/api/marketsmith/symbol") {
     return marketSmithSymbol(url, env, request);
   }
+  if (url.pathname === "/api/marketsmith/relative-strength" && request.method !== "GET") return json({ error: "method_not_allowed" }, 405, { allow: "GET" });
   if (request.method === "GET" && url.pathname === "/api/marketsmith/relative-strength") {
     return marketSmithRelativeStrength(url, env, request);
   }
+  if (url.pathname === "/api/nse/delivery" && request.method !== "GET") return json({ error: "method_not_allowed" }, 405, { allow: "GET" });
   if (request.method === "GET" && url.pathname === "/api/nse/delivery") {
     return nseDelivery(url);
   }
   if (request.method === "POST" && url.pathname === "/api/chartink/scan") {
     return chartInkScan(request);
-  }
-  if (url.pathname.startsWith("/api/") && request.method !== "GET" && request.method !== "POST") {
-    return json({ error: "method_not_allowed", message: "This API route does not support the requested method." }, 405, { allow: "GET, POST" });
   }
   if (url.pathname.startsWith("/api/")) return json({ error: "api_route_not_found" }, 404);
   return null;
