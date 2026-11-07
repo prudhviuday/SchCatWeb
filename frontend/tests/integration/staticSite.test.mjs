@@ -42,14 +42,14 @@ test("production homepage and deep links serve the SPA shell", async () => {
   }
 });
 
-test("built application bundle contains every integrated workspace module", async () => {
+test("built application bundle contains the desktop-style tabs and integrated workspace modules", async () => {
   const html = await (await fetch(origin)).text();
   const scriptPath = html.match(/src="([^"]+\.js)"/)?.[1];
   assert.ok(scriptPath, "production entry script should be present");
   const response = await fetch(new URL(scriptPath, origin));
   assert.equal(response.status, 200);
   const bundle = await response.text();
-  for (const label of ["Stock Screener", "Charts & Workspace", "Industry Analysis", "Research", "Market Pulse", "Portfolio", "Multi-Stock Analysis", "Annual ROCE", "INSTITUTIONAL OWNERSHIP"]) {
+  for (const label of ["Stocks", "Chart", "Industry Stocks", "Industry Analysis", "Querys", "Market", "Portfolio", "Settings & Library", "Annual ROCE", "INSTITUTIONAL OWNERSHIP"]) {
     assert.ok(bundle.includes(label), "production bundle should include " + label);
   }
   assert.ok(bundle.includes("Provider connectivity diagnostics"), "provider diagnostics view should be bundled");

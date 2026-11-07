@@ -398,6 +398,7 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
       const result = await fetchChartInkScan(saved.queryCode);
       setLibrary((current) => upsertSavedQuery(current, { ...saved, symbols: result.symbols }));
       setSelectedQueries((current) => current.includes(name) ? current : [...current, name]);
+      setQueryDraft((current) => current.includes(name) ? current : [...current, name]);
       setPage(0);
       setQueryRuns((current) => ({
         ...current,
@@ -814,7 +815,7 @@ function StockScreener({ onOpenStock }: { onOpenStock: (record: MarketUniverseRe
                 <span className="eyebrow">SCHCAT / STOCKS</span>
                 <h2 id="screener-settings-title">Settings & Library</h2>
               </div>
-              <button type="button" className="screener-icon-button" aria-label="Close settings" onClick={() => setSettingsOpen(false)}>×</button>
+              <button type="button" className="screener-icon-button" aria-label="Close settings" autoFocus onClick={() => setSettingsOpen(false)}>×</button>
             </header>
 
             <nav className="screener-settings-tabs" aria-label="Settings sections">
